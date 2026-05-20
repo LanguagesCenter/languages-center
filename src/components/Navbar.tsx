@@ -91,7 +91,7 @@ export default function Navbar() {
                   {languages.map((lang) => (
                     <Link
                       key={lang.slug}
-                      href={`#${lang.slug}`}
+                      href={`/languages/${lang.slug}`}
                       onClick={() => setOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
                     >
