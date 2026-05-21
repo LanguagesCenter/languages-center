@@ -84,9 +84,6 @@ function RelatedCard({ slug }: { slug: string }) {
           height={24}
           className="rounded-sm object-cover shadow-sm"
         />
-        <span className="text-2xl" aria-hidden>
-          {related.flagEmoji}
-        </span>
       </div>
       <p className="font-semibold text-navy group-hover:text-teal transition-colors">
         {related.name}
@@ -184,9 +181,6 @@ export default async function LanguageOverviewPage(
                     height={54}
                     className="rounded-md object-cover shadow-sm"
                   />
-                  <span className="text-5xl" aria-hidden>
-                    {overview.flagEmoji}
-                  </span>
                 </div>
                 <h1 className="text-4xl sm:text-5xl font-bold text-navy tracking-tight mb-2">
                   Learn {overview.name}
