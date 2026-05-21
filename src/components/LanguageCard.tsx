@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { Language, Difficulty } from "@/lib/languages";
 
 function DifficultyBadge({ level }: { level: Difficulty }) {
@@ -31,12 +32,28 @@ function FlagImage({ countryCode, name }: { countryCode: string; name: string })
 
 export default function LanguageCard({ language }: { language: Language }) {
   return (
-    <div
+    <Link
       id={language.slug}
-      className="group bg-white border border-border rounded-2xl p-6 hover:shadow-lg hover:border-teal/40 hover:scale-[1.02] transition-all duration-200 cursor-pointer"
+      href={`/languages/${language.slug}`}
+      aria-label={`Learn more about ${language.name}`}
+      className="group block bg-white border border-border rounded-2xl p-6 hover:shadow-lg hover:border-teal/40 hover:-translate-y-1 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 transition-all duration-200"
     >
       <div className="flex items-start justify-between mb-4">
         <FlagImage countryCode={language.countryCode} name={language.name} />
+        <span
+          aria-hidden
+          className="text-teal/0 group-hover:text-teal translate-x-0 group-hover:translate-x-1 transition-all duration-200"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </span>
       </div>
       <h3 className="text-lg font-semibold text-navy mb-4 group-hover:text-teal transition-colors">
         {language.name}
@@ -51,6 +68,6 @@ export default function LanguageCard({ language }: { language: Language }) {
           <DifficultyBadge level={language.pronunciation} />
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
