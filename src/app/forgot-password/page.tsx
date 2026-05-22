@@ -5,9 +5,88 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 
+interface FriendlyError {
+  title: string;
+  body: string;
+  rawMessage: string;
+  rawStatus?: number;
+  rawCode?: string;
+  redirectTo: string;
+}
+
+function mapAuthError(
+  raw: string,
+  status: number | undefined,
+  code: string | undefined,
+  redirectTo: string,
+): FriendlyError {
+  const m = raw.toLowerCase();
+  const base = { rawMessage: raw, rawStatus: status, rawCode: code, redirectTo };
+
+  if (
+    m.includes("rate limit") ||
+    m.includes("too many") ||
+    m.includes("for security purposes")
+  ) {
+    return {
+      ...base,
+      title: "Too many requests",
+      body: "You've requested several reset emails in a short time. Wait a few minutes, then try again.",
+    };
+  }
+
+  if (
+    m.includes("sending recovery email") ||
+    m.includes("sending email") ||
+    m.includes("smtp") ||
+    m.includes("email rate limit") ||
+    m.includes("error sending")
+  ) {
+    return {
+      ...base,
+      title: "Email service unavailable",
+      body: "Supabase couldn't deliver the reset email. This almost always means custom SMTP isn't configured (or the default mailer's hourly limit was hit). Check Supabase → Authentication → Emails → SMTP Settings.",
+    };
+  }
+
+  if (m.includes("invalid") && m.includes("email")) {
+    return {
+      ...base,
+      title: "Check your email address",
+      body: "That doesn't look like a valid email. Double-check for typos and try again.",
+    };
+  }
+
+  if (
+    m.includes("redirect") ||
+    m.includes("not allowed") ||
+    m.includes("invalid url")
+  ) {
+    return {
+      ...base,
+      title: "Redirect URL not allowed",
+      body: `Supabase rejected the redirect URL. Add ${redirectTo} to Authentication → URL Configuration → Redirect URLs.`,
+    };
+  }
+
+  if (m.includes("network") || m.includes("failed to fetch")) {
+    return {
+      ...base,
+      title: "Connection problem",
+      body: "We couldn't reach the Supabase server. Check your internet connection or that the project URL is correct.",
+    };
+  }
+
+  return {
+    ...base,
+    title: "Something went wrong",
+    body: raw,
+  };
+}
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<FriendlyError | null>(null);
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
@@ -17,17 +96,46 @@ export default function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const redirectTo = `${window.location.origin}/reset-password`;
 
-    if (error) {
-      setError(error.message);
-    } else {
+    console.group("[forgot-password] resetPasswordForEmail");
+    console.log("email:", email);
+    console.log("redirectTo:", redirectTo);
+    console.log("NEXT_PUBLIC_SUPABASE_URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
+    console.log(
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY (first 12 chars):",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.slice(0, 12) + "…",
+    );
+
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      console.log("data:", data);
+      console.log("error:", error);
+      if (error) {
+        console.log("error.name:", error.name);
+        console.log("error.message:", error.message);
+        // AuthApiError extras (may not exist on all error shapes)
+        const e = error as unknown as { status?: number; code?: string };
+        console.log("error.status:", e.status);
+        console.log("error.code:", e.code);
+        console.groupEnd();
+        setError(mapAuthError(error.message, e.status, e.code, redirectTo));
+        return;
+      }
+
+      console.groupEnd();
       setSent(true);
+    } catch (thrown) {
+      console.error("Unexpected thrown error:", thrown);
+      console.groupEnd();
+      const msg = thrown instanceof Error ? thrown.message : String(thrown);
+      setError(mapAuthError(msg, undefined, undefined, redirectTo));
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   return (
@@ -98,8 +206,38 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 {error && (
-                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
-                    {error}
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm text-red-700">
+                    <p className="font-semibold mb-0.5">{error.title}</p>
+                    <p className="text-red-700/90 leading-relaxed">{error.body}</p>
+
+                    <details className="mt-3 group">
+                      <summary className="cursor-pointer text-xs font-medium text-red-700/80 hover:text-red-900 select-none">
+                        Show technical details
+                      </summary>
+                      <div className="mt-2 rounded-lg bg-red-100/60 border border-red-200 p-2.5 font-mono text-[11px] leading-relaxed text-red-900/90 space-y-1 break-words">
+                        <p>
+                          <span className="opacity-60">message:</span>{" "}
+                          {error.rawMessage}
+                        </p>
+                        {error.rawStatus !== undefined && (
+                          <p>
+                            <span className="opacity-60">status:</span> {error.rawStatus}
+                          </p>
+                        )}
+                        {error.rawCode && (
+                          <p>
+                            <span className="opacity-60">code:</span> {error.rawCode}
+                          </p>
+                        )}
+                        <p>
+                          <span className="opacity-60">redirectTo:</span>{" "}
+                          {error.redirectTo}
+                        </p>
+                        <p className="pt-1 text-red-700/70">
+                          Open the browser console (Cmd+Opt+J) for the full response.
+                        </p>
+                      </div>
+                    </details>
                   </div>
                 )}
 
