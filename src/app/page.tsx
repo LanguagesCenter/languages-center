@@ -2,11 +2,13 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import LanguageCard from "@/components/LanguageCard";
 import Footer from "@/components/Footer";
+import ResetSuccessBanner from "@/components/ResetSuccessBanner";
 import { languages } from "@/lib/languages";
 
 export default function Home() {
   return (
     <>
+      <ResetSuccessBanner />
       <Navbar />
       <main className="flex-1">
         <Hero />
