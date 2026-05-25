@@ -6,66 +6,79 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+type Phase = "verifying" | "form" | "submitting" | "success" | "invalid";
+
 export default function ResetPasswordPage() {
   const supabase = createClient();
   const router = useRouter();
 
-  const [checking, setChecking] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
-
+  const [phase, setPhase] = useState<Phase>("verifying");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!active) return;
-      if (session) {
-        setAuthorized(true);
-        setChecking(false);
+    async function verify() {
+      // Read the token directly from the URL — Supabase appends
+      // ?token_hash=...&type=recovery (or sets a code/access_token via
+      // its default redirect flow). We try them in order.
+      const url = new URL(window.location.href);
+      const tokenHash = url.searchParams.get("token_hash");
+      const type = url.searchParams.get("type") ?? "recovery";
+
+      // Some Supabase flows put credentials in the URL hash. Catch those too.
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const hashAccessToken = hash.get("access_token");
+      const hashRefreshToken = hash.get("refresh_token");
+
+      if (tokenHash) {
+        const { error: verifyErr } = await supabase.auth.verifyOtp({
+          type: type as "recovery",
+          token_hash: tokenHash,
+        });
+        if (!active) return;
+        if (verifyErr) {
+          setPhase("invalid");
+          return;
+        }
+        // Strip token params from the URL so a refresh doesn't replay them.
+        window.history.replaceState({}, "", url.pathname);
+        setPhase("form");
         return;
       }
 
-      // Give the supabase browser client a brief window to auto-exchange
-      // the recovery code from the URL into a session.
-      setTimeout(async () => {
+      if (hashAccessToken && hashRefreshToken) {
+        const { error: sessionErr } = await supabase.auth.setSession({
+          access_token: hashAccessToken,
+          refresh_token: hashRefreshToken,
+        });
         if (!active) return;
-        const { data: { session: later } } = await supabase.auth.getSession();
-        if (!active) return;
-        if (later) {
-          setAuthorized(true);
-        } else {
-          setLinkError(
-            "This password reset link is invalid or has expired. Request a new one to continue.",
-          );
+        if (sessionErr) {
+          setPhase("invalid");
+          return;
         }
-        setChecking(false);
-      }, 1200);
+        window.history.replaceState({}, "", url.pathname);
+        setPhase("form");
+        return;
+      }
+
+      // Fall back: if a session was already established (e.g. PKCE
+      // ?code auto-exchange), let the user continue.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!active) return;
+      if (session) {
+        setPhase("form");
+      } else {
+        setPhase("invalid");
+      }
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && session)) {
-          setAuthorized(true);
-          setChecking(false);
-          setLinkError(null);
-        }
-      },
-    );
-
-    init();
-
+    verify();
     return () => {
       active = false;
-      subscription.unsubscribe();
     };
   }, [supabase]);
 
@@ -79,35 +92,26 @@ export default function ResetPasswordPage() {
   const allChecksMet = passwordChecks.every((c) => c.met);
   const passwordsMatch =
     confirmPassword.length > 0 && password === confirmPassword;
+  const canSubmit = allChecksMet && passwordsMatch;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitError(null);
-    if (!allChecksMet) {
-      setSubmitError("Password doesn't meet all the requirements yet.");
-      return;
-    }
-    if (!passwordsMatch) {
-      setSubmitError("Passwords do not match.");
-      return;
-    }
+    if (!canSubmit) return;
 
-    setSubmitting(true);
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      setSubmitError(error.message);
-      setSubmitting(false);
+    setPhase("submitting");
+    setError(null);
+    const { error: updateErr } = await supabase.auth.updateUser({ password });
+    if (updateErr) {
+      setError(updateErr.message);
+      setPhase("form");
       return;
     }
 
-    await supabase.auth.signOut();
-    setSuccess(true);
-    setSubmitting(false);
-
+    setPhase("success");
     setTimeout(() => {
-      router.push("/login");
+      router.push("/dashboard");
       router.refresh();
-    }, 2500);
+    }, 1500);
   }
 
   return (
@@ -129,7 +133,42 @@ export default function ResetPasswordPage() {
 
       <div className="flex-1 flex items-center justify-center px-4 pb-20">
         <div className="w-full max-w-sm">
-          {success ? (
+          {phase === "verifying" && (
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-full border-2 border-teal/20 border-t-teal animate-spin mx-auto mb-4" />
+              <p className="text-sm text-navy/60">Verifying your reset link…</p>
+            </div>
+          )}
+
+          {phase === "invalid" && (
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-6 h-6 text-red-500"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.8}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-navy mb-2">
+                Link no longer valid
+              </h1>
+              <p className="text-sm text-navy/60 mb-6">
+                This password reset link is invalid or has expired. Request a new one to continue.
+              </p>
+              <Link
+                href="/forgot-password"
+                className="inline-block px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+              >
+                Request a new link
+              </Link>
+            </div>
+          )}
+
+          {phase === "success" && (
             <div className="text-center">
               <div className="w-14 h-14 rounded-full bg-teal flex items-center justify-center mx-auto mb-5 shadow-md shadow-teal/30">
                 <svg
@@ -146,45 +185,18 @@ export default function ResetPasswordPage() {
                 Password updated
               </h1>
               <p className="text-sm text-navy/60 mb-6">
-                Your password has been reset. Redirecting you to sign in…
+                Taking you to your dashboard…
               </p>
               <Link
-                href="/login"
+                href="/dashboard"
                 className="inline-block text-sm font-medium text-teal hover:text-teal-dark transition-colors"
               >
-                Go to sign in now
+                Go to dashboard now
               </Link>
             </div>
-          ) : checking ? (
-            <div className="text-center">
-              <div className="w-10 h-10 rounded-full border-2 border-teal/20 border-t-teal animate-spin mx-auto mb-4" />
-              <p className="text-sm text-navy/60">Verifying your reset link…</p>
-            </div>
-          ) : linkError ? (
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mx-auto mb-4">
-                <svg
-                  className="w-6 h-6 text-red-500"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                </svg>
-              </div>
-              <h1 className="text-2xl font-bold text-navy mb-2">
-                Link no longer valid
-              </h1>
-              <p className="text-sm text-navy/60 mb-6">{linkError}</p>
-              <Link
-                href="/forgot-password"
-                className="inline-block px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
-              >
-                Request a new link
-              </Link>
-            </div>
-          ) : authorized ? (
+          )}
+
+          {(phase === "form" || phase === "submitting") && (
             <>
               <h1 className="text-2xl font-bold text-navy text-center mb-2">
                 Set a new password
@@ -280,32 +292,22 @@ export default function ResetPasswordPage() {
                   )}
                 </div>
 
-                {submitError && (
+                {error && (
                   <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
-                    {submitError}
+                    {error}
                   </div>
                 )}
 
                 <button
                   type="submit"
-                  disabled={submitting || !allChecksMet || !passwordsMatch}
+                  disabled={phase === "submitting" || !canSubmit}
                   className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {submitting ? "Updating…" : "Reset password"}
+                  {phase === "submitting" ? "Updating…" : "Reset password"}
                 </button>
               </form>
-
-              <p className="mt-6 text-sm text-center text-navy/50">
-                Remember your password?{" "}
-                <Link
-                  href="/login"
-                  className="font-medium text-teal hover:text-teal-dark transition-colors"
-                >
-                  Sign in
-                </Link>
-              </p>
             </>
-          ) : null}
+          )}
         </div>
       </div>
     </div>
