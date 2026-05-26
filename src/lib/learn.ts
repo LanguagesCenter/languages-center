@@ -2,6 +2,33 @@ import { createClient } from "@/lib/supabase/server";
 
 export type LessonType = "vocabulary" | "grammar" | "phrases" | "listening" | "speaking";
 export type ExerciseType = "multiple_choice" | "fill_blank" | "matching" | "listening" | "speaking";
+export type CEFRLevel = "A1" | "A2" | "B1" | "B2" | "C1";
+
+export const CEFR_LEVELS: readonly CEFRLevel[] = ["A1", "A2", "B1", "B2", "C1"] as const;
+
+export const CEFR_LABEL: Record<CEFRLevel, string> = {
+  A1: "Beginner",
+  A2: "Elementary",
+  B1: "Intermediate",
+  B2: "Upper-Intermediate",
+  C1: "Advanced",
+};
+
+// BCP-47 codes used for the Web Speech API (TTS + speech recognition).
+export const SPEECH_LANG_CODES: Record<string, string> = {
+  spanish: "es-ES",
+  french: "fr-FR",
+  german: "de-DE",
+  greek: "el-GR",
+  swedish: "sv-SE",
+  danish: "da-DK",
+  finnish: "fi-FI",
+  albanian: "sq-AL",
+  icelandic: "is-IS",
+  faroese: "fo-FO",
+  corsican: "it-IT", // Corsican has limited browser support; fall back to Italian.
+  english: "en-US",
+};
 
 export interface DbLanguage {
   id: number;
@@ -17,6 +44,7 @@ export interface DbCourse {
   language_id: number;
   title: string;
   description: string | null;
+  cefr_level: CEFRLevel;
   order_index: number;
 }
 
@@ -57,12 +85,61 @@ export interface DbUserProfile {
   last_activity_date: string | null;
 }
 
+export interface DbArticle {
+  id: number;
+  language_id: number;
+  slug: string;
+  title: string;
+  title_english: string;
+  level: CEFRLevel;
+  reading_minutes: number;
+  content_target: string;
+  content_english: string;
+  order_index: number;
+}
+
+export interface DbPodcast {
+  id: number;
+  language_id: number;
+  title: string;
+  description: string | null;
+  duration_minutes: number;
+  level: CEFRLevel;
+  is_premium: boolean;
+  order_index: number;
+}
+
+export interface DbVideo {
+  id: number;
+  language_id: number;
+  title: string;
+  description: string | null;
+  duration_minutes: number;
+  level: CEFRLevel;
+  is_premium: boolean;
+  order_index: number;
+}
+
+export interface SectionWithProgress extends DbCourse {
+  lessonsTotal: number;
+  lessonsCompleted: number;
+  locked: boolean;
+}
+
+export interface CEFRLevelGroup {
+  level: CEFRLevel;
+  label: string;
+  sections: SectionWithProgress[];
+  lessonsTotal: number;
+  lessonsCompleted: number;
+}
+
 export interface LessonWithStatus extends DbLesson {
   completed: boolean;
   locked: boolean;
 }
 
-export interface CourseWithLessons extends DbCourse {
+export interface SectionWithLessons extends DbCourse {
   lessons: LessonWithStatus[];
 }
 
@@ -73,8 +150,6 @@ export interface LanguageProgress {
   progressPct: number;
   stats: DbUserStats | null;
 }
-
-const COURSE_TIER_ORDER = ["Beginner", "Intermediate", "Advanced"];
 
 export async function getLanguagesWithProgress(): Promise<LanguageProgress[]> {
   const supabase = await createClient();
@@ -167,9 +242,11 @@ export async function getLanguageBySlug(slug: string): Promise<DbLanguage | null
   return (data as DbLanguage) ?? null;
 }
 
-export async function getCourseTreeForLanguage(
+// Build the full CEFR tree for a language. Each level groups its sections;
+// each section knows its lesson totals and completion counts.
+export async function getCEFRTreeForLanguage(
   languageId: number,
-): Promise<CourseWithLessons[]> {
+): Promise<CEFRLevelGroup[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -179,12 +256,114 @@ export async function getCourseTreeForLanguage(
     .from("courses")
     .select("*")
     .eq("language_id", languageId)
+    .order("cefr_level")
     .order("order_index");
+
+  const courseIds = (courses ?? []).map((c: DbCourse) => c.id);
+  const { data: lessons } = await supabase
+    .from("lessons")
+    .select("id, course_id")
+    .in("course_id", courseIds.length ? courseIds : [-1]);
+
+  let completedSet = new Set<number>();
+  if (user) {
+    const lessonIds = (lessons ?? []).map((l: { id: number }) => l.id);
+    if (lessonIds.length > 0) {
+      const { data: progress } = await supabase
+        .from("user_progress")
+        .select("lesson_id")
+        .eq("user_id", user.id)
+        .eq("completed", true)
+        .in("lesson_id", lessonIds);
+      completedSet = new Set(
+        (progress ?? []).map((p: { lesson_id: number }) => p.lesson_id),
+      );
+    }
+  }
+
+  const lessonsByCourse = new Map<number, number[]>();
+  for (const l of (lessons ?? []) as { id: number; course_id: number }[]) {
+    const arr = lessonsByCourse.get(l.course_id) ?? [];
+    arr.push(l.id);
+    lessonsByCourse.set(l.course_id, arr);
+  }
+
+  // Compute sections with progress, ordered by CEFR then order_index.
+  const sections: SectionWithProgress[] = ((courses as DbCourse[]) ?? []).map(
+    (course) => {
+      const lessonIds = lessonsByCourse.get(course.id) ?? [];
+      const completed = lessonIds.filter((id) => completedSet.has(id)).length;
+      return {
+        ...course,
+        lessonsTotal: lessonIds.length,
+        lessonsCompleted: completed,
+        locked: false, // computed below across CEFR levels
+      };
+    },
+  );
+
+  // Group by CEFR level
+  const groups: CEFRLevelGroup[] = CEFR_LEVELS.map((level) => {
+    const levelSections = sections
+      .filter((s) => s.cefr_level === level)
+      .sort((a, b) => a.order_index - b.order_index);
+    const total = levelSections.reduce((sum, s) => sum + s.lessonsTotal, 0);
+    const done = levelSections.reduce((sum, s) => sum + s.lessonsCompleted, 0);
+    return {
+      level,
+      label: CEFR_LABEL[level],
+      sections: levelSections,
+      lessonsTotal: total,
+      lessonsCompleted: done,
+    };
+  });
+
+  // Lock progression: a level is unlocked when the previous level is fully
+  // complete. Within an unlocked level all sections are accessible — we keep
+  // the order suggestive but don't hard-lock.
+  let prevLevelFullyComplete = true;
+  for (const group of groups) {
+    if (!prevLevelFullyComplete) {
+      for (const section of group.sections) section.locked = true;
+    }
+    if (group.lessonsTotal === 0 || group.lessonsCompleted < group.lessonsTotal) {
+      prevLevelFullyComplete = false;
+    }
+  }
+
+  return groups;
+}
+
+export async function getSectionWithLessons(
+  sectionId: number,
+): Promise<{
+  section: DbCourse;
+  language: DbLanguage;
+  lessons: LessonWithStatus[];
+} | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: section } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("id", sectionId)
+    .maybeSingle();
+  if (!section) return null;
+
+  const { data: language } = await supabase
+    .from("languages")
+    .select("*")
+    .eq("id", section.language_id)
+    .maybeSingle();
+  if (!language) return null;
 
   const { data: lessons } = await supabase
     .from("lessons")
     .select("*")
-    .in("course_id", (courses ?? []).map((c: DbCourse) => c.id))
+    .eq("course_id", sectionId)
     .order("order_index");
 
   let completedSet = new Set<number>();
@@ -193,51 +372,34 @@ export async function getCourseTreeForLanguage(
     if (lessonIds.length > 0) {
       const { data: progress } = await supabase
         .from("user_progress")
-        .select("lesson_id, completed")
+        .select("lesson_id")
         .eq("user_id", user.id)
-        .in("lesson_id", lessonIds)
-        .eq("completed", true);
+        .eq("completed", true)
+        .in("lesson_id", lessonIds);
       completedSet = new Set(
         (progress ?? []).map((p: { lesson_id: number }) => p.lesson_id),
       );
     }
   }
 
-  const sortedCourses = [...((courses as DbCourse[]) ?? [])].sort((a, b) => {
-    const aIdx = COURSE_TIER_ORDER.indexOf(a.title);
-    const bIdx = COURSE_TIER_ORDER.indexOf(b.title);
-    if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
-    return a.order_index - b.order_index;
+  const sorted = ((lessons as DbLesson[]) ?? []).sort(
+    (a, b) => a.order_index - b.order_index,
+  );
+
+  let prev = true; // first lesson is unlocked
+  const withStatus: LessonWithStatus[] = sorted.map((lesson) => {
+    const completed = completedSet.has(lesson.id);
+    const locked = !prev && !completed;
+    if (!completed && !locked) prev = false;
+    if (completed) prev = true;
+    return { ...lesson, completed, locked };
   });
 
-  return sortedCourses.map((course, courseIdx) => {
-    const courseLessons = ((lessons as DbLesson[]) ?? [])
-      .filter((l) => l.course_id === course.id)
-      .sort((a, b) => a.order_index - b.order_index);
-
-    const prevCourseCompleted =
-      courseIdx === 0
-        ? true
-        : (lessons as DbLesson[])
-            .filter((l) => l.course_id === sortedCourses[courseIdx - 1].id)
-            .every((l) => completedSet.has(l.id));
-
-    let lockedSoFar = !prevCourseCompleted;
-    const lessonsWithStatus: LessonWithStatus[] = courseLessons.map((lesson, lessonIdx) => {
-      const completed = completedSet.has(lesson.id);
-      const prevCompleted =
-        lessonIdx === 0
-          ? prevCourseCompleted
-          : completedSet.has(courseLessons[lessonIdx - 1].id);
-      const locked = lockedSoFar || (!prevCompleted && !completed);
-      if (!completed && !locked) {
-        lockedSoFar = true;
-      }
-      return { ...lesson, completed, locked };
-    });
-
-    return { ...course, lessons: lessonsWithStatus };
-  });
+  return {
+    section: section as DbCourse,
+    language: language as DbLanguage,
+    lessons: withStatus,
+  };
 }
 
 export async function getLessonWithExercises(lessonId: number): Promise<{
@@ -308,11 +470,111 @@ export async function getLessonsCompletedThisWeek(): Promise<number> {
 export async function getFirstIncompleteLessonId(
   languageId: number,
 ): Promise<number | null> {
-  const tree = await getCourseTreeForLanguage(languageId);
-  for (const course of tree) {
-    for (const lesson of course.lessons) {
-      if (!lesson.completed && !lesson.locked) return lesson.id;
+  const tree = await getCEFRTreeForLanguage(languageId);
+  for (const group of tree) {
+    for (const section of group.sections) {
+      if (section.locked) continue;
+      if (section.lessonsCompleted >= section.lessonsTotal) continue;
+      // Pull the first incomplete lesson in this section
+      const supabase = await createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const { data: lessons } = await supabase
+        .from("lessons")
+        .select("id, order_index")
+        .eq("course_id", section.id)
+        .order("order_index");
+      if (!lessons || lessons.length === 0) continue;
+      let completedSet = new Set<number>();
+      if (user) {
+        const { data: progress } = await supabase
+          .from("user_progress")
+          .select("lesson_id")
+          .eq("user_id", user.id)
+          .eq("completed", true)
+          .in(
+            "lesson_id",
+            lessons.map((l: { id: number }) => l.id),
+          );
+        completedSet = new Set(
+          (progress ?? []).map((p: { lesson_id: number }) => p.lesson_id),
+        );
+      }
+      for (const l of lessons as { id: number }[]) {
+        if (!completedSet.has(l.id)) return l.id;
+      }
     }
   }
   return null;
+}
+
+export function getHighestReachedLevel(tree: CEFRLevelGroup[]): CEFRLevel {
+  let highest: CEFRLevel = "A1";
+  for (const group of tree) {
+    if (group.lessonsCompleted > 0) highest = group.level;
+  }
+  return highest;
+}
+
+// -------- Articles --------
+
+export async function getArticlesForLanguage(
+  languageId: number,
+): Promise<DbArticle[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("language_id", languageId)
+    .order("order_index");
+  return (data as DbArticle[]) ?? [];
+}
+
+export async function getArticleBySlug(
+  languageId: number,
+  slug: string,
+): Promise<DbArticle | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("language_id", languageId)
+    .eq("slug", slug)
+    .maybeSingle();
+  return (data as DbArticle) ?? null;
+}
+
+// -------- Podcasts & Videos --------
+
+export async function getPodcastsForLanguage(
+  languageId: number,
+): Promise<DbPodcast[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("podcasts")
+    .select("*")
+    .eq("language_id", languageId)
+    .order("order_index");
+  return (data as DbPodcast[]) ?? [];
+}
+
+export async function getVideosForLanguage(
+  languageId: number,
+): Promise<DbVideo[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("videos")
+    .select("*")
+    .eq("language_id", languageId)
+    .order("order_index");
+  return (data as DbVideo[]) ?? [];
+}
+
+// Premium status — stubbed for now. Wire up to your Stripe subscription
+// table or customer metadata when ready. Returns true if the current user
+// has an active premium subscription.
+export async function isCurrentUserPremium(): Promise<boolean> {
+  // TODO: read from Stripe customer/subscription record on Supabase.
+  return false;
 }

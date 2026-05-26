@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { DbExercise, DbLesson } from "@/lib/learn";
+import { SPEECH_LANG_CODES } from "@/lib/speech";
 import { completeLesson } from "@/lib/learn-actions";
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
   exercises: DbExercise[];
 }
 
-const ENCOURAGEMENTS_RIGHT = ["Nice!", "Great job!", "You're on fire!", "Brilliant!", "Sí, sí, sí!"];
+const ENCOURAGEMENTS_RIGHT = ["Nice!", "Great job!", "You're on fire!", "Brilliant!"];
 const ENCOURAGEMENTS_WRONG = [
   "Not quite, keep going!",
   "Close — try again next time.",
@@ -27,6 +28,62 @@ function shuffle<T>(arr: T[]): T[] {
   }
   return copy;
 }
+
+function normalize(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip diacritics
+    .replace(/[^a-z0-9 ]/g, "")
+    .trim();
+}
+
+// ---------------- TTS helper ----------------
+function speak(text: string, lang: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang;
+    utterance.rate = 0.9;
+    window.speechSynthesis.speak(utterance);
+  } catch {
+    /* ignore */
+  }
+}
+
+// ---------------- Speech recognition type shim ----------------
+interface ISpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((this: ISpeechRecognition, ev: SpeechRecognitionResultEvent) => void) | null;
+  onerror: ((this: ISpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onend: ((this: ISpeechRecognition, ev: Event) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+interface SpeechRecognitionResultEvent extends Event {
+  results: ArrayLike<{
+    0: { transcript: string };
+    isFinal: boolean;
+    length: number;
+  }>;
+  resultIndex: number;
+}
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+function getSpeechRecognition(): (new () => ISpeechRecognition) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: new () => ISpeechRecognition;
+    webkitSpeechRecognition?: new () => ISpeechRecognition;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+// ---------------- Exercise components ----------------
 
 function MultipleChoice({
   exercise,
@@ -43,7 +100,6 @@ function MultipleChoice({
     () => shuffle([exercise.correct_answer, ...exercise.wrong_answers].filter(Boolean)),
     [exercise.correct_answer, exercise.wrong_answers],
   );
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {options.map((opt) => {
@@ -51,13 +107,9 @@ function MultipleChoice({
         const isCorrect = opt === exercise.correct_answer;
         let stateCls = "border-border bg-white text-navy hover:border-teal hover:bg-teal-light";
         if (disabled) {
-          if (isCorrect) {
-            stateCls = "border-teal bg-teal-light text-teal-dark";
-          } else if (isPicked) {
-            stateCls = "border-red-300 bg-red-50 text-red-700";
-          } else {
-            stateCls = "border-border bg-white text-navy/40";
-          }
+          if (isCorrect) stateCls = "border-teal bg-teal-light text-teal-dark";
+          else if (isPicked) stateCls = "border-red-300 bg-red-50 text-red-700";
+          else stateCls = "border-border bg-white text-navy/40";
         }
         return (
           <button
@@ -87,18 +139,15 @@ function FillBlank({
   pickedAnswer: string | null;
 }) {
   const [value, setValue] = useState("");
-
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!value.trim() || disabled) return;
     onAnswer(value.trim());
   }
-
   const showFeedback = disabled && pickedAnswer !== null;
   const wasCorrect =
     showFeedback &&
-    pickedAnswer?.toLowerCase().trim() === exercise.correct_answer.toLowerCase().trim();
-
+    normalize(pickedAnswer ?? "") === normalize(exercise.correct_answer);
   return (
     <form onSubmit={submit} className="space-y-4">
       <input
@@ -144,15 +193,15 @@ function Matching({
   onAnswer: (answer: string) => void;
   disabled: boolean;
 }) {
-  const pairs = useMemo(() => {
-    return exercise.correct_answer.split("|").map((entry) => {
-      const [left, right] = entry.split(":");
-      return { left: left ?? "", right: right ?? "" };
-    });
-  }, [exercise.correct_answer]);
-
+  const pairs = useMemo(
+    () =>
+      exercise.correct_answer.split("|").map((entry) => {
+        const [left, right] = entry.split(":");
+        return { left: left ?? "", right: right ?? "" };
+      }),
+    [exercise.correct_answer],
+  );
   const rightShuffled = useMemo(() => shuffle(pairs.map((p) => p.right)), [pairs]);
-
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [wrongFlash, setWrongFlash] = useState<string | null>(null);
@@ -161,7 +210,6 @@ function Matching({
     if (disabled || matches[left]) return;
     setSelectedLeft(left);
   }
-
   function pickRight(right: string) {
     if (disabled || !selectedLeft) return;
     if (Object.values(matches).includes(right)) return;
@@ -170,9 +218,7 @@ function Matching({
       const next = { ...matches, [selectedLeft]: right };
       setMatches(next);
       setSelectedLeft(null);
-      if (Object.keys(next).length === pairs.length) {
-        onAnswer("matched");
-      }
+      if (Object.keys(next).length === pairs.length) onAnswer("matched");
     } else {
       setWrongFlash(right);
       setTimeout(() => setWrongFlash(null), 500);
@@ -232,12 +278,226 @@ function Matching({
   );
 }
 
+function ListeningExercise({
+  exercise,
+  onAnswer,
+  disabled,
+  pickedAnswer,
+  speechLang,
+}: {
+  exercise: DbExercise;
+  onAnswer: (answer: string) => void;
+  disabled: boolean;
+  pickedAnswer: string | null;
+  speechLang: string;
+}) {
+  const options = useMemo(
+    () => shuffle([exercise.correct_answer, ...exercise.wrong_answers].filter(Boolean)),
+    [exercise.correct_answer, exercise.wrong_answers],
+  );
+  const hasTts =
+    typeof window !== "undefined" && "speechSynthesis" in window;
+
+  // Auto-play once on mount when supported
+  useEffect(() => {
+    if (hasTts) speak(exercise.correct_answer, speechLang);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border-2 border-teal/30 bg-teal-light/50 p-6 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => speak(exercise.correct_answer, speechLang)}
+          disabled={!hasTts}
+          className="flex-shrink-0 w-14 h-14 rounded-full bg-teal text-white flex items-center justify-center shadow-md shadow-teal/30 hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Play audio"
+        >
+          <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-teal-dark mb-1">
+            Listen carefully
+          </p>
+          <p className="text-sm text-navy/70">
+            {hasTts
+              ? "Tap play to hear the word again, then choose what you heard."
+              : "Your browser does not support audio playback for this exercise."}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {options.map((opt) => {
+          const isPicked = pickedAnswer === opt;
+          const isCorrect = opt === exercise.correct_answer;
+          let stateCls = "border-border bg-white text-navy hover:border-teal hover:bg-teal-light";
+          if (disabled) {
+            if (isCorrect) stateCls = "border-teal bg-teal-light text-teal-dark";
+            else if (isPicked) stateCls = "border-red-300 bg-red-50 text-red-700";
+            else stateCls = "border-border bg-white text-navy/40";
+          }
+          return (
+            <button
+              key={opt}
+              type="button"
+              disabled={disabled}
+              onClick={() => onAnswer(opt)}
+              className={`w-full py-4 px-5 rounded-xl border-2 text-left font-medium transition-all ${stateCls}`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SpeakingExercise({
+  exercise,
+  onAnswer,
+  disabled,
+  speechLang,
+}: {
+  exercise: DbExercise;
+  onAnswer: (answer: string) => void;
+  disabled: boolean;
+  speechLang: string;
+}) {
+  const [transcript, setTranscript] = useState("");
+  const [listening, setListening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const recRef = useRef<ISpeechRecognition | null>(null);
+
+  const SpeechRec = getSpeechRecognition();
+  const supported = SpeechRec !== null;
+
+  function start() {
+    if (!SpeechRec || disabled) return;
+    setError(null);
+    setTranscript("");
+    const rec = new SpeechRec();
+    rec.lang = speechLang;
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (ev) => {
+      let text = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        text += ev.results[i][0].transcript;
+      }
+      setTranscript(text);
+    };
+    rec.onerror = (ev) => {
+      setError(ev.error === "not-allowed" ? "Microphone access blocked." : `Speech error: ${ev.error}`);
+      setListening(false);
+    };
+    rec.onend = () => {
+      setListening(false);
+    };
+    recRef.current = rec;
+    setListening(true);
+    rec.start();
+  }
+
+  function stop() {
+    recRef.current?.stop();
+    setListening(false);
+  }
+
+  function submit() {
+    if (!transcript.trim() || disabled) return;
+    onAnswer(transcript.trim());
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border-2 border-peach-dark/40 bg-peach-light p-6 flex items-center gap-4">
+        <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 mb-1">
+            Say it out loud
+          </p>
+          <p className="text-lg font-semibold text-navy">
+            {exercise.correct_answer}
+          </p>
+          {exercise.translation && (
+            <p className="text-xs text-navy/50 mt-0.5">{exercise.translation}</p>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border-2 border-border bg-white p-5 min-h-[100px]">
+        <p className="text-xs font-semibold uppercase tracking-wider text-navy/50 mb-2">
+          What we heard
+        </p>
+        <p className="text-base text-navy min-h-[1.5rem]">
+          {transcript || (listening ? "Listening…" : <span className="text-navy/30">Press the mic and speak.</span>)}
+        </p>
+      </div>
+
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
+          {error}
+        </div>
+      )}
+
+      {!supported && (
+        <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5">
+          Your browser does not support speech recognition. Try Chrome, Edge, or Safari to practice speaking — or skip
+          this exercise.
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        {listening ? (
+          <button
+            type="button"
+            onClick={stop}
+            disabled={disabled}
+            className="flex-1 py-3 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
+          >
+            Stop recording
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={start}
+            disabled={disabled || !supported}
+            className="flex-1 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {transcript ? "Try again" : "Start recording"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={disabled || !transcript.trim()}
+          className="flex-1 py-3 text-sm font-semibold text-teal-dark bg-teal-light border border-teal/40 rounded-xl hover:bg-teal-light/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {supported ? "Submit" : "Skip (no mic)"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------- Main component ----------------
+
 export default function LessonClient({
   languageSlug,
   languageName,
   lesson,
   exercises,
 }: Props) {
+  const speechLang = SPEECH_LANG_CODES[languageSlug] ?? "en-US";
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(0);
   const [pickedAnswer, setPickedAnswer] = useState<string | null>(null);
@@ -248,6 +508,15 @@ export default function LessonClient({
     already_completed: boolean;
     current_streak?: number;
   } | null>(null);
+
+  // Stop any in-flight TTS when navigating between exercises
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [step]);
 
   if (exercises.length === 0) {
     return (
@@ -275,10 +544,20 @@ export default function LessonClient({
 
   function handleAnswer(answer: string) {
     if (showFeedback) return;
-    const correct =
-      exercise.type === "matching"
-        ? true
-        : answer.toLowerCase().trim() === exercise.correct_answer.toLowerCase().trim();
+    let correct = false;
+    if (exercise.type === "matching") {
+      correct = true; // matching only fires when fully matched
+    } else if (exercise.type === "speaking") {
+      // Fuzzy match: normalize both sides and check if any one is contained in the other
+      const target = normalize(exercise.correct_answer);
+      const heard = normalize(answer);
+      correct =
+        target.length > 0 &&
+        (heard === target || heard.includes(target) || target.includes(heard));
+    } else {
+      correct =
+        normalize(answer) === normalize(exercise.correct_answer);
+    }
     setPickedAnswer(answer);
     setWasCorrect(correct);
     setShowFeedback(true);
@@ -394,7 +673,7 @@ export default function LessonClient({
         <h1 className="text-2xl sm:text-3xl font-bold text-navy mb-2 leading-snug">
           {exercise.question}
         </h1>
-        {exercise.translation && (
+        {exercise.translation && exercise.type !== "speaking" && (
           <p className="text-sm text-navy/50 mb-8">{exercise.translation}</p>
         )}
         <div className="mt-8">
@@ -417,6 +696,23 @@ export default function LessonClient({
           {exercise.type === "matching" && (
             <Matching exercise={exercise} onAnswer={handleAnswer} disabled={showFeedback} />
           )}
+          {exercise.type === "listening" && (
+            <ListeningExercise
+              exercise={exercise}
+              onAnswer={handleAnswer}
+              disabled={showFeedback}
+              pickedAnswer={pickedAnswer}
+              speechLang={speechLang}
+            />
+          )}
+          {exercise.type === "speaking" && (
+            <SpeakingExercise
+              exercise={exercise}
+              onAnswer={handleAnswer}
+              disabled={showFeedback}
+              speechLang={speechLang}
+            />
+          )}
         </div>
       </section>
 
@@ -428,11 +724,7 @@ export default function LessonClient({
         >
           <div className="max-w-2xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <p
-                className={`text-lg font-bold ${
-                  wasCorrect ? "text-teal-dark" : "text-red-700"
-                }`}
-              >
+              <p className={`text-lg font-bold ${wasCorrect ? "text-teal-dark" : "text-red-700"}`}>
                 {encouragement}
               </p>
               {wasCorrect ? (
@@ -454,7 +746,6 @@ export default function LessonClient({
           </div>
         </footer>
       )}
-
     </main>
   );
 }
