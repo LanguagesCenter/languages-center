@@ -63,7 +63,7 @@ export default function Footer() {
             <div className="flex gap-4">
               {/* YouTube */}
               <a
-                href="https://www.youtube.com/@languagescenter"
+                href="https://www.youtube.com/@the-language-center/?sub_confirmation=1"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-white/40 hover:text-peach transition-colors"

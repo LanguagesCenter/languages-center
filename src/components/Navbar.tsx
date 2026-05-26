@@ -119,7 +119,7 @@ export default function Navbar() {
 
             {/* YouTube link */}
             <a
-              href="https://www.youtube.com/@languagescenter"
+              href="https://www.youtube.com/@the-language-center/?sub_confirmation=1"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
