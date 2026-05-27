@@ -6,20 +6,7 @@ import Footer from "@/components/Footer";
 import { getLanguageBySlug, getArticlesForLanguage } from "@/lib/learn";
 import { getOverview } from "@/lib/language-overviews";
 
-const FLAG_CODES: Record<string, string> = {
-  spanish: "es",
-  french: "fr",
-  german: "de",
-  greek: "gr",
-  swedish: "se",
-  danish: "dk",
-  finnish: "fi",
-  albanian: "al",
-  icelandic: "is",
-  faroese: "fo",
-  corsican: "fr",
-  english: "gb",
-};
+import { FLAG_CODES } from "@/lib/flag-codes";
 
 const LEVEL_PILL: Record<string, string> = {
   A1: "bg-emerald-50 text-emerald-700 ring-emerald-200",

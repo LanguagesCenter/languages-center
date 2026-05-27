@@ -13,20 +13,7 @@ import {
   type SectionWithProgress,
 } from "@/lib/learn";
 
-const FLAG_CODES: Record<string, string> = {
-  spanish: "es",
-  french: "fr",
-  german: "de",
-  greek: "gr",
-  swedish: "se",
-  danish: "dk",
-  finnish: "fi",
-  albanian: "al",
-  icelandic: "is",
-  faroese: "fo",
-  corsican: "fr",
-  english: "gb",
-};
+import { FLAG_CODES } from "@/lib/flag-codes";
 
 const LEVEL_STYLES: Record<
   string,

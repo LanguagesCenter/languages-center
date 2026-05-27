@@ -540,6 +540,594 @@ export const languageOverviews: Record<string, LanguageOverview> = {
     ),
     related: ["german", "swedish", "danish"],
   },
+
+  chinese: {
+    slug: "chinese",
+    name: "Chinese",
+    nativeName: "中文",
+    countryCode: "cn",
+    flagEmoji: "🇨🇳",
+    grammar: "Hard",
+    pronunciation: "Hard",
+    speakers: "1.1 billion+ native speakers (Mandarin)",
+    regions: "Mainland China, Taiwan, Singapore, and Chinese-speaking communities worldwide",
+    about:
+      "Mandarin Chinese (普通话, Pǔtōnghuà) is the most widely spoken language on earth by native speakers. It uses a logographic writing system whose characters can date back over 3,000 years, and a four-tone pitch system that gives spoken Mandarin its distinctive musical quality.",
+    facts: [
+      "Four pitch tones (plus a neutral) change the meaning of otherwise identical syllables",
+      "Modern Chinese uses around 3,500 characters for everyday literacy",
+      "There is no verb conjugation, no gender, and no plural — context does the heavy lifting",
+    ],
+    whyLearn: [
+      {
+        title: "Open the world's largest market",
+        description:
+          "Mandarin is essential for serious work in trade, manufacturing, tech, and finance across Greater China.",
+      },
+      {
+        title: "Unlock 3,000 years of culture",
+        description:
+          "From the Analects to contemporary cinema, Chinese literature and art reward direct reading.",
+      },
+      {
+        title: "Train your ear and eye",
+        description:
+          "Tones and characters reshape how you think about language — a serious cognitive workout.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn pinyin, the four tones, and your first 100 characters with everyday greetings.",
+      "Hold real conversations about food, travel, and family, and read short news items.",
+      "Read essays and contemporary fiction, master complex measure words, and write fluently.",
+    ),
+    related: ["japanese", "korean", "vietnamese"],
+  },
+
+  hindi: {
+    slug: "hindi",
+    name: "Hindi",
+    nativeName: "हिन्दी",
+    countryCode: "in",
+    flagEmoji: "🇮🇳",
+    grammar: "Medium",
+    pronunciation: "Medium",
+    speakers: "600+ million speakers",
+    regions: "Northern and central India, Nepal, Fiji, and the South Asian diaspora",
+    about:
+      "Hindi (हिन्दी) is an Indo-Aryan language descended from Sanskrit and written in the Devanagari script. It shares its colloquial form with Urdu — together they're often called Hindustani — and serves as a lingua franca across much of India.",
+    facts: [
+      "Devanagari is one of the most phonetically consistent scripts in the world",
+      "Hindi and Urdu are mutually intelligible in everyday speech",
+      "Bollywood is the world's largest film industry by ticket sales",
+    ],
+    whyLearn: [
+      {
+        title: "Speak with 600 million people",
+        description:
+          "Hindi unlocks daily life across India's economic boom and its globally connected diaspora.",
+      },
+      {
+        title: "A doorway to a continent",
+        description:
+          "Once you have Hindi, Urdu, Punjabi, Marathi and Nepali become far more approachable.",
+      },
+      {
+        title: "Bollywood, cricket and biryani",
+        description:
+          "Pop culture in Hindi is loud, joyful, and best appreciated without subtitles.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn Devanagari, the basics of gender and word order, and survival greetings.",
+      "Talk about your day in past and future tenses, and handle markets, travel and hospitality.",
+      "Read modern Hindi literature, follow news bulletins, and write polished essays.",
+    ),
+    related: ["urdu", "bengali", "english"],
+  },
+
+  portuguese: {
+    slug: "portuguese",
+    name: "Portuguese",
+    nativeName: "Português",
+    countryCode: "pt",
+    flagEmoji: "🇵🇹",
+    grammar: "Easy",
+    pronunciation: "Medium",
+    speakers: "260+ million speakers",
+    regions: "Portugal, Brazil, Angola, Mozambique, Cape Verde, and other Lusophone countries",
+    about:
+      "Portuguese (português) is a Romance language that spread from the Iberian Peninsula across the Atlantic with the Age of Discovery. Brazilian and European varieties differ in accent and vocabulary but remain a single language with a rich literary and musical tradition.",
+    facts: [
+      "Portuguese is the official language of nine countries across four continents",
+      "Brazil holds the largest community of Portuguese speakers by far",
+      "Distinctive nasal vowels (ão, em, õe) give Portuguese its musical fingerprint",
+    ],
+    whyLearn: [
+      {
+        title: "Reach Brazil and beyond",
+        description:
+          "Portuguese is your gateway to South America's largest economy and a vibrant African diaspora.",
+      },
+      {
+        title: "An easy Romance bridge",
+        description:
+          "If you already have Spanish or Italian, Portuguese clicks into place fast.",
+      },
+      {
+        title: "Music, football, and food",
+        description:
+          "From bossa nova and fado to samba and feijoada, Portuguese culture is a feast.",
+      },
+    ],
+    courses: standardCourses(
+      "Get the sounds of Portuguese under your tongue and the survival phrases of a first trip.",
+      "Talk about food, family and travel in past tenses, and start reading short articles.",
+      "Master the subjunctive, follow Brazilian and Portuguese news, and read fiction unaided.",
+    ),
+    related: ["spanish", "italian", "french"],
+  },
+
+  bengali: {
+    slug: "bengali",
+    name: "Bengali",
+    nativeName: "বাংলা",
+    countryCode: "bd",
+    flagEmoji: "🇧🇩",
+    grammar: "Hard",
+    pronunciation: "Medium",
+    speakers: "230+ million speakers",
+    regions: "Bangladesh, West Bengal (India), and Bengali-speaking communities worldwide",
+    about:
+      "Bengali (বাংলা, Bangla) is an Indo-Aryan language with a literary heritage anchored by Nobel laureate Rabindranath Tagore. It uses its own elegant script, lacks grammatical gender, and is the seventh-most spoken language on earth.",
+    facts: [
+      "Rabindranath Tagore was the first non-European Nobel laureate in literature, in 1913",
+      "International Mother Language Day (21 February) commemorates Bengali language martyrs",
+      "Bengali has no grammatical gender — verbs and adjectives don't change with the noun",
+    ],
+    whyLearn: [
+      {
+        title: "Speak with the world's seventh-largest language community",
+        description:
+          "Bengali is essential for Bangladesh's economy and West Bengal's cultural scene.",
+      },
+      {
+        title: "Read Tagore in the original",
+        description:
+          "Bengali literature, music and theatre have a depth that's hard to translate.",
+      },
+      {
+        title: "A gentler entry into South Asia",
+        description:
+          "No grammatical gender and a regular phonetic script make Bengali friendlier than it looks.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn the Bengali script, greetings, numbers, and the easy verb endings.",
+      "Talk about everyday life, handle the past tenses, and read Tagore-inspired short stories.",
+      "Read novels and news fluently, write essays, and discuss culture and politics with nuance.",
+    ),
+    related: ["hindi", "urdu", "english"],
+  },
+
+  urdu: {
+    slug: "urdu",
+    name: "Urdu",
+    nativeName: "اردو",
+    countryCode: "pk",
+    flagEmoji: "🇵🇰",
+    grammar: "Hard",
+    pronunciation: "Medium",
+    speakers: "230+ million speakers (with Hindi, far more)",
+    regions: "Pakistan, India, and the South Asian diaspora",
+    about:
+      "Urdu (اردو) is the national language of Pakistan and a co-official language of several Indian states. It's structurally Hindi's twin — Hindustani in everyday speech — but written in a beautiful Perso-Arabic script and laced with Persian and Arabic vocabulary.",
+    facts: [
+      "Urdu is mutually intelligible with Hindi in everyday conversation",
+      "It's traditionally the language of South Asian poetry (ghazal, nazm)",
+      "Urdu is written right-to-left in a nasta'liq calligraphic style",
+    ],
+    whyLearn: [
+      {
+        title: "Two languages for one",
+        description:
+          "Learn Urdu and you can converse with Hindi speakers as well — that's roughly a billion people.",
+      },
+      {
+        title: "The poetry tradition of South Asia",
+        description:
+          "Urdu ghazals by Ghalib, Iqbal and Faiz are some of the world's most beloved poetry.",
+      },
+      {
+        title: "Pakistan, near and far",
+        description:
+          "Urdu is the lingua franca of Pakistan and its global diaspora — from London to Dubai.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn the Urdu script and the greetings of everyday Pakistani life.",
+      "Discuss food, family, and travel in past tenses, and start reading short stories.",
+      "Read poetry, master honorific forms, and write fluent prose for any occasion.",
+    ),
+    related: ["hindi", "arabic", "bengali"],
+  },
+
+  russian: {
+    slug: "russian",
+    name: "Russian",
+    nativeName: "Русский",
+    countryCode: "ru",
+    flagEmoji: "🇷🇺",
+    grammar: "Hard",
+    pronunciation: "Medium",
+    speakers: "260+ million speakers",
+    regions: "Russia, Belarus, Kazakhstan, and Russian-speaking communities in the Baltics and Eastern Europe",
+    about:
+      "Russian (русский язык) is an East Slavic language written in Cyrillic, the script adapted from Greek by missionaries in the 9th century. Its six cases and rich verbal aspect give it remarkable expressive precision — and a literary tradition that needs no introduction.",
+    facts: [
+      "Russian has six grammatical cases and two verbal aspects (perfective and imperfective)",
+      "The Cyrillic alphabet was adapted from Greek by Saints Cyril and Methodius",
+      "Russian space exploration, sciences and mathematics produced a vast technical vocabulary",
+    ],
+    whyLearn: [
+      {
+        title: "Read Dostoevsky in the original",
+        description:
+          "Russian literature loses something in translation — Tolstoy, Bulgakov and Akhmatova reward the patient.",
+      },
+      {
+        title: "Engineering and sciences",
+        description:
+          "Russian is one of the world's great languages of mathematics, physics and aerospace.",
+      },
+      {
+        title: "Gateway to Slavic",
+        description:
+          "With Russian under your belt, Ukrainian, Polish and Czech become much more approachable.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn the Cyrillic alphabet, the basic noun cases, and the friendliest greetings.",
+      "Speak about your day in past and future tenses, and read children's books unaided.",
+      "Read newspapers and short fiction, handle perfective and imperfective with ease, and debate fluently.",
+    ),
+    related: ["english", "german", "greek"],
+  },
+
+  japanese: {
+    slug: "japanese",
+    name: "Japanese",
+    nativeName: "日本語",
+    countryCode: "jp",
+    flagEmoji: "🇯🇵",
+    grammar: "Hard",
+    pronunciation: "Hard",
+    speakers: "125+ million speakers",
+    regions: "Japan, and small Japanese-speaking communities in Brazil, Peru, and the United States",
+    about:
+      "Japanese (日本語, Nihongo) is a language isolate (or part of a tiny Japonic family with Ryukyuan). It uses three writing systems together — hiragana, katakana, and the Chinese-derived kanji — and a politeness system that encodes social relationships into the verbs themselves.",
+    facts: [
+      "Japanese uses three scripts at once: hiragana, katakana, and kanji",
+      "Politeness levels (keigo) change the entire shape of verbs and sentences",
+      "Subject-Object-Verb word order — the verb almost always comes last",
+    ],
+    whyLearn: [
+      {
+        title: "Anime, manga, and video games — at the source",
+        description:
+          "A vast pop-culture catalogue is available in Japanese long before it's translated.",
+      },
+      {
+        title: "Tech, design, and craftsmanship",
+        description:
+          "From Sony and Nintendo to Muji and shokunin traditions, Japanese culture is meticulously crafted.",
+      },
+      {
+        title: "A truly different worldview",
+        description:
+          "Japanese grammar and politeness rewire how you think about social interaction.",
+      },
+    ],
+    courses: standardCourses(
+      "Master hiragana and katakana, the polite forms, and your first 100 kanji.",
+      "Handle daily life politely, switch between casual and formal speech, and start reading manga.",
+      "Read novels, business emails, and editorials; master keigo and the full kanji set.",
+    ),
+    related: ["korean", "chinese", "english"],
+  },
+
+  turkish: {
+    slug: "turkish",
+    name: "Turkish",
+    nativeName: "Türkçe",
+    countryCode: "tr",
+    flagEmoji: "🇹🇷",
+    grammar: "Medium",
+    pronunciation: "Medium",
+    speakers: "80+ million speakers",
+    regions: "Turkey, Cyprus, and Turkish-speaking communities in the Balkans, Germany, and Central Asia",
+    about:
+      "Turkish (Türkçe) is a Turkic language that switched to the Latin alphabet in 1928 as part of Atatürk's language reforms. It's famously agglutinative — you can build long, precise words by stacking suffixes — and uses vowel harmony to keep them flowing.",
+    facts: [
+      "Vowel harmony keeps vowels within a single word in the same front/back family",
+      "Turkish switched from Arabic to Latin script in 1928",
+      "Agglutination lets one word like \"evlerinizden\" express \"from your houses\"",
+    ],
+    whyLearn: [
+      {
+        title: "Sit at the crossroads of Europe and Asia",
+        description:
+          "Turkish opens up Istanbul, Anatolia, and the wider Turkic-speaking world.",
+      },
+      {
+        title: "An efficient grammar machine",
+        description:
+          "Once vowel harmony and agglutination click, Turkish is remarkably regular and expressive.",
+      },
+      {
+        title: "A bridge to the Turkic world",
+        description:
+          "Turkish makes Azerbaijani, Turkmen, and Uzbek surprisingly approachable.",
+      },
+    ],
+    courses: standardCourses(
+      "Get the sounds of Turkish vowels, the friendliest greetings, and your first verbs.",
+      "Handle markets and travel, master the past tense, and start reading short news items.",
+      "Read literature and editorials, master the evidential mood, and write fluent essays.",
+    ),
+    related: ["greek", "albanian", "english"],
+  },
+
+  vietnamese: {
+    slug: "vietnamese",
+    name: "Vietnamese",
+    nativeName: "Tiếng Việt",
+    countryCode: "vn",
+    flagEmoji: "🇻🇳",
+    grammar: "Hard",
+    pronunciation: "Hard",
+    speakers: "85+ million speakers",
+    regions: "Vietnam, with significant diaspora communities in the United States, France, and Australia",
+    about:
+      "Vietnamese (Tiếng Việt) is an Austroasiatic language with six tones and a uniquely diacritic-rich Latin script — quốc ngữ — that replaced earlier Chinese-character writing in the 20th century. Its tones are demanding, but its grammar is among the world's simplest: no verb conjugation, no gender, no articles.",
+    facts: [
+      "Six pitch tones make pronunciation the central challenge — and the music",
+      "Quốc ngữ uses Latin letters with extensive diacritic marks",
+      "No verb tenses or conjugations — time is shown with small marker words",
+    ],
+    whyLearn: [
+      {
+        title: "Vietnam's fast-growing economy",
+        description:
+          "Vietnamese is an asset in manufacturing, technology, and tourism across Southeast Asia.",
+      },
+      {
+        title: "A wonderful food culture",
+        description:
+          "Phở, bún chả, bánh mì — the menu opens up properly once you can ask in Vietnamese.",
+      },
+      {
+        title: "Simple grammar, rich tones",
+        description:
+          "Once tones click, Vietnamese grammar is one of the most economical you'll meet.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn the six tones, the everyday greetings, and the first 200 essential words.",
+      "Talk about food, travel and family with confidence, and read short news items.",
+      "Read literature and editorials, master regional differences, and write fluent essays.",
+    ),
+    related: ["chinese", "korean", "english"],
+  },
+
+  arabic: {
+    slug: "arabic",
+    name: "Arabic",
+    nativeName: "العربية",
+    countryCode: "sa",
+    flagEmoji: "🇸🇦",
+    grammar: "Hard",
+    pronunciation: "Hard",
+    speakers: "380+ million native speakers (Modern Standard Arabic plus dialects)",
+    regions: "Across 22 countries from Morocco to Oman, plus large communities worldwide",
+    about:
+      "Arabic (العربية) is a Central Semitic language whose written standard — Modern Standard Arabic (MSA) — is based on the classical Arabic of the Qur'an. Spoken dialects vary widely from Morocco to Iraq, but MSA is the language of news, books, and formal occasions everywhere.",
+    facts: [
+      "Arabic is written right-to-left in a flowing cursive script",
+      "A three-consonant root system generates families of related words",
+      "Modern Standard Arabic and regional dialects often differ as much as related languages",
+    ],
+    whyLearn: [
+      {
+        title: "22 countries open up",
+        description:
+          "Arabic is the language of business, news and culture across the Middle East and North Africa.",
+      },
+      {
+        title: "The world's most beautiful script",
+        description:
+          "Calligraphy turns Arabic writing into an art form all by itself.",
+      },
+      {
+        title: "Read the classics in the original",
+        description:
+          "The Qur'an, One Thousand and One Nights, and Naguib Mahfouz all started in Arabic.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn the script, the sounds of the throat consonants, and the friendliest greetings.",
+      "Hold daily-life conversations, handle the past and present, and read short news items.",
+      "Read editorials and literature, navigate dialects, and write polished formal Arabic.",
+    ),
+    related: ["urdu", "greek", "english"],
+  },
+
+  korean: {
+    slug: "korean",
+    name: "Korean",
+    nativeName: "한국어",
+    countryCode: "kr",
+    flagEmoji: "🇰🇷",
+    grammar: "Hard",
+    pronunciation: "Medium",
+    speakers: "80+ million speakers",
+    regions: "South Korea, North Korea, and Korean-speaking communities worldwide",
+    about:
+      "Korean (한국어) is a language isolate (or part of the small Koreanic family) written in Hangul — an alphabet so well designed that King Sejong's court could promote literacy across the kingdom in the 15th century. Modern Korean has a sophisticated honorific system woven into its verbs.",
+    facts: [
+      "Hangul was invented in 1443 — most alphabets evolved over centuries; this one was designed",
+      "Subject-Object-Verb word order, like Japanese",
+      "Honorifics, casual speech, and formal speech each have distinct verb endings",
+    ],
+    whyLearn: [
+      {
+        title: "K-pop, K-drama, and beyond",
+        description:
+          "Korean pop culture has become one of the world's most influential — and most fun in the original.",
+      },
+      {
+        title: "Tech and design powerhouse",
+        description:
+          "Samsung, LG, Hyundai, gaming, semiconductors — Korean opens doors in serious industries.",
+      },
+      {
+        title: "The world's most logical alphabet",
+        description:
+          "Hangul is famously learnable in a single weekend — the writing system itself is the welcome mat.",
+      },
+    ],
+    courses: standardCourses(
+      "Master Hangul over a weekend and tackle the friendliest greetings of Seoul cafés.",
+      "Handle daily life politely, switch between casual and formal speech, and read short stories.",
+      "Read novels and news, master the honorific system, and write fluent business Korean.",
+    ),
+    related: ["japanese", "chinese", "english"],
+  },
+
+  italian: {
+    slug: "italian",
+    name: "Italian",
+    nativeName: "Italiano",
+    countryCode: "it",
+    flagEmoji: "🇮🇹",
+    grammar: "Easy",
+    pronunciation: "Easy",
+    speakers: "65+ million speakers",
+    regions: "Italy, San Marino, Vatican City, Switzerland (Ticino), and Italian diaspora communities",
+    about:
+      "Italian (italiano) is the Romance language closest to its Latin parent among the major Romance languages. It's the language of opera, of pasta, of the Renaissance — and one of the most rewarding to speak out loud because of its musical, vowel-rich phonology.",
+    facts: [
+      "Italian is the closest major Romance language to Vulgar Latin",
+      "Almost every Italian word ends in a vowel, which makes speech famously melodic",
+      "Standard Italian is based on the Tuscan dialect of Dante",
+    ],
+    whyLearn: [
+      {
+        title: "Italy, fully experienced",
+        description:
+          "From Roman ruins to Sicilian markets, Italian unlocks the country a tourist never quite reaches.",
+      },
+      {
+        title: "Music, food and art",
+        description:
+          "Opera, cinema, the cuisine and the world's deepest art history are all easier in Italian.",
+      },
+      {
+        title: "A bridge to other Romance languages",
+        description:
+          "Italian's regularity makes Spanish, Portuguese, and Corsican fall into place quickly.",
+      },
+    ],
+    courses: standardCourses(
+      "Learn the vowel-bright sounds, friendly greetings, and the easy regular verbs.",
+      "Hold real conversations about food, family and travel; tackle past and future tenses.",
+      "Read Calvino and Ferrante in the original, master the subjunctive, and write fluently.",
+    ),
+    related: ["spanish", "french", "corsican"],
+  },
+
+  malay: {
+    slug: "malay",
+    name: "Malay",
+    nativeName: "Bahasa Melayu",
+    countryCode: "my",
+    flagEmoji: "🇲🇾",
+    grammar: "Easy",
+    pronunciation: "Easy",
+    speakers: "200+ million speakers (with Indonesian, mutually intelligible)",
+    regions: "Malaysia, Brunei, Singapore, and parts of southern Thailand and the Philippines",
+    about:
+      "Malay (Bahasa Melayu) is an Austronesian language and a regional lingua franca across maritime Southeast Asia. Written in Latin script (Rumi) since the 19th century — and historically in the Jawi Arabic-derived script — Malay has famously friendly grammar with no verb conjugation, no gender, and no tones.",
+    facts: [
+      "No tones, no verb conjugations, no grammatical gender",
+      "Malay is the third Austronesian language by speakers, after Indonesian and Tagalog",
+      "Jawi, the Arabic-derived script, is still used for religious and ceremonial texts",
+    ],
+    whyLearn: [
+      {
+        title: "Southeast Asia's regional language",
+        description:
+          "Malay reaches across Malaysia, Singapore, Brunei, and parts of southern Thailand.",
+      },
+      {
+        title: "One of the gentlest grammars in the world",
+        description:
+          "No tones, no conjugations, no gender — Malay is forgiving and fast to make progress in.",
+      },
+      {
+        title: "Two languages for the price of one",
+        description:
+          "Malay and Indonesian are mutually intelligible at the everyday level — learn one, follow both.",
+      },
+    ],
+    courses: standardCourses(
+      "Get comfortable with Malay sounds, the survival phrases, and the easy verbal markers.",
+      "Hold real conversations about food and travel, and start reading short news pieces.",
+      "Read literature and editorials, handle formal Malay, and write polished essays.",
+    ),
+    related: ["indonesian", "english", "vietnamese"],
+  },
+
+  indonesian: {
+    slug: "indonesian",
+    name: "Indonesian",
+    nativeName: "Bahasa Indonesia",
+    countryCode: "id",
+    flagEmoji: "🇮🇩",
+    grammar: "Easy",
+    pronunciation: "Easy",
+    speakers: "200+ million speakers (with Malay, mutually intelligible)",
+    regions: "Indonesia — the world's largest island nation",
+    about:
+      "Indonesian (Bahasa Indonesia) is the standardized register of Malay and the national language of Indonesia — the fourth most populous country on earth. Famously easy to start (no tones, no conjugations, no gender), it remains a giant of Southeast Asia and a friendly entry point to the Austronesian family.",
+    facts: [
+      "Indonesia is the world's largest island nation — over 17,000 islands",
+      "Indonesian and Malay are mutually intelligible everyday languages",
+      "Plural is shown by simply repeating the noun (orang \"person\" → orang-orang \"people\")",
+    ],
+    whyLearn: [
+      {
+        title: "A giant economy and culture",
+        description:
+          "Indonesia is the world's fourth most populous country and the largest economy in Southeast Asia.",
+      },
+      {
+        title: "Famously beginner-friendly",
+        description:
+          "No tones, no conjugations, no gender — Indonesian gives quick wins from day one.",
+      },
+      {
+        title: "Travel a country of 17,000 islands",
+        description:
+          "From Bali to Sumatra, Indonesian opens up a country tourists rarely see in depth.",
+      },
+    ],
+    courses: standardCourses(
+      "Master the friendly Indonesian sounds, the survival phrases, and the everyday verbs.",
+      "Hold real conversations about food, family, and travel, and start reading short news pieces.",
+      "Read literature and editorials, handle formal registers, and write polished essays.",
+    ),
+    related: ["malay", "english", "vietnamese"],
+  },
 };
 
 export function getOverview(slug: string): LanguageOverview | null {

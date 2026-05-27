@@ -1,41 +1,35 @@
 // Linguistic / geographic proximity ordering for the homepage.
-// Given an interface-language UI code (e.g. "es"), return the target-language
-// slugs in the order they should be presented (most relevant first).
-//
-// For UI languages that are ALSO one of our target languages, the user's
-// native language is omitted (the homepage adds it back via opt-in).
-// For UI languages that aren't taught here, all 12 targets appear.
+// Given an interface-language UI code (e.g. "es"), return the 25 most
+// relevant target-language slugs in order (the user's own language is
+// excluded — the homepage adds it back via opt-in).
 
 import type { UiLang } from "@/lib/i18n";
 
 const PROXIMITY: Record<UiLang, string[]> = {
-  // UI lang == target lang: exclude self.
-  en: ["german",   "french",  "spanish", "swedish", "danish",   "greek",     "icelandic", "corsican", "albanian", "finnish",  "faroese"],
-  es: ["french",   "corsican","english", "german",  "greek",    "swedish",   "danish",    "icelandic","albanian", "finnish",  "faroese"],
-  fr: ["spanish",  "corsican","english", "german",  "greek",    "swedish",   "danish",    "icelandic","albanian", "finnish",  "faroese"],
-  de: ["english",  "swedish", "danish",  "icelandic","faroese", "french",    "spanish",   "greek",    "corsican", "albanian", "finnish"],
-  el: ["english",  "french",  "spanish", "german",  "albanian", "swedish",   "danish",    "icelandic","corsican", "finnish",  "faroese"],
-  sv: ["danish",   "icelandic","faroese","german",  "english",  "french",    "spanish",   "greek",    "corsican", "albanian", "finnish"],
-  da: ["swedish",  "icelandic","faroese","german",  "english",  "french",    "spanish",   "greek",    "corsican", "albanian", "finnish"],
-  fi: ["swedish",  "english", "danish",  "german",  "french",   "spanish",   "icelandic", "faroese",  "greek",    "corsican", "albanian"],
-  sq: ["greek",    "english", "french",  "spanish", "german",   "swedish",   "danish",    "icelandic","corsican", "finnish",  "faroese"],
-  is: ["faroese",  "danish",  "swedish", "german",  "english",  "french",    "spanish",   "greek",    "corsican", "albanian", "finnish"],
-
-  // UI langs we don't teach: all 12 targets appear.
-  zh: ["english",  "french",  "german",  "spanish", "swedish",  "danish",    "greek",     "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  hi: ["english",  "french",  "spanish", "german",  "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  pt: ["spanish",  "french",  "corsican","english", "german",   "greek",     "swedish",   "danish",   "icelandic","albanian", "finnish",  "faroese"],
-  bn: ["english",  "french",  "spanish", "german",  "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  ur: ["english",  "french",  "spanish", "german",  "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  ru: ["english",  "german",  "greek",   "french",  "spanish",  "swedish",   "danish",    "icelandic","albanian", "finnish",  "corsican", "faroese"],
-  ja: ["english",  "french",  "german",  "spanish", "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  tr: ["greek",    "albanian","english", "french",  "german",   "spanish",   "swedish",   "danish",   "icelandic","corsican", "finnish",  "faroese"],
-  vi: ["english",  "french",  "german",  "spanish", "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  ar: ["english",  "french",  "greek",   "spanish", "albanian", "german",    "swedish",   "danish",   "icelandic","corsican", "finnish",  "faroese"],
-  ko: ["english",  "french",  "german",  "spanish", "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  it: ["french",   "spanish", "corsican","english", "german",   "greek",     "swedish",   "danish",   "icelandic","albanian", "finnish",  "faroese"],
-  ms: ["english",  "french",  "german",  "spanish", "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
-  id: ["english",  "french",  "german",  "spanish", "greek",    "swedish",   "danish",    "icelandic","corsican", "albanian", "finnish",  "faroese"],
+  en: ["german","french","spanish","italian","portuguese","swedish","danish","japanese","korean","chinese","russian","greek","turkish","arabic","hindi","urdu","bengali","vietnamese","malay","indonesian","icelandic","corsican","albanian","finnish","faroese"],
+  es: ["portuguese","italian","french","corsican","english","german","greek","swedish","danish","russian","japanese","chinese","korean","arabic","turkish","hindi","urdu","bengali","vietnamese","malay","indonesian","icelandic","albanian","finnish","faroese"],
+  fr: ["italian","spanish","portuguese","corsican","english","german","swedish","danish","greek","arabic","russian","japanese","chinese","korean","turkish","hindi","urdu","bengali","vietnamese","malay","indonesian","icelandic","albanian","finnish","faroese"],
+  de: ["english","swedish","danish","icelandic","faroese","french","italian","spanish","portuguese","russian","greek","turkish","japanese","chinese","korean","arabic","hindi","urdu","bengali","vietnamese","malay","indonesian","corsican","albanian","finnish"],
+  el: ["english","italian","french","spanish","albanian","turkish","portuguese","german","russian","arabic","japanese","chinese","korean","swedish","danish","hindi","urdu","bengali","vietnamese","malay","indonesian","icelandic","corsican","finnish","faroese"],
+  sv: ["danish","icelandic","faroese","german","english","french","italian","spanish","portuguese","finnish","russian","greek","japanese","chinese","korean","turkish","arabic","hindi","urdu","bengali","vietnamese","malay","indonesian","corsican","albanian"],
+  da: ["swedish","icelandic","faroese","german","english","french","italian","spanish","portuguese","finnish","russian","greek","japanese","chinese","korean","turkish","arabic","hindi","urdu","bengali","vietnamese","malay","indonesian","corsican","albanian"],
+  fi: ["swedish","english","danish","icelandic","faroese","german","russian","french","italian","spanish","portuguese","greek","japanese","chinese","korean","turkish","arabic","hindi","urdu","bengali","vietnamese","malay","indonesian","corsican","albanian"],
+  sq: ["greek","italian","english","french","spanish","turkish","german","russian","arabic","portuguese","swedish","danish","japanese","chinese","korean","hindi","urdu","bengali","vietnamese","malay","indonesian","icelandic","corsican","finnish","faroese"],
+  is: ["faroese","danish","swedish","german","english","french","italian","spanish","portuguese","finnish","russian","greek","japanese","chinese","korean","turkish","arabic","hindi","urdu","bengali","vietnamese","malay","indonesian","corsican","albanian"],
+  zh: ["japanese","korean","vietnamese","english","malay","indonesian","french","german","spanish","italian","portuguese","russian","arabic","hindi","urdu","bengali","turkish","greek","swedish","danish","icelandic","corsican","albanian","finnish","faroese"],
+  hi: ["urdu","bengali","english","french","spanish","italian","portuguese","german","arabic","russian","japanese","chinese","korean","turkish","greek","swedish","danish","vietnamese","malay","indonesian","icelandic","corsican","albanian","finnish","faroese"],
+  pt: ["spanish","italian","french","corsican","english","german","greek","swedish","danish","russian","japanese","chinese","korean","arabic","hindi","urdu","bengali","vietnamese","turkish","malay","indonesian","icelandic","albanian","finnish","faroese"],
+  bn: ["hindi","urdu","english","french","spanish","italian","portuguese","german","arabic","russian","japanese","chinese","korean","turkish","greek","swedish","danish","vietnamese","malay","indonesian","icelandic","corsican","albanian","finnish","faroese"],
+  ur: ["hindi","bengali","arabic","english","french","spanish","italian","portuguese","german","russian","japanese","chinese","korean","turkish","greek","swedish","danish","vietnamese","malay","indonesian","icelandic","corsican","albanian","finnish","faroese"],
+  ru: ["english","german","greek","french","italian","spanish","portuguese","swedish","danish","finnish","japanese","chinese","korean","turkish","arabic","hindi","urdu","bengali","vietnamese","malay","indonesian","icelandic","corsican","albanian","faroese"],
+  ja: ["korean","chinese","vietnamese","english","french","german","spanish","italian","portuguese","russian","arabic","hindi","urdu","bengali","turkish","greek","swedish","danish","malay","indonesian","icelandic","corsican","albanian","finnish","faroese"],
+  tr: ["greek","albanian","english","french","italian","spanish","german","russian","arabic","portuguese","japanese","chinese","korean","hindi","urdu","bengali","swedish","danish","vietnamese","malay","indonesian","icelandic","corsican","finnish","faroese"],
+  vi: ["chinese","korean","japanese","english","french","german","spanish","italian","portuguese","russian","arabic","hindi","urdu","bengali","turkish","greek","swedish","danish","malay","indonesian","icelandic","corsican","albanian","finnish","faroese"],
+  ar: ["english","french","urdu","greek","spanish","italian","portuguese","german","turkish","hindi","bengali","russian","japanese","chinese","korean","albanian","swedish","danish","vietnamese","malay","indonesian","icelandic","corsican","finnish","faroese"],
+  ko: ["japanese","chinese","vietnamese","english","french","german","spanish","italian","portuguese","russian","arabic","hindi","urdu","bengali","turkish","greek","swedish","danish","malay","indonesian","icelandic","corsican","albanian","finnish","faroese"],
+  it: ["spanish","french","corsican","portuguese","english","german","greek","swedish","danish","russian","japanese","chinese","korean","arabic","hindi","urdu","bengali","vietnamese","turkish","malay","indonesian","icelandic","albanian","finnish","faroese"],
+  ms: ["indonesian","english","chinese","japanese","korean","vietnamese","french","german","spanish","italian","portuguese","arabic","russian","hindi","urdu","bengali","turkish","greek","swedish","danish","icelandic","corsican","albanian","finnish","faroese"],
+  id: ["malay","english","chinese","japanese","korean","vietnamese","french","german","spanish","italian","portuguese","arabic","russian","hindi","urdu","bengali","turkish","greek","swedish","danish","icelandic","corsican","albanian","finnish","faroese"],
 };
 
 export function getRecommendedOrder(uiLang: UiLang): string[] {

@@ -10,24 +10,10 @@ import {
   getUserProfile,
   type LanguageProgress,
 } from "@/lib/learn";
+import { FLAG_CODES } from "@/lib/flag-codes";
 
 export const metadata = {
   title: "Learn — Languages Center",
-};
-
-const FLAG_CODES: Record<string, string> = {
-  spanish: "es",
-  french: "fr",
-  german: "de",
-  greek: "gr",
-  swedish: "se",
-  danish: "dk",
-  finnish: "fi",
-  albanian: "al",
-  icelandic: "is",
-  faroese: "fo",
-  corsican: "fr",
-  english: "gb",
 };
 
 function ProgressBar({ pct }: { pct: number }) {
