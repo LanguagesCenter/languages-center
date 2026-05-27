@@ -7,7 +7,15 @@ import { UI_LANG_NAMES, getLocalizedLanguageName } from "@/lib/i18n";
 import { sortByProximity } from "@/lib/language-proximity";
 import type { Language } from "@/lib/languages";
 
-export default function LanguageGrid({ languages }: { languages: Language[] }) {
+export interface LanguageGridItem extends Language {
+  lessonsTotal?: number;
+}
+
+export default function LanguageGrid({
+  languages,
+}: {
+  languages: LanguageGridItem[];
+}) {
   const { lang, t, ready } = useI18n();
   const [showNative, setShowNative] = useState(false);
 
@@ -26,9 +34,16 @@ export default function LanguageGrid({ languages }: { languages: Language[] }) {
     return ready ? sortByProximity(filtered, lang) : filtered;
   }, [languages, ready, lang, nativeSlug, showNative]);
 
-  // Until i18n is hydrated, render in the default English order to keep SSR
-  // and the first paint identical. Once the client knows the user's UI lang
-  // we re-sort and re-filter.
+  if (languages.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <p className="text-sm text-navy/50">
+          No languages available yet — check back soon.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {ready && (
@@ -50,8 +65,12 @@ export default function LanguageGrid({ languages }: { languages: Language[] }) {
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {visible.map((lang) => (
-          <LanguageCard key={lang.slug} language={lang} />
+        {visible.map((entry) => (
+          <LanguageCard
+            key={entry.slug}
+            language={entry}
+            lessonsTotal={entry.lessonsTotal}
+          />
         ))}
       </div>
     </div>

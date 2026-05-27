@@ -4,24 +4,32 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { languages } from "@/lib/languages";
 import { createClient } from "@/lib/supabase/client";
+import { FLAG_CODES } from "@/lib/flag-codes";
 import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import type { User } from "@supabase/supabase-js";
+
+interface NavbarLanguage {
+  name: string;
+  slug: string;
+  countryCode: string;
+}
 
 export default function Navbar() {
   const { t, lang: uiLang } = useI18n();
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [languages, setLanguages] = useState<NavbarLanguage[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
+    // Auth
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
@@ -31,6 +39,23 @@ export default function Navbar() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
+
+    // Languages — pulled live from the same Supabase table the rest of the
+    // app uses, so any new row added there shows up here automatically.
+    supabase
+      .from("languages")
+      .select("name, code")
+      .order("id")
+      .then(({ data }) => {
+        if (!data) return;
+        setLanguages(
+          (data as { name: string; code: string }[]).map((row) => ({
+            name: row.name,
+            slug: row.code,
+            countryCode: FLAG_CODES[row.code] ?? row.code,
+          })),
+        );
+      });
 
     return () => subscription.unsubscribe();
   }, [supabase.auth]);

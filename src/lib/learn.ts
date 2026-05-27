@@ -253,6 +253,38 @@ export async function getAllLanguages(): Promise<DbLanguage[]> {
   return (data as DbLanguage[]) ?? [];
 }
 
+export interface LanguageWithLessonCount extends DbLanguage {
+  lessonsTotal: number;
+}
+
+// Languages plus the real lesson count per language. No user-specific data.
+// Used by the homepage so each card can show "X lessons" without forcing
+// the visitor through auth.
+export async function getLanguagesWithLessonCounts(): Promise<LanguageWithLessonCount[]> {
+  const supabase = await createClient();
+  const [{ data: langs }, { data: lessons }] = await Promise.all([
+    supabase.from("languages").select("*").order("id"),
+    supabase.from("lessons").select("id, courses!inner(language_id)"),
+  ]);
+
+  const counts = new Map<number, number>();
+  for (const row of (lessons ?? []) as Array<{
+    id: number;
+    courses: { language_id: number } | { language_id: number }[];
+  }>) {
+    const langId = Array.isArray(row.courses)
+      ? row.courses[0]?.language_id
+      : row.courses?.language_id;
+    if (langId == null) continue;
+    counts.set(langId, (counts.get(langId) ?? 0) + 1);
+  }
+
+  return ((langs as DbLanguage[]) ?? []).map((lang) => ({
+    ...lang,
+    lessonsTotal: counts.get(lang.id) ?? 0,
+  }));
+}
+
 // Build the full CEFR tree for a language. Each level groups its sections;
 // each section knows its lesson totals and completion counts.
 export async function getCEFRTreeForLanguage(

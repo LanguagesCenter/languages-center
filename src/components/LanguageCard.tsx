@@ -37,7 +37,13 @@ function FlagImage({ countryCode, name }: { countryCode: string; name: string })
   );
 }
 
-export default function LanguageCard({ language }: { language: Language }) {
+export default function LanguageCard({
+  language,
+  lessonsTotal,
+}: {
+  language: Language;
+  lessonsTotal?: number;
+}) {
   const { t, lang } = useI18n();
   const localizedName = getLocalizedLanguageName(language.slug, lang, language.name);
   return (
@@ -64,10 +70,15 @@ export default function LanguageCard({ language }: { language: Language }) {
           </svg>
         </span>
       </div>
-      <h3 className="text-lg font-semibold text-navy mb-4 group-hover:text-teal transition-colors">
+      <h3 className="text-lg font-semibold text-navy mb-1 group-hover:text-teal transition-colors">
         {localizedName}
       </h3>
-      <div className="space-y-2.5">
+      {typeof lessonsTotal === "number" && (
+        <p className="text-xs text-navy/50 mb-3">
+          {lessonsTotal} {lessonsTotal === 1 ? "lesson" : "lessons"}
+        </p>
+      )}
+      <div className="space-y-2.5 mt-3">
         <div className="flex items-center justify-between">
           <span className="text-xs text-navy/50 uppercase tracking-wide font-medium">
             {t("card.grammar")}
