@@ -2,8 +2,10 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useI18n } from "@/components/I18nProvider";
 
 function BannerInner() {
+  const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -34,9 +36,7 @@ function BannerInner() {
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
-        <p className="text-sm font-medium flex-1">
-          Your password has been reset. You&apos;re signed in and ready to go.
-        </p>
+        <p className="text-sm font-medium flex-1">{t("resetBanner.body")}</p>
         <button
           type="button"
           onClick={() => setVisible(false)}

@@ -6,9 +6,12 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { languages } from "@/lib/languages";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/components/I18nProvider";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import type { User } from "@supabase/supabase-js";
 
 export default function Navbar() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -76,7 +79,7 @@ export default function Navbar() {
                 onClick={() => setOpen(!open)}
                 className="flex items-center gap-1 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
               >
-                Languages
+                {t("nav.languages")}
                 <svg
                   className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
                   fill="none"
@@ -114,7 +117,7 @@ export default function Navbar() {
               href="/pricing"
               className="text-sm font-medium text-navy/70 hover:text-teal transition-colors"
             >
-              Pricing
+              {t("nav.pricing")}
             </Link>
 
             {/* YouTube link */}
@@ -127,12 +130,13 @@ export default function Navbar() {
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
               </svg>
-              YouTube
+              {t("nav.youtube")}
             </a>
           </div>
 
-          {/* Auth */}
-          <div className="flex items-center gap-4">
+          {/* Auth + UI lang switcher */}
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             {user ? (
               <div className="relative" ref={userMenuRef}>
                 <button
@@ -159,7 +163,7 @@ export default function Navbar() {
                 {userMenuOpen && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-border py-2">
                     <div className="px-4 py-2 border-b border-border">
-                      <p className="text-xs text-navy/40">Signed in as</p>
+                      <p className="text-xs text-navy/40">{t("nav.signedInAs")}</p>
                       <p className="text-sm text-navy font-medium truncate">
                         {user.email}
                       </p>
@@ -168,7 +172,7 @@ export default function Navbar() {
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
-                      Log out
+                      {t("nav.logout")}
                     </button>
                   </div>
                 )}
@@ -178,7 +182,7 @@ export default function Navbar() {
                 href="/login"
                 className="px-5 py-2 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark hover:shadow-md transition-all duration-200"
               >
-                Sign In
+                {t("nav.signIn")}
               </Link>
             )}
           </div>

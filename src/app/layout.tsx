@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { I18nProvider } from "@/components/I18nProvider";
 
 const inter = Inter({
   variable: "--font-geist-sans",
@@ -21,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} antialiased`}>
       <body className="min-h-screen flex flex-col bg-background text-foreground">
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

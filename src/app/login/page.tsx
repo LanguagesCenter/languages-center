@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/components/I18nProvider";
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,11 +20,11 @@ export default function LoginPage() {
   const supabase = createClient();
 
   const passwordChecks = [
-    { label: "At least 8 characters", met: password.length >= 8 },
-    { label: "Contains an uppercase letter", met: /[A-Z]/.test(password) },
-    { label: "Contains a lowercase letter", met: /[a-z]/.test(password) },
-    { label: "Contains a number", met: /[0-9]/.test(password) },
-    { label: "Contains a special character (!@#$%^&*)", met: /[!@#$%^&*]/.test(password) },
+    { label: t("pwd.atLeast8"), met: password.length >= 8 },
+    { label: t("pwd.uppercase"), met: /[A-Z]/.test(password) },
+    { label: t("pwd.lowercase"), met: /[a-z]/.test(password) },
+    { label: t("pwd.number"), met: /[0-9]/.test(password) },
+    { label: t("pwd.special"), met: /[!@#$%^&*]/.test(password) },
   ];
   const allChecksMet = passwordChecks.every((c) => c.met);
 
@@ -77,12 +79,10 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center px-4 pb-20">
         <div className="w-full max-w-sm">
           <h1 className="text-2xl font-bold text-navy text-center mb-2">
-            {isSignUp ? "Create an account" : "Welcome back"}
+            {isSignUp ? t("login.createAccount") : t("login.welcomeBack")}
           </h1>
           <p className="text-sm text-navy/50 text-center mb-8">
-            {isSignUp
-              ? "Sign up to start learning languages"
-              : "Sign in to your account"}
+            {isSignUp ? t("login.signUpDesc") : t("login.signInDesc")}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -91,7 +91,7 @@ export default function LoginPage() {
                 htmlFor="email"
                 className="block text-sm font-medium text-navy/70 mb-1.5"
               >
-                Email
+                {t("login.email")}
               </label>
               <input
                 id="email"
@@ -109,7 +109,7 @@ export default function LoginPage() {
                 htmlFor="password"
                 className="block text-sm font-medium text-navy/70 mb-1.5"
               >
-                Password
+                {t("login.password")}
               </label>
               <div className="relative">
                 <input
@@ -120,7 +120,7 @@ export default function LoginPage() {
                   required
                   minLength={6}
                   className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-border bg-white text-navy text-sm placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal transition-colors"
-                  placeholder="At least 6 characters"
+                  placeholder={t("login.passwordPlaceholder")}
                 />
                 <button
                   type="button"
@@ -166,7 +166,7 @@ export default function LoginPage() {
                     href="/forgot-password"
                     className="text-xs text-teal hover:text-teal-dark transition-colors"
                   >
-                    Forgot password?
+                    {t("login.forgotPassword")}
                   </Link>
                 </div>
               )}
@@ -190,15 +190,15 @@ export default function LoginPage() {
               className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading
-                ? "Loading..."
+                ? t("login.loading")
                 : isSignUp
-                  ? "Sign Up"
-                  : "Sign In"}
+                  ? t("login.signUp")
+                  : t("login.signInBtn")}
             </button>
           </form>
 
           <p className="mt-6 text-sm text-center text-navy/50">
-            {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+            {isSignUp ? t("login.haveAccount") : t("login.noAccount")}{" "}
             <button
               type="button"
               onClick={() => {
@@ -208,7 +208,7 @@ export default function LoginPage() {
               }}
               className="font-medium text-teal hover:text-teal-dark transition-colors"
             >
-              {isSignUp ? "Sign in" : "Sign up"}
+              {isSignUp ? t("login.signInLink") : t("login.signUpLink")}
             </button>
           </p>
         </div>

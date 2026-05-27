@@ -1,19 +1,25 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useI18n } from "@/components/I18nProvider";
 import type { Language, Difficulty } from "@/lib/languages";
 
 function DifficultyBadge({ level }: { level: Difficulty }) {
+  const { t } = useI18n();
   const colors: Record<Difficulty, string> = {
     Easy: "bg-teal-light text-teal-dark border-teal/20",
     Medium: "bg-peach-light text-amber-700 border-peach-dark/40",
     Hard: "bg-red-50 text-red-700 border-red-200",
   };
+  const labelKey =
+    level === "Easy" ? "card.easy" : level === "Medium" ? "card.medium" : "card.hard";
 
   return (
     <span
       className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full border ${colors[level]}`}
     >
-      {level}
+      {t(labelKey)}
     </span>
   );
 }
@@ -31,6 +37,7 @@ function FlagImage({ countryCode, name }: { countryCode: string; name: string })
 }
 
 export default function LanguageCard({ language }: { language: Language }) {
+  const { t } = useI18n();
   return (
     <Link
       id={language.slug}
@@ -60,11 +67,15 @@ export default function LanguageCard({ language }: { language: Language }) {
       </h3>
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-navy/50 uppercase tracking-wide font-medium">Grammar</span>
+          <span className="text-xs text-navy/50 uppercase tracking-wide font-medium">
+            {t("card.grammar")}
+          </span>
           <DifficultyBadge level={language.grammar} />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-xs text-navy/50 uppercase tracking-wide font-medium">Pronunciation</span>
+          <span className="text-xs text-navy/50 uppercase tracking-wide font-medium">
+            {t("card.pronunciation")}
+          </span>
           <DifficultyBadge level={language.pronunciation} />
         </div>
       </div>

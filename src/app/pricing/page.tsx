@@ -5,54 +5,54 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import { useI18n } from "@/components/I18nProvider";
 import type { User } from "@supabase/supabase-js";
 
-const plans = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    description: "Get started with language overviews",
-    features: [
-      "Language overview pages",
-      "Grammar & pronunciation ratings",
-      "Community access",
-    ],
-    excluded: [
-      "Full lesson content",
-      "Audio pronunciation guides",
-      "Progress tracking",
-      "Offline access",
-    ],
-    cta: "Current Plan",
-    highlighted: false,
-  },
-  {
-    name: "Premium",
-    price: "$9.99",
-    period: "/month",
-    description: "Full access to everything",
-    features: [
-      "Everything in Free",
-      "Full lesson content",
-      "Audio pronunciation guides",
-      "Progress tracking",
-      "Offline access",
-      "Priority support",
-    ],
-    excluded: [],
-    cta: "Subscribe",
-    highlighted: true,
-  },
-];
-
 export default function PricingPage() {
+  const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  const plans = [
+    {
+      name: t("pricing.free"),
+      price: "$0",
+      period: t("pricing.forever"),
+      description: t("pricing.freeDesc"),
+      features: [
+        t("pricing.feat.overview"),
+        t("pricing.feat.ratings"),
+        t("pricing.feat.community"),
+      ],
+      excluded: [
+        t("pricing.feat.fullLessons"),
+        t("pricing.feat.audio"),
+        t("pricing.feat.progress"),
+        t("pricing.feat.offline"),
+      ],
+      highlighted: false,
+    },
+    {
+      name: t("pricing.premium"),
+      price: "$9.99",
+      period: t("pricing.month"),
+      description: t("pricing.premiumDesc"),
+      features: [
+        t("pricing.feat.everythingFree"),
+        t("pricing.feat.fullLessons"),
+        t("pricing.feat.audio"),
+        t("pricing.feat.progress"),
+        t("pricing.feat.offline"),
+        t("pricing.feat.priority"),
+      ],
+      excluded: [],
+      highlighted: true,
+    },
+  ];
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -107,10 +107,10 @@ export default function PricingPage() {
       {/* Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 pb-20">
         <h1 className="text-3xl sm:text-4xl font-extrabold text-navy text-center tracking-tight mb-3">
-          Simple, transparent pricing
+          {t("pricing.title")}
         </h1>
         <p className="text-navy/50 text-center mb-12 max-w-md">
-          Start for free, upgrade when you&apos;re ready to unlock the full experience.
+          {t("pricing.subtitle")}
         </p>
 
         {error && (
@@ -168,7 +168,7 @@ export default function PricingPage() {
               {plan.highlighted ? (
                 isPremium ? (
                   <div className="w-full py-2.5 text-sm font-semibold text-center text-teal bg-teal-light rounded-xl">
-                    You&apos;re subscribed
+                    {t("pricing.cta.manage")}
                   </div>
                 ) : (
                   <button
@@ -176,12 +176,12 @@ export default function PricingPage() {
                     disabled={loading}
                     className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? "Redirecting..." : "Subscribe"}
+                    {loading ? t("login.loading") : t("pricing.cta.subscribe")}
                   </button>
                 )
               ) : (
                 <div className="w-full py-2.5 text-sm font-semibold text-center text-navy/40 bg-background rounded-xl border border-border">
-                  {isPremium ? "Included" : "Current Plan"}
+                  {t("pricing.cta.current")}
                 </div>
               )}
             </div>
