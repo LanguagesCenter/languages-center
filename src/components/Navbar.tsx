@@ -7,11 +7,12 @@ import { useRouter } from "next/navigation";
 import { languages } from "@/lib/languages";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/components/I18nProvider";
+import { getLocalizedLanguageName } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import type { User } from "@supabase/supabase-js";
 
 export default function Navbar() {
-  const { t } = useI18n();
+  const { t, lang: uiLang } = useI18n();
   const [open, setOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -105,7 +106,7 @@ export default function Navbar() {
                         height={15}
                         className="rounded-sm object-cover"
                       />
-                      {lang.name}
+                      {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
                     </Link>
                   ))}
                 </div>

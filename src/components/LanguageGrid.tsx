@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import LanguageCard from "@/components/LanguageCard";
 import { useI18n } from "@/components/I18nProvider";
-import { UI_LANG_NAMES } from "@/lib/i18n";
+import { UI_LANG_NAMES, getLocalizedLanguageName } from "@/lib/i18n";
 import { sortByProximity } from "@/lib/language-proximity";
 import type { Language } from "@/lib/languages";
 
@@ -11,8 +11,13 @@ export default function LanguageGrid({ languages }: { languages: Language[] }) {
   const { lang, t, ready } = useI18n();
   const [showNative, setShowNative] = useState(false);
 
-  const nativeSlug = UI_LANG_NAMES[lang].slug;
-  const nativeName = languages.find((l) => l.slug === nativeSlug)?.name ?? "";
+  const nativeSlug = UI_LANG_NAMES[lang]?.slug ?? null;
+  const nativeLanguage = nativeSlug
+    ? languages.find((l) => l.slug === nativeSlug)
+    : null;
+  const nativeName = nativeLanguage
+    ? getLocalizedLanguageName(nativeLanguage.slug, lang, nativeLanguage.name)
+    : "";
 
   const visible = useMemo(() => {
     const filtered = ready

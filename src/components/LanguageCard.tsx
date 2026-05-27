@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useI18n } from "@/components/I18nProvider";
+import { getLocalizedLanguageName } from "@/lib/i18n";
 import type { Language, Difficulty } from "@/lib/languages";
 
 function DifficultyBadge({ level }: { level: Difficulty }) {
@@ -37,12 +38,13 @@ function FlagImage({ countryCode, name }: { countryCode: string; name: string })
 }
 
 export default function LanguageCard({ language }: { language: Language }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const localizedName = getLocalizedLanguageName(language.slug, lang, language.name);
   return (
     <Link
       id={language.slug}
       href={`/languages/${language.slug}`}
-      aria-label={`Learn more about ${language.name}`}
+      aria-label={`Learn more about ${localizedName}`}
       className="group block bg-white border border-border rounded-2xl p-6 hover:shadow-lg hover:border-teal/40 hover:-translate-y-1 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 transition-all duration-200"
     >
       <div className="flex items-start justify-between mb-4">
@@ -63,7 +65,7 @@ export default function LanguageCard({ language }: { language: Language }) {
         </span>
       </div>
       <h3 className="text-lg font-semibold text-navy mb-4 group-hover:text-teal transition-colors">
-        {language.name}
+        {localizedName}
       </h3>
       <div className="space-y-2.5">
         <div className="flex items-center justify-between">

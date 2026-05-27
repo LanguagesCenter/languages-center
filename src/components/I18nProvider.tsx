@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   DEFAULT_UI_LANG,
+  RTL_LANGS,
   SUPPORTED_UI_LANGUAGES,
   detectBrowserLang,
   translate,
@@ -31,7 +32,9 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<UiLang>(DEFAULT_UI_LANG);
   const [ready, setReady] = useState(false);
 
-  // First-load detection: prefer saved preference; otherwise sniff navigator.language.
+  // First-load detection: prefer saved preference; otherwise walk
+  // navigator.languages[] in priority order and accept the first supported
+  // base code. Falls back to navigator.language, then English.
   useEffect(() => {
     let next: UiLang = DEFAULT_UI_LANG;
     try {
@@ -39,7 +42,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       if (saved && (SUPPORTED_UI_LANGUAGES as readonly string[]).includes(saved)) {
         next = saved as UiLang;
       } else {
-        next = detectBrowserLang(window.navigator.language);
+        next = detectBrowserLang({
+          language: window.navigator.language,
+          languages: window.navigator.languages,
+        });
         // Persist the detection so future visits skip the navigator step.
         window.localStorage.setItem(STORAGE_KEY, next);
       }
@@ -50,11 +56,15 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     setReady(true);
   }, []);
 
-  // Reflect the language on <html lang="..."> so screen readers and
-  // browser features pick it up.
+  // Reflect the language and text direction on <html> so screen readers,
+  // browser features and Tailwind's RTL utilities pick it up.
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.documentElement.setAttribute("lang", lang);
+      document.documentElement.setAttribute(
+        "dir",
+        RTL_LANGS.includes(lang) ? "rtl" : "ltr",
+      );
     }
   }, [lang]);
 
