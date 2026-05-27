@@ -242,6 +242,17 @@ export async function getLanguageBySlug(slug: string): Promise<DbLanguage | null
   return (data as DbLanguage) ?? null;
 }
 
+// Lightweight version of getLanguagesWithProgress for pages that just need
+// the catalogue (e.g. the homepage). Returns the rows in id order.
+export async function getAllLanguages(): Promise<DbLanguage[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("languages")
+    .select("*")
+    .order("id");
+  return (data as DbLanguage[]) ?? [];
+}
+
 // Build the full CEFR tree for a language. Each level groups its sections;
 // each section knows its lesson totals and completion counts.
 export async function getCEFRTreeForLanguage(
