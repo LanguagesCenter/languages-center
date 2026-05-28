@@ -17,7 +17,8 @@ export const metadata = {
 };
 
 import { FLAG_CODES } from "@/lib/flag-codes";
-import { getServerT } from "@/lib/i18n-server";
+import { getServerLang, getServerT } from "@/lib/i18n-server";
+import { getLocalizedLanguageName } from "@/lib/i18n";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -27,6 +28,7 @@ export default async function DashboardPage() {
   if (!user) redirect("/login");
 
   const t = await getServerT();
+  const uiLang = await getServerLang();
   const [progress, profile, weeklyCount] = await Promise.all([
     getLanguagesWithProgress(),
     getUserProfile(),
@@ -114,6 +116,11 @@ export default async function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {started.map(({ language, stats }) => {
                 const code = FLAG_CODES[language.code] ?? language.code;
+                const localizedName = getLocalizedLanguageName(
+                  language.code,
+                  uiLang,
+                  language.name,
+                );
                 return (
                   <div
                     key={language.id}
@@ -121,13 +128,13 @@ export default async function DashboardPage() {
                   >
                     <Image
                       src={`https://flagcdn.com/w80/${code}.png`}
-                      alt={`${language.name} flag`}
+                      alt={`${localizedName} flag`}
                       width={48}
                       height={36}
                       className="rounded-sm object-cover shadow-sm"
                     />
                     <div className="flex-1">
-                      <p className="font-semibold text-navy">{language.name}</p>
+                      <p className="font-semibold text-navy">{localizedName}</p>
                       <p className="text-xs text-navy/50">
                         {stats?.total_xp ?? 0} {t("dashboard.xpEarned")}
                       </p>
@@ -154,6 +161,11 @@ export default async function DashboardPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {continueTargets.map(({ entry, lessonId }) => {
                 const code = FLAG_CODES[entry.language.code] ?? entry.language.code;
+                const localizedName = getLocalizedLanguageName(
+                  entry.language.code,
+                  uiLang,
+                  entry.language.name,
+                );
                 const href = lessonId
                   ? `/learn/${entry.language.code}/${lessonId}`
                   : `/learn/${entry.language.code}`;
@@ -166,13 +178,13 @@ export default async function DashboardPage() {
                     <div className="flex items-center gap-3 mb-3">
                       <Image
                         src={`https://flagcdn.com/w80/${code}.png`}
-                        alt={`${entry.language.name} flag`}
+                        alt={`${localizedName} flag`}
                         width={36}
                         height={27}
                         className="rounded-sm object-cover shadow-sm"
                       />
                       <div>
-                        <p className="font-semibold text-navy">{entry.language.name}</p>
+                        <p className="font-semibold text-navy">{localizedName}</p>
                         <p className="text-xs text-navy/50">
                           {entry.completedLessons} / {entry.totalLessons} {t("learn.lessons")}
                         </p>

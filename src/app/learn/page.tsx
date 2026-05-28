@@ -11,7 +11,8 @@ import {
   type LanguageProgress,
 } from "@/lib/learn";
 import { FLAG_CODES } from "@/lib/flag-codes";
-import { getServerT } from "@/lib/i18n-server";
+import { getServerLang, getServerT } from "@/lib/i18n-server";
+import { getLocalizedLanguageName } from "@/lib/i18n";
 
 export const metadata = {
   title: "Learn — Languages Center",
@@ -30,10 +31,12 @@ function ProgressBar({ pct }: { pct: number }) {
 
 function LanguageProgressCard({
   entry,
+  localizedName,
   notStartedLabel,
   lessonsLabel,
 }: {
   entry: LanguageProgress;
+  localizedName: string;
   notStartedLabel: string;
   lessonsLabel: string;
 }) {
@@ -46,7 +49,7 @@ function LanguageProgressCard({
       <div className="flex items-center justify-between mb-4">
         <Image
           src={`https://flagcdn.com/w80/${code}.png`}
-          alt={`${entry.language.name} flag`}
+          alt={`${localizedName} flag`}
           width={40}
           height={30}
           className="rounded-sm object-cover shadow-sm"
@@ -60,7 +63,7 @@ function LanguageProgressCard({
         )}
       </div>
       <h3 className="text-lg font-semibold text-navy mb-3 group-hover:text-teal transition-colors">
-        {entry.language.name}
+        {localizedName}
       </h3>
       <div className="space-y-2">
         <ProgressBar pct={entry.progressPct} />
@@ -85,6 +88,7 @@ export default async function LearnPage() {
   }
 
   const t = await getServerT();
+  const uiLang = await getServerLang();
   const [progress, profile] = await Promise.all([
     getLanguagesWithProgress(),
     getUserProfile(),
@@ -126,6 +130,11 @@ export default async function LearnPage() {
               <LanguageProgressCard
                 key={entry.language.id}
                 entry={entry}
+                localizedName={getLocalizedLanguageName(
+                  entry.language.code,
+                  uiLang,
+                  entry.language.name,
+                )}
                 notStartedLabel={t("learn.notStarted")}
                 lessonsLabel={t("learn.lessons")}
               />

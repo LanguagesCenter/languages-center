@@ -232,6 +232,43 @@ const en: Dict = {
   "section.completed": "Completed",
   "section.start": "Start",
   "section.review": "Review",
+  "section.descTemplate": "Build your {level} {language} skills in {section}.",
+  "section.greetings": "Greetings",
+  "section.numbers": "Numbers",
+  "section.colors": "Colors",
+  "section.family": "Family",
+  "section.food": "Food",
+  "section.time": "Time",
+  "section.weather": "Weather",
+  "section.shopping": "Shopping",
+  "section.daily_routines": "Daily Routines",
+  "section.transport": "Transport",
+  "section.health": "Health",
+  "section.hobbies": "Hobbies",
+  "section.work": "Work",
+  "section.directions": "Directions",
+  "section.feelings": "Feelings",
+  "section.celebrations": "Celebrations",
+  "section.travel": "Travel",
+  "section.news_media": "News & Media",
+  "section.environment": "Environment",
+  "section.relationships": "Relationships",
+  "section.culture": "Culture",
+  "section.money": "Money",
+  "section.education": "Education",
+  "section.politics": "Politics",
+  "section.technology": "Technology",
+  "section.philosophy": "Philosophy",
+  "section.literature": "Literature",
+  "section.business": "Business",
+  "section.science": "Science",
+  "section.arts": "Arts",
+  "section.idioms_expressions": "Idioms & Expressions",
+  "section.advanced_grammar": "Advanced Grammar",
+  "section.formal_writing": "Formal Writing",
+  "section.debate_discussion": "Debate & Discussion",
+  "section.native_content": "Native Content",
+  "lesson.singular": "Lesson",
   "lesson.lessonComplete": "Lesson complete!",
   "lesson.greatWork": "Great work on {title} in {language}.",
   "lesson.alreadyMastered": "You've already mastered this lesson — practice never hurts.",
@@ -542,6 +579,49 @@ const es: Dict = {
   "reset.button": "Restablecer contraseña",
   "reset.passwordsNoMatch": "Las contraseñas aún no coinciden.",
   "reset.passwordsMatch": "Las contraseñas coinciden.",
+  "section.backToLang": "Volver a {language}",
+  "section.completeOf": "{completed} de {total} lecciones completadas",
+  "section.noLessons": "Aún no hay lecciones en esta sección.",
+  "section.completed": "Completada",
+  "section.start": "Empezar",
+  "section.review": "Repasar",
+  "section.descTemplate": "Mejora tu {language} de nivel {level} con {section}.",
+  "section.greetings": "Saludos",
+  "section.numbers": "Números",
+  "section.colors": "Colores",
+  "section.family": "Familia",
+  "section.food": "Comida",
+  "section.time": "El tiempo",
+  "section.weather": "Clima",
+  "section.shopping": "Compras",
+  "section.daily_routines": "Rutinas diarias",
+  "section.transport": "Transporte",
+  "section.health": "Salud",
+  "section.hobbies": "Aficiones",
+  "section.work": "Trabajo",
+  "section.directions": "Direcciones",
+  "section.feelings": "Sentimientos",
+  "section.celebrations": "Celebraciones",
+  "section.travel": "Viajes",
+  "section.news_media": "Noticias y medios",
+  "section.environment": "Medio ambiente",
+  "section.relationships": "Relaciones",
+  "section.culture": "Cultura",
+  "section.money": "Dinero",
+  "section.education": "Educación",
+  "section.politics": "Política",
+  "section.technology": "Tecnología",
+  "section.philosophy": "Filosofía",
+  "section.literature": "Literatura",
+  "section.business": "Negocios",
+  "section.science": "Ciencia",
+  "section.arts": "Arte",
+  "section.idioms_expressions": "Modismos y expresiones",
+  "section.advanced_grammar": "Gramática avanzada",
+  "section.formal_writing": "Escritura formal",
+  "section.debate_discussion": "Debate y discusión",
+  "section.native_content": "Contenido nativo",
+  "lesson.singular": "Lección",
 };
 
 const fr: Dict = {
@@ -2258,4 +2338,52 @@ export function translate(
   return value.replace(/\{(\w+)\}/g, (_, name) =>
     String(vars[name] ?? `{${name}}`),
   );
+}
+
+// Course content stored in the DB is in English (e.g. "Greetings",
+// "News & Media", "Idioms & Expressions"). Lesson titles come back as
+// "Section Title — Lesson N". These helpers re-render them in the
+// active UI language using section.* keys, falling back to the DB value
+// when we have no mapping for that title.
+
+function sectionTitleSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/&/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+export function translateSectionTitle(title: string, lang: UiLang): string {
+  if (!title) return title;
+  const key = `section.${sectionTitleSlug(title)}`;
+  // Only translate if we actually have an English entry for this slug;
+  // otherwise the title is custom and we leave it untouched.
+  if (!translations.en[key]) return title;
+  return translate(lang, key);
+}
+
+export function translateLessonTitle(title: string, lang: UiLang): string {
+  if (!title) return title;
+  const match = title.match(/^(.+?)\s*[—–-]\s*Lesson\s+(\d+)\s*$/i);
+  if (!match) return title;
+  const sectionPart = match[1];
+  const num = match[2];
+  const translatedSection = translateSectionTitle(sectionPart, lang);
+  const lessonWord = translate(lang, "lesson.singular");
+  return `${translatedSection} — ${lessonWord} ${num}`;
+}
+
+export function translateSectionDescription(
+  title: string,
+  level: string,
+  localizedLanguageName: string,
+  lang: UiLang,
+): string {
+  const localizedSection = translateSectionTitle(title, lang);
+  return translate(lang, "section.descTemplate", {
+    level,
+    language: localizedLanguageName,
+    section: localizedSection,
+  });
 }

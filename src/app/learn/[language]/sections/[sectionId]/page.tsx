@@ -8,6 +8,13 @@ import {
   getSectionWithLessons,
   type LessonWithStatus,
 } from "@/lib/learn";
+import { getServerLang, getServerT } from "@/lib/i18n-server";
+import {
+  getLocalizedLanguageName,
+  translateLessonTitle,
+  translateSectionTitle,
+  translateSectionDescription,
+} from "@/lib/i18n";
 
 const LEVEL_PILL: Record<string, string> = {
   A1: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -21,10 +28,18 @@ function LessonCard({
   lesson,
   languageSlug,
   index,
+  title,
+  completedLabel,
+  startLabel,
+  reviewLabel,
 }: {
   lesson: LessonWithStatus;
   languageSlug: string;
   index: number;
+  title: string;
+  completedLabel: string;
+  startLabel: string;
+  reviewLabel: string;
 }) {
   const body = (
     <div
@@ -45,7 +60,7 @@ function LessonCard({
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            Completed
+            {completedLabel}
           </span>
         ) : lesson.locked ? (
           <svg className="w-4 h-4 text-navy/40" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -58,7 +73,7 @@ function LessonCard({
         )}
       </div>
       <h3 className="text-base font-semibold text-navy leading-tight mb-1.5">
-        {lesson.title}
+        {title}
       </h3>
       <p className="text-xs text-navy/50 mb-4 line-clamp-2 leading-relaxed">
         {lesson.description}
@@ -67,7 +82,7 @@ function LessonCard({
         <span className="capitalize">{lesson.type}</span>
         {!lesson.locked && (
           <span className="inline-flex items-center gap-1 text-teal font-semibold">
-            {lesson.completed ? "Review" : "Start"}
+            {lesson.completed ? reviewLabel : startLabel}
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
@@ -108,6 +123,21 @@ export default async function SectionPage(
 
   const { section, lessons } = data;
 
+  const t = await getServerT();
+  const uiLang = await getServerLang();
+  const localizedLanguageName = getLocalizedLanguageName(
+    language.code,
+    uiLang,
+    language.name,
+  );
+  const localizedSectionTitle = translateSectionTitle(section.title, uiLang);
+  const localizedSectionDesc = translateSectionDescription(
+    section.title,
+    section.cefr_level,
+    localizedLanguageName,
+    uiLang,
+  );
+
   const completed = lessons.filter((l) => l.completed).length;
   const total = lessons.length;
   const pct = total === 0 ? 0 : Math.round((completed / total) * 100);
@@ -125,7 +155,7 @@ export default async function SectionPage(
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Back to {language.name}
+            {t("section.backToLang", { language: localizedLanguageName })}
           </Link>
 
           <div className="flex items-start gap-3 mb-3">
@@ -135,17 +165,17 @@ export default async function SectionPage(
               {section.cefr_level}
             </span>
             <span className="text-xs text-navy/40">·</span>
-            <span className="text-xs text-navy/50">{language.name}</span>
+            <span className="text-xs text-navy/50">{localizedLanguageName}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight mb-2">
-            {section.title}
+            {localizedSectionTitle}
           </h1>
-          <p className="text-sm text-navy/60 mb-6">{section.description}</p>
+          <p className="text-sm text-navy/60 mb-6">{localizedSectionDesc}</p>
 
           <div className="bg-white border border-border rounded-2xl p-5">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-navy/60">
-                <span className="font-semibold text-navy">{completed}</span> of {total} lessons complete
+                {t("section.completeOf", { completed, total })}
               </p>
               <span className="text-sm font-semibold text-navy/70">{pct}%</span>
             </div>
@@ -160,7 +190,7 @@ export default async function SectionPage(
 
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
           {lessons.length === 0 ? (
-            <p className="text-sm text-navy/50">No lessons in this section yet.</p>
+            <p className="text-sm text-navy/50">{t("section.noLessons")}</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {lessons.map((lesson, idx) => (
@@ -169,6 +199,10 @@ export default async function SectionPage(
                   lesson={lesson}
                   languageSlug={slug}
                   index={idx}
+                  title={translateLessonTitle(lesson.title, uiLang)}
+                  completedLabel={t("section.completed")}
+                  startLabel={t("section.start")}
+                  reviewLabel={t("section.review")}
                 />
               ))}
             </div>

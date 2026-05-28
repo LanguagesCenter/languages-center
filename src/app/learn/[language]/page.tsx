@@ -14,6 +14,13 @@ import {
 } from "@/lib/learn";
 
 import { FLAG_CODES } from "@/lib/flag-codes";
+import { getServerLang, getServerT } from "@/lib/i18n-server";
+import {
+  getLocalizedLanguageName,
+  translateSectionTitle,
+  translateSectionDescription,
+  type UiLang,
+} from "@/lib/i18n";
 
 const LEVEL_STYLES: Record<
   string,
@@ -72,15 +79,30 @@ function CefrBadge({ level, size = "md" }: { level: string; size?: "sm" | "md" |
 function SectionCard({
   section,
   languageSlug,
+  uiLang,
+  localizedLanguageName,
+  doneLabel,
+  lessonsLabel,
 }: {
   section: SectionWithProgress;
   languageSlug: string;
+  uiLang: UiLang;
+  localizedLanguageName: string;
+  doneLabel: string;
+  lessonsLabel: string;
 }) {
   const pct =
     section.lessonsTotal === 0
       ? 0
       : Math.round((section.lessonsCompleted / section.lessonsTotal) * 100);
   const complete = section.lessonsTotal > 0 && section.lessonsCompleted >= section.lessonsTotal;
+  const localizedTitle = translateSectionTitle(section.title, uiLang);
+  const localizedDescription = translateSectionDescription(
+    section.title,
+    section.cefr_level,
+    localizedLanguageName,
+    uiLang,
+  );
 
   const body = (
     <div
@@ -97,7 +119,7 @@ function SectionCard({
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
             </svg>
-            Done
+            {doneLabel}
           </span>
         )}
         {section.locked && (
@@ -107,10 +129,10 @@ function SectionCard({
         )}
       </div>
       <h3 className="text-base font-semibold text-navy leading-tight mb-2">
-        {section.title}
+        {localizedTitle}
       </h3>
       <p className="text-xs text-navy/50 mb-4 line-clamp-2 leading-relaxed">
-        {section.description}
+        {localizedDescription}
       </p>
       <div className="space-y-1.5">
         <div className="h-1.5 w-full rounded-full bg-navy/5 overflow-hidden">
@@ -121,7 +143,7 @@ function SectionCard({
         </div>
         <div className="flex items-center justify-between text-[11px] text-navy/50">
           <span>
-            {section.lessonsCompleted} / {section.lessonsTotal} lessons
+            {section.lessonsCompleted} / {section.lessonsTotal} {lessonsLabel}
           </span>
           <span className="font-semibold text-navy/70">{pct}%</span>
         </div>
@@ -141,10 +163,24 @@ function LevelAccordion({
   group,
   languageSlug,
   defaultOpen,
+  uiLang,
+  localizedLanguageName,
+  doneLabel,
+  lessonsLabel,
+  sectionsLabel,
+  sectionLabel,
+  noSectionsLabel,
 }: {
   group: CEFRLevelGroup;
   languageSlug: string;
   defaultOpen: boolean;
+  uiLang: UiLang;
+  localizedLanguageName: string;
+  doneLabel: string;
+  lessonsLabel: string;
+  sectionsLabel: string;
+  sectionLabel: string;
+  noSectionsLabel: string;
 }) {
   const styles = LEVEL_STYLES[group.level] ?? LEVEL_STYLES.A1;
   const pct =
@@ -165,8 +201,9 @@ function LevelAccordion({
               {group.label}
             </h2>
             <p className="text-xs text-navy/50 mt-0.5">
-              {group.sections.length} {group.sections.length === 1 ? "section" : "sections"} ·{" "}
-              {group.lessonsTotal} lessons
+              {group.sections.length}{" "}
+              {group.sections.length === 1 ? sectionLabel : sectionsLabel} ·{" "}
+              {group.lessonsTotal} {lessonsLabel}
             </p>
           </div>
         </div>
@@ -196,7 +233,7 @@ function LevelAccordion({
 
       <div className="px-6 sm:px-7 pb-6 sm:pb-7">
         {group.sections.length === 0 ? (
-          <p className="text-sm text-navy/50">No sections at this level yet.</p>
+          <p className="text-sm text-navy/50">{noSectionsLabel}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {group.sections.map((section) => (
@@ -204,6 +241,10 @@ function LevelAccordion({
                 key={section.id}
                 section={section}
                 languageSlug={languageSlug}
+                uiLang={uiLang}
+                localizedLanguageName={localizedLanguageName}
+                doneLabel={doneLabel}
+                lessonsLabel={lessonsLabel}
               />
             ))}
           </div>
@@ -224,6 +265,14 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
 
   const language = await getLanguageBySlug(slug);
   if (!language) notFound();
+
+  const t = await getServerT();
+  const uiLang = await getServerLang();
+  const localizedLanguageName = getLocalizedLanguageName(
+    language.code,
+    uiLang,
+    language.name,
+  );
 
   const tree = await getCEFRTreeForLanguage(language.id);
   const flagCode = FLAG_CODES[language.code] ?? language.code;
@@ -250,13 +299,13 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            All languages
+            {t("cefr.allLanguages")}
           </Link>
 
           <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-6 md:items-center">
             <Image
               src={`https://flagcdn.com/w160/${flagCode}.png`}
-              alt={`${language.name} flag`}
+              alt={`${localizedLanguageName} flag`}
               width={80}
               height={60}
               className="rounded-md object-cover shadow-sm"
@@ -264,12 +313,16 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight">
-                  {language.name}
+                  {localizedLanguageName}
                 </h1>
                 <CefrBadge level={reachedLevel} size="md" />
               </div>
               <p className="text-sm text-navy/60">
-                {completedLessons} of {totalLessons} lessons complete · {overallPct}% overall
+                {t("cefr.lessonsComplete", {
+                  completed: completedLessons,
+                  total: totalLessons,
+                })}{" "}
+                · {t("cefr.overallPct", { pct: overallPct })}
               </p>
             </div>
             <div className="hidden md:flex flex-col items-end gap-2">
@@ -277,7 +330,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
                 href={`/languages/${slug}/articles`}
                 className="inline-flex items-center gap-2 text-sm font-medium text-teal hover:text-teal-dark transition-colors"
               >
-                Read articles
+                {t("overview.browseArticles")}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
@@ -286,7 +339,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
                 href={`/languages/${slug}`}
                 className="text-xs text-navy/50 hover:text-navy/80 transition-colors"
               >
-                Language overview
+                {t("cefr.languageOverview")}
               </Link>
             </div>
           </div>
@@ -326,6 +379,13 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
               group={group}
               languageSlug={slug}
               defaultOpen={group.level === openLevel}
+              uiLang={uiLang}
+              localizedLanguageName={localizedLanguageName}
+              doneLabel={t("cefr.done")}
+              lessonsLabel={t("learn.lessons")}
+              sectionsLabel={t("cefr.sections")}
+              sectionLabel={t("cefr.section")}
+              noSectionsLabel={t("cefr.noSections")}
             />
           ))}
         </section>
