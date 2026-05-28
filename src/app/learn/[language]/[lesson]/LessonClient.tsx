@@ -558,16 +558,17 @@ export default function LessonClient({
     already_completed: boolean;
     current_streak?: number;
     saved: boolean;
+    not_authenticated?: boolean;
     error?: string;
   } | null>(null);
 
   const sectionUrl = `/learn/${languageSlug}/sections/${sectionId}`;
 
-  // Auto-redirect back to the section page a couple of seconds after the
-  // completion screen appears, so the user is never stranded if they
-  // don't tap the button.
+  // Auto-redirect ONLY when the save actually succeeded. On error the user
+  // stays on the completion card so they can read the message and retry —
+  // we never silently navigate away from unsaved progress.
   useEffect(() => {
-    if (!completion) return;
+    if (!completion || !completion.saved) return;
     const t = setTimeout(() => {
       router.push(sectionUrl);
       router.refresh();
@@ -641,12 +642,14 @@ export default function LessonClient({
       try {
         const result = await completeLesson(lesson.id, languageSlug);
         // Always set completion so the user is never stranded — even if the
-        // save failed, we show a brief message and auto-redirect.
+        // save failed, we show a clear message and only auto-redirect on
+        // success.
         setCompletion({
           xp_earned: result.ok ? result.xp_earned : 0,
           already_completed: result.ok ? result.already_completed : false,
           current_streak: result.ok ? result.current_streak : undefined,
           saved: result.ok,
+          not_authenticated: result.not_authenticated,
           error: result.ok ? undefined : (result.error ?? "Could not save progress"),
         });
       } catch (err) {
@@ -661,63 +664,121 @@ export default function LessonClient({
   }
 
   if (completion) {
+    const headerBgClass = completion.saved
+      ? "from-teal to-teal-dark"
+      : completion.not_authenticated
+        ? "from-amber-400 to-amber-600"
+        : "from-red-400 to-red-600";
+
     return (
       <main className="min-h-screen bg-gradient-to-b from-teal-light to-background flex items-center justify-center p-6">
         <div className="bg-white rounded-3xl border border-border p-8 sm:p-12 text-center max-w-md w-full shadow-xl">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-teal to-teal-dark flex items-center justify-center shadow-lg">
+          <div className={`w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br ${headerBgClass} flex items-center justify-center shadow-lg`}>
             <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              {completion.saved ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.008v.008H12v-.008zM2.25 12a9.75 9.75 0 1119.5 0 9.75 9.75 0 01-19.5 0z" />
+              )}
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-navy mb-2">Lesson complete!</h1>
-          <p className="text-sm text-navy/60 mb-6">
-            {completion.already_completed
-              ? "You've already mastered this lesson — practice never hurts."
-              : `Great work on ${lesson.title} in ${languageName}.`}
-          </p>
 
-          {!completion.saved && (
-            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-4">
-              We couldn&apos;t save your progress this time
-              {completion.error ? `: ${completion.error}` : ""}. You can keep going — the
-              lesson will retry on your next attempt.
-            </div>
+          {completion.saved ? (
+            <>
+              <h1 className="text-3xl font-bold text-navy mb-2">Lesson complete!</h1>
+              <p className="text-sm text-navy/60 mb-6">
+                {completion.already_completed
+                  ? "You've already mastered this lesson — practice never hurts."
+                  : `Great work on ${lesson.title} in ${languageName}.`}
+              </p>
+
+              <div className="grid grid-cols-2 gap-3 mb-8">
+                <div className="bg-teal-light rounded-2xl p-4">
+                  <p className="text-xs text-teal-dark font-semibold uppercase tracking-wide mb-1">
+                    XP earned
+                  </p>
+                  <p className="text-2xl font-bold text-teal-dark">
+                    {completion.already_completed ? 0 : completion.xp_earned}
+                  </p>
+                </div>
+                <div className="bg-peach-light rounded-2xl p-4">
+                  <p className="text-xs text-amber-700 font-semibold uppercase tracking-wide mb-1">
+                    Streak
+                  </p>
+                  <p className="text-2xl font-bold text-amber-700">
+                    🔥 {completion.current_streak ?? 0}
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-navy/40 mb-3">Taking you back to the section…</p>
+              <div className="flex flex-col gap-2">
+                <Link
+                  href={sectionUrl}
+                  className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+                >
+                  Back to the section
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
+                >
+                  View dashboard
+                </Link>
+              </div>
+            </>
+          ) : completion.not_authenticated ? (
+            <>
+              <h1 className="text-2xl font-bold text-navy mb-2">Sign in to save progress</h1>
+              <p className="text-sm text-navy/60 mb-6">
+                You completed {lesson.title}, but you need to be signed in for the XP and
+                streak to stick.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Link
+                  href={`/login?next=/learn/${languageSlug}/${lesson.id}`}
+                  className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+                >
+                  Sign in
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setCompletion(null)}
+                  className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
+                >
+                  Back to the lesson
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold text-navy mb-2">Couldn&apos;t save progress</h1>
+              <p className="text-sm text-navy/60 mb-3">
+                Your lesson was completed, but the save to Supabase failed.
+              </p>
+              {completion.error && (
+                <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-6 text-left">
+                  {completion.error}
+                </p>
+              )}
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleContinue}
+                  disabled={pending}
+                  className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50"
+                >
+                  {pending ? "Retrying…" : "Try again"}
+                </button>
+                <Link
+                  href={sectionUrl}
+                  className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
+                >
+                  Skip and return to the section
+                </Link>
+              </div>
+            </>
           )}
-
-          <div className="grid grid-cols-2 gap-3 mb-8">
-            <div className="bg-teal-light rounded-2xl p-4">
-              <p className="text-xs text-teal-dark font-semibold uppercase tracking-wide mb-1">
-                XP earned
-              </p>
-              <p className="text-2xl font-bold text-teal-dark">
-                {completion.already_completed ? 0 : completion.xp_earned}
-              </p>
-            </div>
-            <div className="bg-peach-light rounded-2xl p-4">
-              <p className="text-xs text-amber-700 font-semibold uppercase tracking-wide mb-1">
-                Streak
-              </p>
-              <p className="text-2xl font-bold text-amber-700">
-                🔥 {completion.current_streak ?? 0}
-              </p>
-            </div>
-          </div>
-
-          <p className="text-xs text-navy/40 mb-3">Taking you back to the section…</p>
-          <div className="flex flex-col gap-2">
-            <Link
-              href={sectionUrl}
-              className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
-            >
-              Back to the section
-            </Link>
-            <Link
-              href="/dashboard"
-              className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
-            >
-              View dashboard
-            </Link>
-          </div>
         </div>
       </main>
     );
