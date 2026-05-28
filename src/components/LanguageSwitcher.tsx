@@ -18,15 +18,21 @@ function FlagImg({
   alt: string;
   size?: number;
 }) {
+  const height = Math.round(size * 0.75);
   return (
-    <Image
-      src={`https://flagcdn.com/w40/${countryCode}.png`}
-      alt={alt}
-      width={size}
-      height={Math.round(size * 0.75)}
-      className="rounded-sm object-cover shadow-sm shrink-0"
-      unoptimized
-    />
+    <span
+      className="relative inline-block rounded-sm overflow-hidden shadow-sm shrink-0 ring-1 ring-black/5"
+      style={{ width: `${size}px`, height: `${height}px` }}
+    >
+      <Image
+        src={`https://flagcdn.com/w40/${countryCode}.png`}
+        alt={alt}
+        fill
+        sizes={`${size}px`}
+        className="object-cover"
+        unoptimized
+      />
+    </span>
   );
 }
 

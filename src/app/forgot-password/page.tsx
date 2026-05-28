@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import HomeButton from "@/components/HomeButton";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -33,7 +34,8 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="p-6">
+      <div className="p-6 flex items-center gap-3">
+        <HomeButton />
         <Link href="/" className="flex items-center gap-2.5 w-fit">
           <Image
             src="/Logo fianl.jpg"

@@ -6,13 +6,15 @@ import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
+import HomeButton from "@/components/HomeButton";
 
 type Phase = "verifying" | "form" | "submitting" | "invalid";
 
 function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="p-6">
+      <div className="p-6 flex items-center gap-3">
+        <HomeButton />
         <Link href="/" className="flex items-center gap-2.5 w-fit">
           <Image
             src="/Logo fianl.jpg"

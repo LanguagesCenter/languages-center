@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getLanguageBySlug, getArticleBySlug } from "@/lib/learn";
+import ArticleTranslation from "./ArticleTranslation";
 
 const LEVEL_PILL: Record<string, string> = {
   A1: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -76,14 +77,7 @@ export default async function ArticleDetailPage(
               </div>
             </div>
             <div className="md:border-l md:border-border md:pl-8 lg:pl-10">
-              <p className="text-xs font-semibold uppercase tracking-wider text-navy/40 mb-3">
-                English translation
-              </p>
-              <div className="prose prose-sm max-w-none text-navy/70 leading-relaxed space-y-4">
-                {englishParas.map((p, i) => (
-                  <p key={i}>{p}</p>
-                ))}
-              </div>
+              <ArticleTranslation paragraphs={englishParas} />
             </div>
           </div>
         </article>

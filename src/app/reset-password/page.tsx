@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import ResetPasswordClient from "./ResetPasswordClient";
+import HomeButton from "@/components/HomeButton";
 
 export const metadata = {
   title: "Reset your password — Languages Center",
@@ -10,7 +11,8 @@ export const metadata = {
 function VerifyingFallback() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <div className="p-6">
+      <div className="p-6 flex items-center gap-3">
+        <HomeButton />
         <Link href="/" className="flex items-center gap-2.5 w-fit">
           <Image
             src="/Logo fianl.jpg"

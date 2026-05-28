@@ -9,6 +9,7 @@ import { FLAG_CODES } from "@/lib/flag-codes";
 import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName } from "@/lib/i18n";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import HomeButton from "@/components/HomeButton";
 import type { User } from "@supabase/supabase-js";
 
 interface NavbarLanguage {
@@ -83,7 +84,9 @@ export default function Navbar() {
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+          {/* Home button + logo */}
+          <div className="flex items-center gap-3">
+            <HomeButton />
           <Link href="/" className="flex items-center gap-2.5">
             <Image
               src="/Logo fianl.jpg"
@@ -96,6 +99,7 @@ export default function Navbar() {
               Languages Center
             </span>
           </Link>
+          </div>
 
           {/* Center nav */}
           <div className="hidden md:flex items-center gap-8">
@@ -124,13 +128,16 @@ export default function Navbar() {
                       onClick={() => setOpen(false)}
                       className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
                     >
-                      <Image
-                        src={`https://flagcdn.com/w40/${lang.countryCode}.png`}
-                        alt={`${lang.name} flag`}
-                        width={20}
-                        height={15}
-                        className="rounded-sm object-cover"
-                      />
+                      <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                        <Image
+                          src={`https://flagcdn.com/w40/${lang.countryCode}.png`}
+                          alt={`${lang.name} flag`}
+                          fill
+                          sizes="24px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </span>
                       {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
                     </Link>
                   ))}
@@ -153,7 +160,7 @@ export default function Navbar() {
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <svg className="w-5 h-5 text-[#FF0000]" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
               </svg>
               {t("nav.youtube")}

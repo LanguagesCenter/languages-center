@@ -27,6 +27,7 @@ export default async function LessonPage(
       languageName={data.language.name}
       lesson={data.lesson}
       exercises={data.exercises}
+      sectionId={data.course.id}
     />
   );
 }

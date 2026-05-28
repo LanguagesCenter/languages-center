@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { DbExercise, DbLesson } from "@/lib/learn";
 import { SPEECH_LANG_CODES } from "@/lib/speech";
 import { completeLesson } from "@/lib/learn-actions";
@@ -11,6 +12,7 @@ interface Props {
   languageName: string;
   lesson: DbLesson;
   exercises: DbExercise[];
+  sectionId: number;
 }
 
 const ENCOURAGEMENTS_RIGHT = ["Nice!", "Great job!", "You're on fire!", "Brilliant!"];
@@ -38,18 +40,54 @@ function normalize(str: string): string {
     .trim();
 }
 
-// ---------------- TTS helper ----------------
-function speak(text: string, lang: string) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  try {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
-  } catch {
-    /* ignore */
-  }
+// ---------------- TTS hook ----------------
+// Tracks whether speechSynthesis is currently speaking so the UI can flip
+// play/pause icons accordingly.
+function useTts(text: string, lang: string) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const supported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
+
+  const play = () => {
+    if (!supported) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      utterance.rate = 0.9;
+      utterance.onstart = () => setIsPlaying(true);
+      utterance.onend = () => setIsPlaying(false);
+      utterance.onerror = () => setIsPlaying(false);
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      setIsPlaying(false);
+    }
+  };
+
+  const stop = () => {
+    if (!supported) return;
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      /* ignore */
+    }
+    setIsPlaying(false);
+  };
+
+  // Cancel any pending speech when the consumer unmounts.
+  useEffect(() => {
+    return () => {
+      if (supported) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch {
+          /* ignore */
+        }
+      }
+    };
+  }, [supported]);
+
+  return { isPlaying, play, stop, supported };
 }
 
 // ---------------- Speech recognition type shim ----------------
@@ -295,12 +333,14 @@ function ListeningExercise({
     () => shuffle([exercise.correct_answer, ...exercise.wrong_answers].filter(Boolean)),
     [exercise.correct_answer, exercise.wrong_answers],
   );
-  const hasTts =
-    typeof window !== "undefined" && "speechSynthesis" in window;
+  const { isPlaying, play, stop, supported: hasTts } = useTts(
+    exercise.correct_answer,
+    speechLang,
+  );
 
   // Auto-play once on mount when supported
   useEffect(() => {
-    if (hasTts) speak(exercise.correct_answer, speechLang);
+    if (hasTts) play();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -309,14 +349,20 @@ function ListeningExercise({
       <div className="rounded-2xl border-2 border-teal/30 bg-teal-light/50 p-6 flex items-center gap-4">
         <button
           type="button"
-          onClick={() => speak(exercise.correct_answer, speechLang)}
+          onClick={() => (isPlaying ? stop() : play())}
           disabled={!hasTts}
           className="flex-shrink-0 w-14 h-14 rounded-full bg-teal text-white flex items-center justify-center shadow-md shadow-teal/30 hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Play audio"
+          aria-label={isPlaying ? "Pause audio" : "Play audio"}
         >
-          <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
+          {isPlaying ? (
+            <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
+            </svg>
+          ) : (
+            <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-teal-dark mb-1">
@@ -324,7 +370,9 @@ function ListeningExercise({
           </p>
           <p className="text-sm text-navy/70">
             {hasTts
-              ? "Tap play to hear the word again, then choose what you heard."
+              ? isPlaying
+                ? "Playing… tap to pause."
+                : "Tap play to hear the word again, then choose what you heard."
               : "Your browser does not support audio playback for this exercise."}
           </p>
         </div>
@@ -496,7 +544,9 @@ export default function LessonClient({
   languageName,
   lesson,
   exercises,
+  sectionId,
 }: Props) {
+  const router = useRouter();
   const speechLang = SPEECH_LANG_CODES[languageSlug] ?? "en-US";
   const [pending, startTransition] = useTransition();
   const [step, setStep] = useState(0);
@@ -507,7 +557,23 @@ export default function LessonClient({
     xp_earned: number;
     already_completed: boolean;
     current_streak?: number;
+    saved: boolean;
+    error?: string;
   } | null>(null);
+
+  const sectionUrl = `/learn/${languageSlug}/sections/${sectionId}`;
+
+  // Auto-redirect back to the section page a couple of seconds after the
+  // completion screen appears, so the user is never stranded if they
+  // don't tap the button.
+  useEffect(() => {
+    if (!completion) return;
+    const t = setTimeout(() => {
+      router.push(sectionUrl);
+      router.refresh();
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [completion, router, sectionUrl]);
 
   // Stop any in-flight TTS when navigating between exercises
   useEffect(() => {
@@ -572,12 +638,23 @@ export default function LessonClient({
       return;
     }
     startTransition(async () => {
-      const result = await completeLesson(lesson.id, languageSlug);
-      if (result.ok) {
+      try {
+        const result = await completeLesson(lesson.id, languageSlug);
+        // Always set completion so the user is never stranded — even if the
+        // save failed, we show a brief message and auto-redirect.
         setCompletion({
-          xp_earned: result.xp_earned,
-          already_completed: result.already_completed,
-          current_streak: result.current_streak,
+          xp_earned: result.ok ? result.xp_earned : 0,
+          already_completed: result.ok ? result.already_completed : false,
+          current_streak: result.ok ? result.current_streak : undefined,
+          saved: result.ok,
+          error: result.ok ? undefined : (result.error ?? "Could not save progress"),
+        });
+      } catch (err) {
+        setCompletion({
+          xp_earned: 0,
+          already_completed: false,
+          saved: false,
+          error: err instanceof Error ? err.message : "Unexpected error",
         });
       }
     });
@@ -593,11 +670,19 @@ export default function LessonClient({
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-navy mb-2">Lesson complete!</h1>
-          <p className="text-sm text-navy/60 mb-8">
+          <p className="text-sm text-navy/60 mb-6">
             {completion.already_completed
               ? "You've already mastered this lesson — practice never hurts."
               : `Great work on ${lesson.title} in ${languageName}.`}
           </p>
+
+          {!completion.saved && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-4">
+              We couldn&apos;t save your progress this time
+              {completion.error ? `: ${completion.error}` : ""}. You can keep going — the
+              lesson will retry on your next attempt.
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3 mb-8">
             <div className="bg-teal-light rounded-2xl p-4">
@@ -618,12 +703,13 @@ export default function LessonClient({
             </div>
           </div>
 
+          <p className="text-xs text-navy/40 mb-3">Taking you back to the section…</p>
           <div className="flex flex-col gap-2">
             <Link
-              href={`/learn/${languageSlug}`}
+              href={sectionUrl}
               className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
             >
-              Continue learning
+              Back to the section
             </Link>
             <Link
               href="/dashboard"

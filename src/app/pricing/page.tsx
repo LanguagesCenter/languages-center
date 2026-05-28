@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { useI18n } from "@/components/I18nProvider";
+import HomeButton from "@/components/HomeButton";
 import type { User } from "@supabase/supabase-js";
 
 export default function PricingPage() {
@@ -89,18 +90,30 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="p-6">
-        <Link href="/" className="flex items-center gap-2.5 w-fit">
-          <Image
-            src="/Logo fianl.jpg"
-            alt="Languages Center logo"
-            width={36}
-            height={36}
-            className="rounded-lg"
-          />
-          <span className="text-lg font-bold text-navy tracking-tight">
-            Languages Center
-          </span>
+      <div className="p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <HomeButton />
+          <Link href="/" className="flex items-center gap-2.5 w-fit">
+            <Image
+              src="/Logo fianl.jpg"
+              alt="Languages Center logo"
+              width={36}
+              height={36}
+              className="rounded-lg"
+            />
+            <span className="text-lg font-bold text-navy tracking-tight">
+              Languages Center
+            </span>
+          </Link>
+        </div>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-teal-dark bg-teal-light rounded-full hover:bg-teal hover:text-white transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          {t("pricing.backHome")}
         </Link>
       </div>
 

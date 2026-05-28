@@ -81,7 +81,7 @@ export default function Footer() {
                 href="https://www.youtube.com/@the-language-center/?sub_confirmation=1"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/40 hover:text-peach transition-colors"
+                className="text-[#FF0000] hover:opacity-80 transition-opacity"
                 aria-label="YouTube"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
