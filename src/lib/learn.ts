@@ -157,35 +157,48 @@ export async function getLanguagesWithProgress(): Promise<LanguageProgress[]> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Join explicitly: languages <- courses <- lessons.
-  // We fetch each table in one query (bypassing Supabase's default 1000-row
-  // cap with an explicit .limit) and join in JS. This avoids the row
-  // truncation that was silently dropping lessons for most languages.
-  const [
-    { data: languages },
-    { data: courses },
-    { data: lessons },
-  ] = await Promise.all([
-    supabase.from("languages").select("*").order("id"),
-    supabase.from("courses").select("id, language_id").limit(100000),
-    supabase.from("lessons").select("id, course_id").limit(100000),
+  // Join explicitly: languages <- courses <- lessons. Each child table is
+  // pulled with pagination because Supabase's server-side row cap (default
+  // 1000 via db.max_rows) overrides client-side .limit().
+  const [languages, courses, lessons] = await Promise.all([
+    fetchAllPaginated<DbLanguage>(supabase, "languages", "*"),
+    fetchAllPaginated<{ id: number; language_id: number }>(
+      supabase,
+      "courses",
+      "id, language_id",
+    ),
+    fetchAllPaginated<{ id: number; course_id: number }>(
+      supabase,
+      "lessons",
+      "id, course_id",
+    ),
   ]);
 
-  if (!languages) return [];
+  console.log(
+    "[getLanguagesWithProgress] fetched %d languages, %d courses, %d lessons",
+    languages.length,
+    courses.length,
+    lessons.length,
+  );
+
+  if (languages.length === 0) return [];
 
   const courseToLanguage = new Map<number, number>();
-  for (const c of (courses ?? []) as Array<{ id: number; language_id: number }>) {
-    courseToLanguage.set(c.id, c.language_id);
-  }
+  for (const c of courses) courseToLanguage.set(c.id, c.language_id);
 
   const lessonsByLanguage = new Map<number, number[]>();
-  for (const l of (lessons ?? []) as Array<{ id: number; course_id: number }>) {
+  for (const l of lessons) {
     const langId = courseToLanguage.get(l.course_id);
     if (langId == null) continue;
     const arr = lessonsByLanguage.get(langId) ?? [];
     arr.push(l.id);
     lessonsByLanguage.set(langId, arr);
   }
+
+  console.log(
+    "[getLanguagesWithProgress] lesson counts per language:",
+    languages.map((l) => `${l.code}=${lessonsByLanguage.get(l.id)?.length ?? 0}`).join(", "),
+  );
 
   let completedLessonIds = new Set<number>();
   let statsByLang = new Map<number, DbUserStats>();
@@ -209,7 +222,7 @@ export async function getLanguagesWithProgress(): Promise<LanguageProgress[]> {
     );
   }
 
-  return (languages as DbLanguage[]).map((lang) => {
+  return languages.map((lang) => {
     const lessonIds = lessonsByLanguage.get(lang.id) ?? [];
     const completed = lessonIds.filter((id) => completedLessonIds.has(id)).length;
     const total = lessonIds.length;
@@ -247,6 +260,32 @@ export async function getLanguageBySlug(slug: string): Promise<DbLanguage | null
   return (data as DbLanguage) ?? null;
 }
 
+// Paginated fetcher. Supabase enforces a server-side row cap (default 1000)
+// that overrides client-side .limit(). Pagination via .range() always works.
+type SbClient = Awaited<ReturnType<typeof createClient>>;
+async function fetchAllPaginated<T>(
+  supabase: SbClient,
+  table: string,
+  columns: string,
+): Promise<T[]> {
+  const out: T[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from(table)
+      .select(columns)
+      .order("id")
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const rows = (data as unknown as T[]) ?? [];
+    out.push(...rows);
+    if (rows.length < pageSize) break;
+    from += pageSize;
+  }
+  return out;
+}
+
 // Lightweight version of getLanguagesWithProgress for pages that just need
 // the catalogue (e.g. the homepage). Returns the rows in id order.
 export async function getAllLanguages(): Promise<DbLanguage[]> {
@@ -272,29 +311,43 @@ export interface LanguageWithLessonCount extends DbLanguage {
 // 3000+ lessons across 26 languages).
 export async function getLanguagesWithLessonCounts(): Promise<LanguageWithLessonCount[]> {
   const supabase = await createClient();
-  const [
-    { data: langs },
-    { data: courses },
-    { data: lessons },
-  ] = await Promise.all([
-    supabase.from("languages").select("*").order("id"),
-    supabase.from("courses").select("id, language_id").limit(100000),
-    supabase.from("lessons").select("id, course_id").limit(100000),
+  const [langs, courses, lessons] = await Promise.all([
+    fetchAllPaginated<DbLanguage>(supabase, "languages", "*"),
+    fetchAllPaginated<{ id: number; language_id: number }>(
+      supabase,
+      "courses",
+      "id, language_id",
+    ),
+    fetchAllPaginated<{ id: number; course_id: number }>(
+      supabase,
+      "lessons",
+      "id, course_id",
+    ),
   ]);
 
+  console.log(
+    "[getLanguagesWithLessonCounts] fetched %d languages, %d courses, %d lessons",
+    langs.length,
+    courses.length,
+    lessons.length,
+  );
+
   const courseToLanguage = new Map<number, number>();
-  for (const c of (courses ?? []) as Array<{ id: number; language_id: number }>) {
-    courseToLanguage.set(c.id, c.language_id);
-  }
+  for (const c of courses) courseToLanguage.set(c.id, c.language_id);
 
   const counts = new Map<number, number>();
-  for (const l of (lessons ?? []) as Array<{ id: number; course_id: number }>) {
+  for (const l of lessons) {
     const langId = courseToLanguage.get(l.course_id);
     if (langId == null) continue;
     counts.set(langId, (counts.get(langId) ?? 0) + 1);
   }
 
-  return ((langs as DbLanguage[]) ?? []).map((lang) => ({
+  console.log(
+    "[getLanguagesWithLessonCounts] counts:",
+    langs.map((l) => `${l.code}=${counts.get(l.id) ?? 0}`).join(", "),
+  );
+
+  return langs.map((lang) => ({
     ...lang,
     lessonsTotal: counts.get(lang.id) ?? 0,
   }));
