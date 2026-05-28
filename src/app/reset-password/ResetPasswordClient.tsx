@@ -7,6 +7,7 @@ import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import HomeButton from "@/components/HomeButton";
+import { useI18n } from "@/components/I18nProvider";
 
 type Phase = "verifying" | "form" | "submitting" | "invalid";
 
@@ -36,6 +37,7 @@ function Shell({ children }: { children: ReactNode }) {
 }
 
 export default function ResetPasswordClient() {
+  const { t } = useI18n();
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -88,11 +90,11 @@ export default function ResetPasswordClient() {
   }, [supabase, router, pathname, searchParams]);
 
   const passwordChecks = [
-    { label: "At least 8 characters", met: password.length >= 8 },
-    { label: "Contains an uppercase letter", met: /[A-Z]/.test(password) },
-    { label: "Contains a lowercase letter", met: /[a-z]/.test(password) },
-    { label: "Contains a number", met: /[0-9]/.test(password) },
-    { label: "Contains a special character (!@#$%^&*)", met: /[!@#$%^&*]/.test(password) },
+    { label: t("pwd.atLeast8"), met: password.length >= 8 },
+    { label: t("pwd.uppercase"), met: /[A-Z]/.test(password) },
+    { label: t("pwd.lowercase"), met: /[a-z]/.test(password) },
+    { label: t("pwd.number"), met: /[0-9]/.test(password) },
+    { label: t("pwd.special"), met: /[!@#$%^&*]/.test(password) },
   ];
   const allChecksMet = passwordChecks.every((c) => c.met);
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
@@ -120,7 +122,7 @@ export default function ResetPasswordClient() {
       <Shell>
         <div className="text-center">
           <div className="w-10 h-10 rounded-full border-2 border-teal/20 border-t-teal animate-spin mx-auto mb-4" />
-          <p className="text-sm text-navy/60">Verifying your reset link…</p>
+          <p className="text-sm text-navy/60">{t("reset.verifying")}</p>
         </div>
       </Shell>
     );
@@ -141,15 +143,15 @@ export default function ResetPasswordClient() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-navy mb-2">Link no longer valid</h1>
+          <h1 className="text-2xl font-bold text-navy mb-2">{t("reset.linkInvalid")}</h1>
           <p className="text-sm text-navy/60 mb-6">
-            This password reset link is invalid or has expired. Request a new one to continue.
+            {t("reset.linkInvalidDesc")}
           </p>
           <Link
             href="/forgot-password"
             className="inline-block px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
           >
-            Request a new link
+            {t("reset.requestNew")}
           </Link>
         </div>
       </Shell>
@@ -159,10 +161,10 @@ export default function ResetPasswordClient() {
   return (
     <Shell>
       <h1 className="text-2xl font-bold text-navy text-center mb-2">
-        Set a new password
+        {t("reset.setNewPassword")}
       </h1>
       <p className="text-sm text-navy/50 text-center mb-8">
-        Choose a strong password to finish resetting your account.
+        {t("reset.chooseStrong")}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -171,7 +173,7 @@ export default function ResetPasswordClient() {
             htmlFor="password"
             className="block text-sm font-medium text-navy/70 mb-1.5"
           >
-            New password
+            {t("reset.newPassword")}
           </label>
           <div className="relative">
             <input
@@ -183,7 +185,7 @@ export default function ResetPasswordClient() {
               minLength={8}
               autoComplete="new-password"
               className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-border bg-white text-navy text-sm placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal transition-colors"
-              placeholder="At least 8 characters"
+              placeholder={t("reset.placeholderPwd")}
             />
             <button
               type="button"
@@ -231,7 +233,7 @@ export default function ResetPasswordClient() {
             htmlFor="confirm-password"
             className="block text-sm font-medium text-navy/70 mb-1.5"
           >
-            Confirm password
+            {t("reset.confirmPassword")}
           </label>
           <input
             id="confirm-password"
@@ -242,13 +244,13 @@ export default function ResetPasswordClient() {
             minLength={8}
             autoComplete="new-password"
             className="w-full px-3.5 py-2.5 rounded-xl border border-border bg-white text-navy text-sm placeholder:text-navy/30 focus:outline-none focus:ring-2 focus:ring-teal/30 focus:border-teal transition-colors"
-            placeholder="Re-enter your password"
+            placeholder={t("reset.placeholderConfirm")}
           />
           {confirmPassword.length > 0 && !passwordsMatch && (
-            <p className="mt-2 text-xs text-red-600">Passwords don&apos;t match yet.</p>
+            <p className="mt-2 text-xs text-red-600">{t("reset.passwordsNoMatch")}</p>
           )}
           {confirmPassword.length > 0 && passwordsMatch && (
-            <p className="mt-2 text-xs text-teal-dark">Passwords match.</p>
+            <p className="mt-2 text-xs text-teal-dark">{t("reset.passwordsMatch")}</p>
           )}
         </div>
 
@@ -263,7 +265,7 @@ export default function ResetPasswordClient() {
           disabled={phase === "submitting" || !canSubmit}
           className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {phase === "submitting" ? "Updating…" : "Reset password"}
+          {phase === "submitting" ? t("reset.updating") : t("reset.button")}
         </button>
       </form>
     </Shell>

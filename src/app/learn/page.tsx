@@ -11,6 +11,7 @@ import {
   type LanguageProgress,
 } from "@/lib/learn";
 import { FLAG_CODES } from "@/lib/flag-codes";
+import { getServerT } from "@/lib/i18n-server";
 
 export const metadata = {
   title: "Learn — Languages Center",
@@ -27,7 +28,15 @@ function ProgressBar({ pct }: { pct: number }) {
   );
 }
 
-function LanguageProgressCard({ entry }: { entry: LanguageProgress }) {
+function LanguageProgressCard({
+  entry,
+  notStartedLabel,
+  lessonsLabel,
+}: {
+  entry: LanguageProgress;
+  notStartedLabel: string;
+  lessonsLabel: string;
+}) {
   const code = FLAG_CODES[entry.language.code] ?? entry.language.code;
   return (
     <Link
@@ -47,7 +56,7 @@ function LanguageProgressCard({ entry }: { entry: LanguageProgress }) {
             {entry.stats.total_xp} XP
           </span>
         ) : (
-          <span className="text-xs text-navy/40">Not started</span>
+          <span className="text-xs text-navy/40">{notStartedLabel}</span>
         )}
       </div>
       <h3 className="text-lg font-semibold text-navy mb-3 group-hover:text-teal transition-colors">
@@ -57,7 +66,7 @@ function LanguageProgressCard({ entry }: { entry: LanguageProgress }) {
         <ProgressBar pct={entry.progressPct} />
         <div className="flex items-center justify-between text-xs text-navy/50">
           <span>
-            {entry.completedLessons} / {entry.totalLessons} lessons
+            {entry.completedLessons} / {entry.totalLessons} {lessonsLabel}
           </span>
           <span className="font-medium text-navy/70">{entry.progressPct}%</span>
         </div>
@@ -75,6 +84,7 @@ export default async function LearnPage() {
     redirect("/login");
   }
 
+  const t = await getServerT();
   const [progress, profile] = await Promise.all([
     getLanguagesWithProgress(),
     getUserProfile(),
@@ -91,10 +101,10 @@ export default async function LearnPage() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight">
-                Keep learning
+                {t("learn.keepLearning")}
               </h1>
               <p className="text-sm text-navy/60 mt-1.5">
-                Pick a language and continue where you left off.
+                {t("learn.pickLang")}
               </p>
             </div>
             <div className="flex items-center gap-6 bg-white border border-border rounded-2xl px-5 py-4 shadow-sm">
@@ -104,7 +114,7 @@ export default async function LearnPage() {
                 <span className="text-lg sm:text-2xl font-bold text-navy">
                   {totalXp.toLocaleString()}
                 </span>
-                <span className="text-xs text-navy/50">total XP</span>
+                <span className="text-xs text-navy/50">{t("learn.totalXp")}</span>
               </div>
             </div>
           </div>
@@ -113,7 +123,12 @@ export default async function LearnPage() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {progress.map((entry) => (
-              <LanguageProgressCard key={entry.language.id} entry={entry} />
+              <LanguageProgressCard
+                key={entry.language.id}
+                entry={entry}
+                notStartedLabel={t("learn.notStarted")}
+                lessonsLabel={t("learn.lessons")}
+              />
             ))}
           </div>
         </section>

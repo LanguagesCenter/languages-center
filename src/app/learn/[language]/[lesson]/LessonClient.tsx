@@ -155,7 +155,7 @@ function MultipleChoice({
             type="button"
             disabled={disabled}
             onClick={() => onAnswer(opt)}
-            className={`w-full py-4 px-5 rounded-xl border-2 text-left font-medium transition-all ${stateCls}`}
+            className={`w-full py-4 px-5 rounded-xl border-2 text-start font-medium transition-all ${stateCls}`}
           >
             {opt}
           </button>
@@ -394,7 +394,7 @@ function ListeningExercise({
               type="button"
               disabled={disabled}
               onClick={() => onAnswer(opt)}
-              className={`w-full py-4 px-5 rounded-xl border-2 text-left font-medium transition-all ${stateCls}`}
+              className={`w-full py-4 px-5 rounded-xl border-2 text-start font-medium transition-all ${stateCls}`}
             >
               {opt}
             </button>
@@ -757,7 +757,7 @@ export default function LessonClient({
                 Your lesson was completed, but the save to Supabase failed.
               </p>
               {completion.error && (
-                <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-6 text-left">
+                <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-6 text-start">
                   {completion.error}
                 </p>
               )}

@@ -17,6 +17,7 @@ export const metadata = {
 };
 
 import { FLAG_CODES } from "@/lib/flag-codes";
+import { getServerT } from "@/lib/i18n-server";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const t = await getServerT();
   const [progress, profile, weeklyCount] = await Promise.all([
     getLanguagesWithProgress(),
     getUserProfile(),
@@ -52,10 +54,10 @@ export default async function DashboardPage() {
       <main className="flex-1">
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-6">
           <h1 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight">
-            Welcome back
+            {t("dashboard.welcomeBack")}
           </h1>
           <p className="text-sm text-navy/60 mt-1.5">
-            Here&apos;s where you stand across your languages.
+            {t("dashboard.subtitle")}
           </p>
         </section>
 
@@ -64,48 +66,48 @@ export default async function DashboardPage() {
             <div className="bg-white border border-border rounded-2xl p-5">
               <StreakFlame streak={streak} size="lg" />
               <p className="text-xs text-navy/40 mt-3">
-                Longest: <span className="font-semibold text-navy/60">{longest} days</span>
+                {t("dashboard.longest")}: <span className="font-semibold text-navy/60">{longest} {t("dashboard.days")}</span>
               </p>
             </div>
             <div className="bg-white border border-border rounded-2xl p-5">
               <p className="text-xs font-semibold text-teal-dark uppercase tracking-wide mb-2">
-                Total XP
+                {t("dashboard.totalXp")}
               </p>
               <p className="text-3xl font-bold text-navy">{totalXp.toLocaleString()}</p>
-              <p className="text-xs text-navy/40 mt-1">across all languages</p>
+              <p className="text-xs text-navy/40 mt-1">{t("dashboard.allLangs")}</p>
             </div>
             <div className="bg-white border border-border rounded-2xl p-5">
               <p className="text-xs font-semibold text-teal-dark uppercase tracking-wide mb-2">
-                This week
+                {t("dashboard.thisWeek")}
               </p>
               <p className="text-3xl font-bold text-navy">{weeklyCount}</p>
-              <p className="text-xs text-navy/40 mt-1">lessons completed</p>
+              <p className="text-xs text-navy/40 mt-1">{t("dashboard.weekLessons")}</p>
             </div>
             <div className="bg-white border border-border rounded-2xl p-5">
               <p className="text-xs font-semibold text-teal-dark uppercase tracking-wide mb-2">
-                Languages
+                {t("dashboard.languages")}
               </p>
               <p className="text-3xl font-bold text-navy">
                 {started.length}
                 <span className="text-sm font-medium text-navy/40"> / {progress.length}</span>
               </p>
-              <p className="text-xs text-navy/40 mt-1">started</p>
+              <p className="text-xs text-navy/40 mt-1">{t("dashboard.started")}</p>
             </div>
           </div>
         </section>
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-          <h2 className="text-xl font-bold text-navy mb-4">Streaks by language</h2>
+          <h2 className="text-xl font-bold text-navy mb-4">{t("dashboard.streaksByLanguage")}</h2>
           {started.length === 0 ? (
             <div className="bg-white border border-border rounded-2xl p-8 text-center">
               <p className="text-sm text-navy/60 mb-4">
-                You haven&apos;t started any languages yet.
+                {t("dashboard.noLanguagesYet")}
               </p>
               <Link
                 href="/learn"
                 className="inline-block px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
               >
-                Browse languages
+                {t("dashboard.browseLanguages")}
               </Link>
             </div>
           ) : (
@@ -127,7 +129,7 @@ export default async function DashboardPage() {
                     <div className="flex-1">
                       <p className="font-semibold text-navy">{language.name}</p>
                       <p className="text-xs text-navy/50">
-                        {stats?.total_xp ?? 0} XP earned
+                        {stats?.total_xp ?? 0} {t("dashboard.xpEarned")}
                       </p>
                     </div>
                     <StreakFlame streak={stats?.current_streak ?? 0} size="sm" />
@@ -139,14 +141,14 @@ export default async function DashboardPage() {
         </section>
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          <h2 className="text-xl font-bold text-navy mb-4">Continue learning</h2>
+          <h2 className="text-xl font-bold text-navy mb-4">{t("dashboard.continueLearning")}</h2>
           {continueTargets.length === 0 ? (
             <p className="text-sm text-navy/50">
-              Start a language from the{" "}
+              {t("dashboard.startLanguage")}{" "}
               <Link href="/learn" className="text-teal font-medium hover:text-teal-dark">
-                Learn page
+                {t("dashboard.learnPage")}
               </Link>{" "}
-              to see your progress here.
+              {t("dashboard.toSeeProgress")}
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -155,7 +157,7 @@ export default async function DashboardPage() {
                 const href = lessonId
                   ? `/learn/${entry.language.code}/${lessonId}`
                   : `/learn/${entry.language.code}`;
-                const cta = lessonId ? "Continue" : "Review course";
+                const cta = lessonId ? t("dashboard.continue") : t("dashboard.reviewCourse");
                 return (
                   <div
                     key={entry.language.id}
@@ -172,7 +174,7 @@ export default async function DashboardPage() {
                       <div>
                         <p className="font-semibold text-navy">{entry.language.name}</p>
                         <p className="text-xs text-navy/50">
-                          {entry.completedLessons} / {entry.totalLessons} lessons
+                          {entry.completedLessons} / {entry.totalLessons} {t("learn.lessons")}
                         </p>
                       </div>
                     </div>

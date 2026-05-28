@@ -23,6 +23,7 @@ import {
   type DbPodcast,
   type DbVideo,
 } from "@/lib/learn";
+import { getServerT } from "@/lib/i18n-server";
 
 export function generateStaticParams() {
   return getAllOverviewSlugs().map((language) => ({ language }));
@@ -241,6 +242,7 @@ export default async function LanguageOverviewPage(
   if (!overview) notFound();
 
   const supabase = await createClient();
+  const t = await getServerT();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -278,7 +280,7 @@ export default async function LanguageOverviewPage(
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
-              All languages
+              {t("overview.allLanguages")}
             </Link>
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-8 items-center">
               <div>
@@ -298,8 +300,8 @@ export default async function LanguageOverviewPage(
                   <span className="italic">{overview.nativeName}</span> · {overview.speakers}
                 </p>
                 <div className="flex gap-6 mb-8">
-                  <DifficultyBadge label="Grammar" level={overview.grammar} />
-                  <DifficultyBadge label="Pronunciation" level={overview.pronunciation} />
+                  <DifficultyBadge label={t("card.grammar")} level={overview.grammar} />
+                  <DifficultyBadge label={t("card.pronunciation")} level={overview.pronunciation} />
                 </div>
                 <StartLearningCTA overview={overview} isLoggedIn={!!user} />
               </div>
@@ -312,19 +314,19 @@ export default async function LanguageOverviewPage(
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             <div className="lg:col-span-2">
               <h2 className="text-2xl font-bold text-navy mb-3">
-                About {overview.name}
+                {t("overview.about", { language: overview.name })}
               </h2>
               <p className="text-navy/70 leading-relaxed mb-6">{overview.about}</p>
               <div className="bg-white border border-border rounded-2xl p-5">
                 <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-2">
-                  Where it&apos;s spoken
+                  {t("overview.whereSpoken")}
                 </p>
                 <p className="text-sm text-navy/70 leading-relaxed">{overview.regions}</p>
               </div>
             </div>
             <div className="bg-white border border-border rounded-2xl p-6">
               <h3 className="text-sm font-semibold text-teal-dark uppercase tracking-wider mb-4">
-                Interesting facts
+                {t("overview.interestingFacts")}
               </h3>
               <ul className="space-y-4">
                 {overview.facts.map((fact, idx) => (
@@ -344,10 +346,10 @@ export default async function LanguageOverviewPage(
         <section className="bg-white border-y border-border">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
             <h2 className="text-2xl font-bold text-navy mb-2">
-              Why learn {overview.name}?
+              {t("overview.whyLearn", { language: overview.name })}
             </h2>
             <p className="text-navy/60 mb-8">
-              Three reasons to make {overview.name} your next language.
+              {t("overview.threeReasons", { language: overview.name })}
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               {overview.whyLearn.map((reason, idx) => (
@@ -370,9 +372,9 @@ export default async function LanguageOverviewPage(
 
         {/* CEFR Learning Path */}
         <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-          <h2 className="text-2xl font-bold text-navy mb-2">Your learning path</h2>
+          <h2 className="text-2xl font-bold text-navy mb-2">{t("overview.learningPath")}</h2>
           <p className="text-navy/60 mb-8">
-            The Languages Center {overview.name} course follows the CEFR scale, from A1 (beginner) to C1 (advanced).
+            {t("overview.cefrPath", { language: overview.name })}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {cefrSummary.map((entry) => (
@@ -394,17 +396,16 @@ export default async function LanguageOverviewPage(
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div className="max-w-xl">
-                <h2 className="text-2xl font-bold text-navy mb-2">Read short articles</h2>
+                <h2 className="text-2xl font-bold text-navy mb-2">{t("overview.readArticlesHeading")}</h2>
                 <p className="text-navy/60 leading-relaxed">
-                  Short reads in {overview.name} at every level — with full English translations side by side. Great for
-                  building reading confidence at your pace.
+                  {t("overview.readArticlesDesc", { language: overview.name })}
                 </p>
               </div>
               <Link
                 href={`/languages/${slug}/articles`}
                 className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors self-start md:self-center whitespace-nowrap"
               >
-                Browse articles
+                {t("overview.browseArticles")}
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
@@ -418,18 +419,18 @@ export default async function LanguageOverviewPage(
           <div className="flex items-end justify-between gap-4 mb-6">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-2xl font-bold text-navy">Podcasts</h2>
+                <h2 className="text-2xl font-bold text-navy">{t("overview.podcasts")}</h2>
                 <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-peach-light text-amber-800 ring-1 ring-peach-dark/40">
-                  Premium
+                  {t("overview.premium")}
                 </span>
               </div>
               <p className="text-sm text-navy/60">
-                Native-speaker audio at every level. Listen anywhere.
+                {t("overview.podcastsDesc")}
               </p>
             </div>
           </div>
           {podcasts.length === 0 ? (
-            <p className="text-sm text-navy/50">Podcasts coming soon.</p>
+            <p className="text-sm text-navy/50">{t("overview.podcastsSoon")}</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {podcasts.slice(0, 3).map((p) => (
@@ -445,18 +446,18 @@ export default async function LanguageOverviewPage(
             <div className="flex items-end justify-between gap-4 mb-6">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-2xl font-bold text-navy">Videos</h2>
+                  <h2 className="text-2xl font-bold text-navy">{t("overview.videos")}</h2>
                   <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider bg-peach-light text-amber-800 ring-1 ring-peach-dark/40">
-                    Premium
+                    {t("overview.premium")}
                   </span>
                 </div>
                 <p className="text-sm text-navy/60">
-                  Animated lessons, real-life scenes and documentary clips.
+                  {t("overview.videosDesc")}
                 </p>
               </div>
             </div>
             {videos.length === 0 ? (
-              <p className="text-sm text-navy/50">Videos coming soon.</p>
+              <p className="text-sm text-navy/50">{t("overview.videosSoon")}</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {videos.slice(0, 3).map((v) => (
@@ -469,9 +470,9 @@ export default async function LanguageOverviewPage(
 
         {/* Related */}
         <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-          <h2 className="text-2xl font-bold text-navy mb-2">Related languages</h2>
+          <h2 className="text-2xl font-bold text-navy mb-2">{t("overview.relatedLanguages")}</h2>
           <p className="text-navy/60 mb-8">
-            If {overview.name} interests you, you might also enjoy these.
+            {t("overview.relatedDesc", { language: overview.name })}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {overview.related.map((slug) => (

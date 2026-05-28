@@ -27,6 +27,15 @@ interface I18nContextValue {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 const STORAGE_KEY = "lc-ui-lang";
+const COOKIE_KEY = "lc-ui-lang";
+
+function writeCookie(value: string) {
+  try {
+    document.cookie = `${COOKIE_KEY}=${encodeURIComponent(value)};path=/;max-age=${60 * 60 * 24 * 365};samesite=lax`;
+  } catch {
+    /* ignore */
+  }
+}
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<UiLang>(DEFAULT_UI_LANG);
@@ -53,6 +62,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       next = DEFAULT_UI_LANG;
     }
     setLangState(next);
+    writeCookie(next);
     setReady(true);
   }, []);
 
@@ -75,6 +85,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     } catch {
       /* ignore */
     }
+    writeCookie(next);
   }, []);
 
   const value = useMemo<I18nContextValue>(

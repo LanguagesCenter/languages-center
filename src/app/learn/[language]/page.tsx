@@ -178,7 +178,7 @@ function LevelAccordion({
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="text-[11px] text-navy/50 mt-1.5 text-right">
+            <p className="text-[11px] text-navy/50 mt-1.5 text-end">
               {group.lessonsCompleted} / {group.lessonsTotal} · {pct}%
             </p>
           </div>

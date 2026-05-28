@@ -76,7 +76,7 @@ export default async function ArticleDetailPage(
                 ))}
               </div>
             </div>
-            <div className="md:border-l md:border-border md:pl-8 lg:pl-10">
+            <div className="md:border-s md:border-border md:ps-8 lg:ps-10">
               <ArticleTranslation paragraphs={englishParas} />
             </div>
           </div>
