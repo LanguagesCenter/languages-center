@@ -157,28 +157,33 @@ export async function getLanguagesWithProgress(): Promise<LanguageProgress[]> {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: languages } = await supabase
-    .from("languages")
-    .select("*")
-    .order("id");
+  // Join explicitly: languages <- courses <- lessons.
+  // We fetch each table in one query (bypassing Supabase's default 1000-row
+  // cap with an explicit .limit) and join in JS. This avoids the row
+  // truncation that was silently dropping lessons for most languages.
+  const [
+    { data: languages },
+    { data: courses },
+    { data: lessons },
+  ] = await Promise.all([
+    supabase.from("languages").select("*").order("id"),
+    supabase.from("courses").select("id, language_id").limit(100000),
+    supabase.from("lessons").select("id, course_id").limit(100000),
+  ]);
 
   if (!languages) return [];
 
-  const { data: lessonCounts } = await supabase
-    .from("lessons")
-    .select("id, course_id, courses!inner(language_id)");
+  const courseToLanguage = new Map<number, number>();
+  for (const c of (courses ?? []) as Array<{ id: number; language_id: number }>) {
+    courseToLanguage.set(c.id, c.language_id);
+  }
 
   const lessonsByLanguage = new Map<number, number[]>();
-  for (const row of (lessonCounts ?? []) as Array<{
-    id: number;
-    courses: { language_id: number } | { language_id: number }[];
-  }>) {
-    const langId = Array.isArray(row.courses)
-      ? row.courses[0]?.language_id
-      : row.courses?.language_id;
+  for (const l of (lessons ?? []) as Array<{ id: number; course_id: number }>) {
+    const langId = courseToLanguage.get(l.course_id);
     if (langId == null) continue;
     const arr = lessonsByLanguage.get(langId) ?? [];
-    arr.push(row.id);
+    arr.push(l.id);
     lessonsByLanguage.set(langId, arr);
   }
 
@@ -260,21 +265,31 @@ export interface LanguageWithLessonCount extends DbLanguage {
 // Languages plus the real lesson count per language. No user-specific data.
 // Used by the homepage so each card can show "X lessons" without forcing
 // the visitor through auth.
+//
+// Joins languages <- courses <- lessons explicitly and counts in JS.
+// Each table is fetched with an explicit .limit so Supabase's default
+// 1000-row cap doesn't truncate lessons (a real risk now that we have
+// 3000+ lessons across 26 languages).
 export async function getLanguagesWithLessonCounts(): Promise<LanguageWithLessonCount[]> {
   const supabase = await createClient();
-  const [{ data: langs }, { data: lessons }] = await Promise.all([
+  const [
+    { data: langs },
+    { data: courses },
+    { data: lessons },
+  ] = await Promise.all([
     supabase.from("languages").select("*").order("id"),
-    supabase.from("lessons").select("id, courses!inner(language_id)"),
+    supabase.from("courses").select("id, language_id").limit(100000),
+    supabase.from("lessons").select("id, course_id").limit(100000),
   ]);
 
+  const courseToLanguage = new Map<number, number>();
+  for (const c of (courses ?? []) as Array<{ id: number; language_id: number }>) {
+    courseToLanguage.set(c.id, c.language_id);
+  }
+
   const counts = new Map<number, number>();
-  for (const row of (lessons ?? []) as Array<{
-    id: number;
-    courses: { language_id: number } | { language_id: number }[];
-  }>) {
-    const langId = Array.isArray(row.courses)
-      ? row.courses[0]?.language_id
-      : row.courses?.language_id;
+  for (const l of (lessons ?? []) as Array<{ id: number; course_id: number }>) {
+    const langId = courseToLanguage.get(l.course_id);
     if (langId == null) continue;
     counts.set(langId, (counts.get(langId) ?? 0) + 1);
   }
