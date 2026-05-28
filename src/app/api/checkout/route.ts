@@ -15,8 +15,14 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const body = (await request.json().catch(() => ({}))) as { plan?: Plan };
+    const body = (await request.json().catch(() => ({}))) as {
+      plan?: Plan;
+      withTrial?: boolean;
+    };
     const plan: Plan = body.plan === "yearly" ? "yearly" : "monthly";
+    // Trial is opt-in; the request must explicitly ask for it. Anything
+    // else (missing, false, "false") starts billing immediately.
+    const withTrial = body.withTrial === true;
 
     const priceId =
       plan === "yearly"
@@ -34,12 +40,12 @@ export async function POST(request: NextRequest) {
 
     const session = await stripe.checkout.sessions.create({
       customer_email: user.email,
-      metadata: { supabase_user_id: user.id, plan },
+      metadata: { supabase_user_id: user.id, plan, with_trial: String(withTrial) },
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
       subscription_data: {
-        trial_period_days: 7,
-        metadata: { supabase_user_id: user.id, plan },
+        ...(withTrial ? { trial_period_days: 7 } : {}),
+        metadata: { supabase_user_id: user.id, plan, with_trial: String(withTrial) },
       },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing`,

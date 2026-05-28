@@ -31,7 +31,7 @@ export default function PricingPage() {
     });
   }, [supabase.auth]);
 
-  async function handleSubscribe() {
+  async function handleSubscribe(withTrial: boolean) {
     if (!user) {
       router.push("/login");
       return;
@@ -44,7 +44,7 @@ export default function PricingPage() {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: billing }),
+        body: JSON.stringify({ plan: billing, withTrial }),
       });
       const data = await res.json();
 
@@ -230,18 +230,25 @@ export default function PricingPage() {
                 {t("pricing.cta.manage")}
               </div>
             ) : (
-              <>
+              <div className="space-y-2">
                 <button
-                  onClick={handleSubscribe}
+                  onClick={() => handleSubscribe(true)}
                   disabled={loading}
                   className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? t("login.loading") : t("pricing.cta.startTrial")}
                 </button>
-                <p className="text-[11px] text-navy/40 text-center mt-2">
+                <button
+                  onClick={() => handleSubscribe(false)}
+                  disabled={loading}
+                  className="w-full py-2.5 text-sm font-semibold text-teal-dark bg-white border border-teal rounded-xl hover:bg-teal-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {t("pricing.cta.startNow")}
+                </button>
+                <p className="text-[11px] text-navy/40 text-center pt-1">
                   {t("pricing.trial.cancelAnytime")}
                 </p>
-              </>
+              </div>
             )}
           </div>
         </div>
