@@ -9,51 +9,20 @@ import { useI18n } from "@/components/I18nProvider";
 import HomeButton from "@/components/HomeButton";
 import type { User } from "@supabase/supabase-js";
 
+type Billing = "monthly" | "yearly";
+
 export default function PricingPage() {
   const { t } = useI18n();
   const [user, setUser] = useState<User | null>(null);
   const [isPremium, setIsPremium] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [billing, setBilling] = useState<Billing>("yearly");
   const router = useRouter();
   const supabase = createClient();
 
-  const plans = [
-    {
-      name: t("pricing.free"),
-      price: "$0",
-      period: t("pricing.forever"),
-      description: t("pricing.freeDesc"),
-      features: [
-        t("pricing.feat.overview"),
-        t("pricing.feat.ratings"),
-        t("pricing.feat.community"),
-      ],
-      excluded: [
-        t("pricing.feat.fullLessons"),
-        t("pricing.feat.audio"),
-        t("pricing.feat.progress"),
-        t("pricing.feat.offline"),
-      ],
-      highlighted: false,
-    },
-    {
-      name: t("pricing.premium"),
-      price: "$9.99",
-      period: t("pricing.month"),
-      description: t("pricing.premiumDesc"),
-      features: [
-        t("pricing.feat.everythingFree"),
-        t("pricing.feat.fullLessons"),
-        t("pricing.feat.audio"),
-        t("pricing.feat.progress"),
-        t("pricing.feat.offline"),
-        t("pricing.feat.priority"),
-      ],
-      excluded: [],
-      highlighted: true,
-    },
-  ];
+  const premiumPrice = billing === "yearly" ? "$7.99" : "$9.99";
+  const premiumPeriod = t("pricing.month");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -72,7 +41,11 @@ export default function PricingPage() {
     setError(null);
 
     try {
-      const res = await fetch("/api/checkout", { method: "POST" });
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: billing }),
+      });
       const data = await res.json();
 
       if (data.url) {
@@ -86,6 +59,26 @@ export default function PricingPage() {
       setLoading(false);
     }
   }
+
+  const freeFeatures = [
+    t("pricing.feat.overview"),
+    t("pricing.feat.ratings"),
+    t("pricing.feat.community"),
+  ];
+  const freeExcluded = [
+    t("pricing.feat.fullLessons"),
+    t("pricing.feat.audio"),
+    t("pricing.feat.progress"),
+    t("pricing.feat.offline"),
+  ];
+  const premiumFeatures = [
+    t("pricing.feat.everythingFree"),
+    t("pricing.feat.fullLessons"),
+    t("pricing.feat.audio"),
+    t("pricing.feat.progress"),
+    t("pricing.feat.offline"),
+    t("pricing.feat.priority"),
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -122,9 +115,44 @@ export default function PricingPage() {
         <h1 className="text-3xl sm:text-4xl font-extrabold text-navy text-center tracking-tight mb-3">
           {t("pricing.title")}
         </h1>
-        <p className="text-navy/50 text-center mb-12 max-w-md">
+        <p className="text-navy/50 text-center mb-8 max-w-md">
           {t("pricing.subtitle")}
         </p>
+
+        {/* Monthly / Yearly toggle */}
+        <div className="inline-flex items-center bg-white border border-border rounded-full p-1 mb-10 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setBilling("monthly")}
+            className={`px-5 py-2 text-sm font-semibold rounded-full transition-colors ${
+              billing === "monthly"
+                ? "bg-teal text-white"
+                : "text-navy/60 hover:text-navy"
+            }`}
+          >
+            {t("pricing.toggle.monthly")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setBilling("yearly")}
+            className={`relative px-5 py-2 text-sm font-semibold rounded-full transition-colors ${
+              billing === "yearly"
+                ? "bg-teal text-white"
+                : "text-navy/60 hover:text-navy"
+            }`}
+          >
+            {t("pricing.toggle.yearly")}
+            <span
+              className={`ms-2 inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                billing === "yearly"
+                  ? "bg-white text-teal-dark"
+                  : "bg-peach-light text-peach-dark"
+              }`}
+            >
+              {t("pricing.save20")}
+            </span>
+          </button>
+        </div>
 
         {error && (
           <div className="w-full max-w-2xl mb-6 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-center">
@@ -133,72 +161,89 @@ export default function PricingPage() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
-          {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative rounded-2xl p-8 border ${
-                plan.highlighted
-                  ? "border-teal bg-white shadow-lg"
-                  : "border-border bg-white"
-              }`}
-            >
-              {plan.highlighted && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-teal text-white text-xs font-semibold rounded-full">
-                  Most popular
-                </div>
-              )}
+          {/* Free plan */}
+          <div className="relative rounded-2xl p-8 border border-border bg-white">
+            <h2 className="text-lg font-bold text-navy mb-1">{t("pricing.free")}</h2>
+            <p className="text-sm text-navy/50 mb-5">{t("pricing.freeDesc")}</p>
 
-              <h2 className="text-lg font-bold text-navy mb-1">{plan.name}</h2>
-              <p className="text-sm text-navy/50 mb-5">{plan.description}</p>
-
-              <div className="flex items-baseline gap-1 mb-6">
-                <span className="text-4xl font-extrabold text-navy">
-                  {plan.price}
-                </span>
-                <span className="text-sm text-navy/40">{plan.period}</span>
-              </div>
-
-              {/* Features */}
-              <ul className="space-y-2.5 mb-8">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2.5 text-sm text-navy/70">
-                    <svg className="w-4 h-4 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    {feature}
-                  </li>
-                ))}
-                {plan.excluded.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2.5 text-sm text-navy/30">
-                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-
-              {plan.highlighted ? (
-                isPremium ? (
-                  <div className="w-full py-2.5 text-sm font-semibold text-center text-teal bg-teal-light rounded-xl">
-                    {t("pricing.cta.manage")}
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleSubscribe}
-                    disabled={loading}
-                    className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? t("login.loading") : t("pricing.cta.subscribe")}
-                  </button>
-                )
-              ) : (
-                <div className="w-full py-2.5 text-sm font-semibold text-center text-navy/40 bg-background rounded-xl border border-border">
-                  {t("pricing.cta.current")}
-                </div>
-              )}
+            <div className="flex items-baseline gap-1 mb-6">
+              <span className="text-4xl font-extrabold text-navy">$0</span>
+              <span className="text-sm text-navy/40">{t("pricing.forever")}</span>
             </div>
-          ))}
+
+            <ul className="space-y-2.5 mb-8">
+              {freeFeatures.map((feature) => (
+                <li key={feature} className="flex items-center gap-2.5 text-sm text-navy/70">
+                  <svg className="w-4 h-4 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  {feature}
+                </li>
+              ))}
+              {freeExcluded.map((feature) => (
+                <li key={feature} className="flex items-center gap-2.5 text-sm text-navy/30">
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+
+            <div className="w-full py-2.5 text-sm font-semibold text-center text-navy/40 bg-background rounded-xl border border-border">
+              {t("pricing.cta.current")}
+            </div>
+          </div>
+
+          {/* Premium plan */}
+          <div className="relative rounded-2xl p-8 border border-teal bg-white shadow-lg">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-teal text-white text-xs font-semibold rounded-full">
+              {t("pricing.mostPopular")}
+            </div>
+
+            <h2 className="text-lg font-bold text-navy mb-1">{t("pricing.premium")}</h2>
+            <p className="text-sm text-navy/50 mb-5">{t("pricing.premiumDesc")}</p>
+
+            <div className="flex items-baseline gap-1 mb-1">
+              <span className="text-4xl font-extrabold text-navy">{premiumPrice}</span>
+              <span className="text-sm text-navy/40">{premiumPeriod}</span>
+            </div>
+            <p className="text-xs text-navy/50 mb-6 min-h-[2.5rem]">
+              {billing === "yearly"
+                ? t("pricing.yearlyBilling")
+                : t("pricing.monthlyBilling")}
+            </p>
+
+            <ul className="space-y-2.5 mb-8">
+              {premiumFeatures.map((feature) => (
+                <li key={feature} className="flex items-center gap-2.5 text-sm text-navy/70">
+                  <svg className="w-4 h-4 text-teal shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                  {feature}
+                </li>
+              ))}
+            </ul>
+
+            {isPremium ? (
+              <div className="w-full py-2.5 text-sm font-semibold text-center text-teal bg-teal-light rounded-xl">
+                {t("pricing.cta.manage")}
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleSubscribe}
+                  disabled={loading}
+                  className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? t("login.loading") : t("pricing.cta.startTrial")}
+                </button>
+                <p className="text-[11px] text-navy/40 text-center mt-2">
+                  {t("pricing.trial.cancelAnytime")}
+                </p>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>

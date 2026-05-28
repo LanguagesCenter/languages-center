@@ -18,22 +18,45 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const session = await stripe.checkout.sessions.retrieve(session_id);
+  const session = await stripe.checkout.sessions.retrieve(session_id, {
+    expand: ["subscription"],
+  });
 
-  if (
-    session.payment_status !== "paid" ||
-    session.metadata?.supabase_user_id !== user.id
-  ) {
+  if (session.metadata?.supabase_user_id !== user.id) {
+    return Response.json({ error: "Session does not belong to user" }, { status: 400 });
+  }
+
+  // During a 7-day trial the checkout completes with no charge, so
+  // payment_status is "no_payment_required". Accept that as long as the
+  // subscription itself is active or trialing.
+  const subscription =
+    typeof session.subscription === "string"
+      ? null
+      : session.subscription;
+  const validSubscriptionStatus =
+    !subscription ||
+    subscription.status === "trialing" ||
+    subscription.status === "active";
+  const validPaymentStatus =
+    session.payment_status === "paid" ||
+    session.payment_status === "no_payment_required";
+
+  if (!validPaymentStatus || !validSubscriptionStatus) {
     return Response.json({ error: "Payment not verified" }, { status: 400 });
   }
 
   const { error } = await supabase.auth.updateUser({
-    data: { is_premium: true, stripe_customer_id: session.customer },
+    data: {
+      is_premium: true,
+      stripe_customer_id: session.customer,
+      stripe_subscription_id: subscription?.id,
+      subscription_status: subscription?.status ?? "active",
+    },
   });
 
   if (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 
-  return Response.json({ success: true });
+  return Response.json({ success: true, trialing: subscription?.status === "trialing" });
 }

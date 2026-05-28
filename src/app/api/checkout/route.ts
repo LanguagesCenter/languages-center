@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 
+type Plan = "monthly" | "yearly";
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -13,23 +15,32 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    const body = (await request.json().catch(() => ({}))) as { plan?: Plan };
+    const plan: Plan = body.plan === "yearly" ? "yearly" : "monthly";
+
+    const priceId =
+      plan === "yearly"
+        ? process.env.STRIPE_YEARLY_PRICE_ID
+        : process.env.STRIPE_PRICE_ID;
+
+    if (!priceId) {
+      return Response.json(
+        { error: `Missing price ID for ${plan} plan` },
+        { status: 500 },
+      );
+    }
+
     const origin = request.nextUrl.origin;
 
     const session = await stripe.checkout.sessions.create({
       customer_email: user.email,
-      metadata: { supabase_user_id: user.id },
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product: process.env.STRIPE_PRICE_ID!,
-            recurring: { interval: "month" },
-            unit_amount: 999,
-          },
-          quantity: 1,
-        },
-      ],
+      metadata: { supabase_user_id: user.id, plan },
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
+      subscription_data: {
+        trial_period_days: 7,
+        metadata: { supabase_user_id: user.id, plan },
+      },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing`,
     });
