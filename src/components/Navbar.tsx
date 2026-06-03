@@ -120,7 +120,7 @@ export default function Navbar() {
                 </svg>
               </button>
               {open && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white rounded-xl shadow-lg border border-border py-2">
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white rounded-xl shadow-lg border border-border py-2 max-h-[70vh] overflow-y-auto overscroll-contain">
                   {languages.map((lang) => (
                     <Link
                       key={lang.slug}
