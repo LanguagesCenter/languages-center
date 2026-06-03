@@ -48,6 +48,20 @@ export interface DbCourse {
   order_index: number;
 }
 
+export interface LessonVocabItem {
+  word: string;
+  phonetic: string;
+  english: string;
+  example_es: string;
+  example_en: string;
+}
+
+export interface LessonDialogueLine {
+  speaker: string;
+  spanish: string;
+  english: string;
+}
+
 export interface DbLesson {
   id: number;
   course_id: number;
@@ -56,6 +70,10 @@ export interface DbLesson {
   type: LessonType;
   order_index: number;
   xp_reward: number;
+  intro: string | null;
+  vocab_items: LessonVocabItem[] | null;
+  dialogue: LessonDialogueLine[] | null;
+  grammar_note: string | null;
 }
 
 export interface DbExercise {

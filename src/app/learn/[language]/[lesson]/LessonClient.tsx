@@ -539,6 +539,202 @@ function SpeakingExercise({
 
 // ---------------- Main component ----------------
 
+type TeachingPhase = "intro" | "vocab" | "dialogue" | "grammar" | "exercises";
+
+function TeachingCard({
+  languageSlug,
+  speechLang,
+  phase,
+  setPhase,
+  lesson,
+  hasExercises,
+  onStartExercises,
+}: {
+  languageSlug: string;
+  speechLang: string;
+  phase: TeachingPhase;
+  setPhase: (p: TeachingPhase) => void;
+  lesson: DbLesson;
+  hasExercises: boolean;
+  onStartExercises: () => void;
+}) {
+  const hasVocab = (lesson.vocab_items?.length ?? 0) > 0;
+  const hasDialogue = (lesson.dialogue?.length ?? 0) > 0;
+  const hasGrammar = !!lesson.grammar_note?.trim();
+
+  const phasesInOrder: TeachingPhase[] = ["intro"];
+  if (hasVocab) phasesInOrder.push("vocab");
+  if (hasDialogue) phasesInOrder.push("dialogue");
+  if (hasGrammar) phasesInOrder.push("grammar");
+
+  const idx = phasesInOrder.indexOf(phase);
+  const isLastPhase = idx === phasesInOrder.length - 1;
+
+  function next() {
+    if (isLastPhase) {
+      if (hasExercises) onStartExercises();
+      else setPhase("exercises"); // shows the empty-state below
+      return;
+    }
+    setPhase(phasesInOrder[idx + 1]);
+  }
+
+  function speak(text: string) {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = speechLang;
+    u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }
+
+  return (
+    <main className="min-h-screen bg-background px-4 py-10">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex items-center justify-between mb-6 text-xs text-navy/50">
+          <Link href={`/learn/${languageSlug}`} className="hover:text-teal transition-colors">
+            ← Back to course
+          </Link>
+          <span>
+            Step {idx + 1} of {phasesInOrder.length + (hasExercises ? 1 : 0)}
+          </span>
+        </div>
+
+        <div className="bg-white border border-border rounded-2xl p-8 shadow-sm">
+          {phase === "intro" && (
+            <>
+              <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
+                Introduction
+              </p>
+              <h1 className="text-2xl font-bold text-navy mb-4">{lesson.title}</h1>
+              <p className="text-base text-navy/80 leading-relaxed">
+                {lesson.intro ?? lesson.description}
+              </p>
+            </>
+          )}
+
+          {phase === "vocab" && hasVocab && (
+            <>
+              <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
+                Vocabulary
+              </p>
+              <h2 className="text-xl font-bold text-navy mb-5">Learn these words</h2>
+              <div className="space-y-3">
+                {lesson.vocab_items!.map((v, i) => (
+                  <div key={i} className="border border-border rounded-xl p-4">
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                      <div>
+                        <div className="text-2xl font-bold text-navy">{v.word}</div>
+                        <div className="text-xs text-navy/50 mt-0.5">{v.phonetic}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => speak(v.word)}
+                        className="shrink-0 p-2 rounded-full bg-teal-light hover:bg-teal hover:text-white transition-colors text-teal-dark"
+                        aria-label={`Play ${v.word}`}
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="text-sm font-medium text-navy/70 mb-2">{v.english}</div>
+                    <div className="text-sm text-navy/60 italic">
+                      <span className="text-navy/80">{v.example_es}</span>
+                      <span className="text-navy/40"> — {v.example_en}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {phase === "dialogue" && hasDialogue && (
+            <>
+              <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
+                Dialogue
+              </p>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-navy">In context</h2>
+                <button
+                  type="button"
+                  onClick={() =>
+                    speak(lesson.dialogue!.map((d) => d.spanish).join(". "))
+                  }
+                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full bg-teal-light text-teal-dark hover:bg-teal hover:text-white transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                  Listen to full dialogue
+                </button>
+              </div>
+              <div className="space-y-3">
+                {lesson.dialogue!.map((d, i) => (
+                  <div key={i} className="grid grid-cols-[auto_1fr_1fr] gap-3 items-start text-sm">
+                    <button
+                      type="button"
+                      onClick={() => speak(d.spanish)}
+                      className="mt-0.5 p-1.5 rounded-full bg-teal-light hover:bg-teal hover:text-white transition-colors text-teal-dark"
+                      aria-label={`Play line ${i + 1}`}
+                    >
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </button>
+                    <div>
+                      {d.speaker && (
+                        <div className="text-xs font-semibold text-navy/40 uppercase tracking-wide mb-0.5">
+                          {d.speaker}
+                        </div>
+                      )}
+                      <div className="text-navy">{d.spanish}</div>
+                    </div>
+                    <div className="text-navy/50 italic pt-4">{d.english}</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {phase === "grammar" && hasGrammar && (
+            <>
+              <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
+                Grammar note
+              </p>
+              <h2 className="text-xl font-bold text-navy mb-4">Quick rule</h2>
+              <div className="bg-peach-light border border-peach rounded-xl p-5">
+                <p className="text-sm text-navy/80 leading-relaxed">{lesson.grammar_note}</p>
+              </div>
+            </>
+          )}
+
+          <div className="mt-8 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                if (idx === 0) return;
+                setPhase(phasesInOrder[idx - 1]);
+              }}
+              disabled={idx === 0}
+              className="text-sm font-medium text-navy/60 hover:text-navy disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ← Back
+            </button>
+            <button
+              type="button"
+              onClick={next}
+              className="px-6 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+            >
+              {isLastPhase ? (hasExercises ? "Start exercises →" : "Done") : "Next →"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export default function LessonClient({
   languageSlug,
   languageName,
@@ -549,6 +745,7 @@ export default function LessonClient({
   const router = useRouter();
   const speechLang = SPEECH_LANG_CODES[languageSlug] ?? "en-US";
   const [pending, startTransition] = useTransition();
+  const [phase, setPhase] = useState<TeachingPhase>("intro");
   const [step, setStep] = useState(0);
   const [pickedAnswer, setPickedAnswer] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -584,6 +781,26 @@ export default function LessonClient({
       }
     };
   }, [step]);
+
+  const hasTeaching =
+    !!lesson.intro?.trim() ||
+    (lesson.vocab_items?.length ?? 0) > 0 ||
+    (lesson.dialogue?.length ?? 0) > 0 ||
+    !!lesson.grammar_note?.trim();
+
+  if (phase !== "exercises" && hasTeaching) {
+    return (
+      <TeachingCard
+        languageSlug={languageSlug}
+        speechLang={speechLang}
+        phase={phase}
+        setPhase={setPhase}
+        lesson={lesson}
+        hasExercises={exercises.length > 0}
+        onStartExercises={() => setPhase("exercises")}
+      />
+    );
+  }
 
   if (exercises.length === 0) {
     return (
