@@ -159,6 +159,43 @@ function SectionCard({
   );
 }
 
+function PlacementExamCard({ languageSlug, level }: { languageSlug: string; level: string }) {
+  return (
+    <Link
+      href={`/learn/${languageSlug}/placement/${level.toLowerCase()}`}
+      className="block mb-4 bg-white border border-teal/40 rounded-2xl p-4 sm:p-5 hover:border-teal hover:shadow-md transition-all"
+    >
+      <div className="flex items-center gap-4">
+        <div className="shrink-0 w-12 h-12 rounded-2xl bg-teal text-white flex items-center justify-center shadow-sm">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-0.5">
+            {level} Placement Exam
+          </p>
+          <h3 className="text-base sm:text-lg font-bold text-navy leading-tight">
+            Test your current Spanish level and earn your {level} certificate
+          </h3>
+          <p className="text-xs text-navy/50 mt-0.5">
+            45 min · vocabulary, listening, speaking, writing
+          </p>
+        </div>
+        <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
+          <span className="px-3 py-1 rounded-full bg-teal-light text-teal-dark text-xs font-bold">
+            $2.00
+          </span>
+          <span className="text-[10px] text-navy/50">or Free with Premium</span>
+        </div>
+        <svg className="shrink-0 w-5 h-5 text-teal" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </Link>
+  );
+}
+
 function LevelAccordion({
   group,
   languageSlug,
@@ -170,6 +207,7 @@ function LevelAccordion({
   sectionsLabel,
   sectionLabel,
   noSectionsLabel,
+  showPlacementExam,
 }: {
   group: CEFRLevelGroup;
   languageSlug: string;
@@ -181,6 +219,7 @@ function LevelAccordion({
   sectionsLabel: string;
   sectionLabel: string;
   noSectionsLabel: string;
+  showPlacementExam: boolean;
 }) {
   const styles = LEVEL_STYLES[group.level] ?? LEVEL_STYLES.A1;
   const pct =
@@ -232,6 +271,9 @@ function LevelAccordion({
       </summary>
 
       <div className="px-6 sm:px-7 pb-6 sm:pb-7">
+        {showPlacementExam && (
+          <PlacementExamCard languageSlug={languageSlug} level={group.level} />
+        )}
         {group.sections.length === 0 ? (
           <p className="text-sm text-navy/50">{noSectionsLabel}</p>
         ) : (
@@ -373,41 +415,6 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
         </section>
 
         <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 space-y-4">
-          {slug === "spanish" && (
-            <Link
-              href={`/learn/${slug}/placement/a1`}
-              className="block bg-gradient-to-r from-teal/10 via-peach-light to-teal/10 border border-teal/30 rounded-3xl p-5 sm:p-6 hover:border-teal hover:shadow-md transition-all"
-            >
-              <div className="flex items-center gap-4 sm:gap-6">
-                <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal text-white flex items-center justify-center shadow-sm">
-                  {/* Certificate badge icon */}
-                  <svg className="w-8 h-8 sm:w-9 sm:h-9" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-1">
-                    A1 Placement Exam
-                  </p>
-                  <h3 className="text-lg sm:text-xl font-bold text-navy leading-tight mb-1">
-                    Test your current Spanish level and earn your A1 certificate
-                  </h3>
-                  <p className="text-xs text-navy/60">
-                    45-minute timed test · vocabulary, listening, speaking, writing
-                  </p>
-                </div>
-                <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
-                  <span className="px-3 py-1 rounded-full bg-white text-teal-dark text-xs font-bold border border-teal/30">
-                    $2.00
-                  </span>
-                  <span className="text-[10px] text-navy/50">or Free with Premium</span>
-                </div>
-                <svg className="shrink-0 w-5 h-5 text-teal" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </Link>
-          )}
           {tree.map((group) => (
             <LevelAccordion
               key={group.level}
@@ -421,6 +428,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
               sectionsLabel={t("cefr.sections")}
               sectionLabel={t("cefr.section")}
               noSectionsLabel={t("cefr.noSections")}
+              showPlacementExam={slug === "spanish" && group.level === "A1"}
             />
           ))}
         </section>
