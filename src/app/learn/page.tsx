@@ -111,14 +111,25 @@ export default async function LearnPage() {
                 {t("learn.pickLang")}
               </p>
             </div>
-            <div className="flex items-center gap-6 bg-white border border-border rounded-2xl px-5 py-4 shadow-sm">
-              <StreakFlame streak={currentStreak} size="md" />
-              <div className="h-10 w-px bg-border" />
-              <div className="flex flex-col leading-tight">
-                <span className="text-lg sm:text-2xl font-bold text-navy">
-                  {totalXp.toLocaleString()}
-                </span>
-                <span className="text-xs text-navy/50">{t("learn.totalXp")}</span>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link
+                href="/profile"
+                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-teal-dark bg-teal-light rounded-full border border-teal/30 hover:bg-teal hover:text-white hover:border-teal transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+                View Profile &amp; Certifications
+              </Link>
+              <div className="flex items-center gap-6 bg-white border border-border rounded-2xl px-5 py-4 shadow-sm">
+                <StreakFlame streak={currentStreak} size="md" />
+                <div className="h-10 w-px bg-border" />
+                <div className="flex flex-col leading-tight">
+                  <span className="text-lg sm:text-2xl font-bold text-navy">
+                    {totalXp.toLocaleString()}
+                  </span>
+                  <span className="text-xs text-navy/50">{t("learn.totalXp")}</span>
+                </div>
               </div>
             </div>
           </div>

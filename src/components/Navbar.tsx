@@ -171,16 +171,21 @@ export default function Navbar() {
           <div className="flex items-center gap-3">
             <LanguageSwitcher />
             {user ? (
+              <div className="flex items-center gap-2">
+                {/* Dedicated avatar link to /profile, visible at all sizes */}
+                <Link
+                  href="/profile"
+                  title="Profile"
+                  aria-label="Profile"
+                  className="w-9 h-9 rounded-full bg-teal text-white flex items-center justify-center text-sm font-semibold hover:bg-teal-dark hover:shadow-md transition-all duration-200"
+                >
+                  {user.email?.[0]?.toUpperCase() ?? "?"}
+                </Link>
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
                 >
-                  <div className="w-6 h-6 rounded-full bg-teal/10 flex items-center justify-center">
-                    <span className="text-xs font-semibold text-teal">
-                      {user.email?.[0].toUpperCase()}
-                    </span>
-                  </div>
                   <span className="hidden sm:inline max-w-[150px] truncate">
                     {user.email}
                   </span>
@@ -216,6 +221,7 @@ export default function Navbar() {
                     </button>
                   </div>
                 )}
+              </div>
               </div>
             ) : (
               <Link
