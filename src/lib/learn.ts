@@ -1,6 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 
-export type LessonType = "vocabulary" | "grammar" | "phrases" | "listening" | "speaking";
+export type LessonType =
+  | "vocabulary"
+  | "grammar"
+  | "phrases"
+  | "listening"
+  | "speaking"
+  | "reading"
+  | "writing"
+  | "podcast"
+  | "unit_test";
 export type ExerciseType = "multiple_choice" | "fill_blank" | "matching" | "listening" | "speaking";
 export type CEFRLevel = "A1" | "A2" | "B1" | "B2" | "C1";
 

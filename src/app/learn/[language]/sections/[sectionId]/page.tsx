@@ -100,6 +100,50 @@ function LessonCard({
   );
 }
 
+function PremiumPlaceholder({
+  kind,
+  topic,
+}: {
+  kind: "video" | "podcast";
+  topic: string;
+}) {
+  const label = kind === "video" ? "Video" : "Podcast";
+  const descKind = kind === "video" ? "video" : "podcast episode";
+  return (
+    <div className="relative rounded-2xl p-5 border border-dashed border-border bg-navy/5 opacity-70 select-none">
+      <div className="flex items-center gap-4">
+        <div className="shrink-0 w-12 h-12 rounded-full bg-navy/10 flex items-center justify-center text-navy/40">
+          {kind === "video" ? (
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 1a4 4 0 0 0-4 4v7a4 4 0 0 0 8 0V5a4 4 0 0 0-4-4zm7 11a7 7 0 0 1-14 0H3a9 9 0 0 0 8 8.94V23h2v-2.06A9 9 0 0 0 21 12h-2z" />
+            </svg>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-navy/40 uppercase tracking-wider mb-0.5">
+            {label} — Coming soon
+          </p>
+          <h4 className="text-sm font-semibold text-navy/70 truncate">
+            {label}: {topic}
+          </h4>
+          <p className="text-xs text-navy/40 mt-0.5">
+            Premium {descKind} for this topic will be available soon.
+          </p>
+        </div>
+        <div className="shrink-0 text-navy/30" title="Premium subscription required">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function SectionPage(
   props: PageProps<"/learn/[language]/sections/[sectionId]">,
 ) {
@@ -192,19 +236,34 @@ export default async function SectionPage(
           {lessons.length === 0 ? (
             <p className="text-sm text-navy/50">{t("section.noLessons")}</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {lessons.map((lesson, idx) => (
-                <LessonCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  languageSlug={slug}
-                  index={idx}
-                  title={translateLessonTitle(lesson.title, uiLang)}
-                  completedLabel={t("section.completed")}
-                  startLabel={t("section.start")}
-                  reviewLabel={t("section.review")}
-                />
-              ))}
+            <div className="flex flex-col gap-3">
+              {lessons.flatMap((lesson, idx) => {
+                const card = (
+                  <LessonCard
+                    key={`lesson-${lesson.id}`}
+                    lesson={lesson}
+                    languageSlug={slug}
+                    index={idx}
+                    title={translateLessonTitle(lesson.title, uiLang)}
+                    completedLabel={t("section.completed")}
+                    startLabel={t("section.start")}
+                    reviewLabel={t("section.review")}
+                  />
+                );
+                // After every lesson except the last, drop in an alternating
+                // video/podcast placeholder card. Index 0 → video, 1 → podcast, etc.
+                const isLast = idx === lessons.length - 1;
+                if (isLast) return [card];
+                const kind: "video" | "podcast" = idx % 2 === 0 ? "video" : "podcast";
+                return [
+                  card,
+                  <PremiumPlaceholder
+                    key={`gap-${lesson.id}`}
+                    kind={kind}
+                    topic={localizedSectionTitle}
+                  />,
+                ];
+              })}
             </div>
           )}
         </section>

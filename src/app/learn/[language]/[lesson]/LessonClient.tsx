@@ -40,6 +40,35 @@ function normalize(str: string): string {
     .trim();
 }
 
+// ---------------- TTS voice picker ----------------
+// Browsers ship many voices; if we don't pick one explicitly, English
+// engines pronounce Spanish words like an English speaker would. Find a
+// real native voice matching the requested locale, falling back through
+// region → language → null.
+function pickVoiceForLang(lang: string): SpeechSynthesisVoice | null {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+  const target = lang.toLowerCase();
+  const langPart = target.split("-")[0];
+  // 1) exact locale: es-ES
+  const exact = voices.find((v) => v.lang.toLowerCase() === target);
+  if (exact) return exact;
+  // 2) any locale of the same language (es-MX, es-AR, es-US, ...)
+  const partial = voices.find((v) => v.lang.toLowerCase().startsWith(langPart + "-"));
+  if (partial) return partial;
+  // 3) bare language code or anything that starts with it
+  return voices.find((v) => v.lang.toLowerCase().startsWith(langPart)) ?? null;
+}
+
+// Some browsers (Chrome) return [] on the first getVoices() call and fire
+// `voiceschanged` once the list is ready. Touch getVoices() eagerly so the
+// list is warm by the time the user clicks play.
+function primeVoices() {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.getVoices();
+}
+
 // ---------------- TTS hook ----------------
 // Tracks whether speechSynthesis is currently speaking so the UI can flip
 // play/pause icons accordingly.
@@ -48,12 +77,25 @@ function useTts(text: string, lang: string) {
   const supported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
+  // Warm the voices list once mounted so the first Play has a real voice.
+  useEffect(() => {
+    primeVoices();
+    if (!supported) return;
+    const handler = () => primeVoices();
+    window.speechSynthesis.addEventListener?.("voiceschanged", handler);
+    return () => {
+      window.speechSynthesis.removeEventListener?.("voiceschanged", handler);
+    };
+  }, [supported]);
+
   const play = () => {
     if (!supported) return;
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
+      const voice = pickVoiceForLang(lang);
+      if (voice) utterance.voice = voice;
       utterance.rate = 0.9;
       utterance.onstart = () => setIsPlaying(true);
       utterance.onend = () => setIsPlaying(false);
@@ -177,6 +219,11 @@ function FillBlank({
   pickedAnswer: string | null;
 }) {
   const [value, setValue] = useState("");
+  // Reset the input whenever the underlying exercise changes; otherwise
+  // the previous answer leaks into the next fill-blank question.
+  useEffect(() => {
+    setValue("");
+  }, [exercise.id]);
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!value.trim() || disabled) return;
@@ -584,6 +631,8 @@ function TeachingCard({
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = speechLang;
+    const voice = pickVoiceForLang(speechLang);
+    if (voice) u.voice = voice;
     u.rate = 0.85;
     window.speechSynthesis.speak(u);
   }
@@ -750,6 +799,9 @@ export default function LessonClient({
   const [pickedAnswer, setPickedAnswer] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [wasCorrect, setWasCorrect] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
+  const isUnitTest = lesson.type === "unit_test";
+  const passingScore = 7;
   const [completion, setCompletion] = useState<{
     xp_earned: number;
     already_completed: boolean;
@@ -757,6 +809,9 @@ export default function LessonClient({
     saved: boolean;
     not_authenticated?: boolean;
     error?: string;
+    unit_test_score?: number;
+    unit_test_total?: number;
+    unit_test_passed?: boolean;
   } | null>(null);
 
   const sectionUrl = `/learn/${languageSlug}/sections/${sectionId}`;
@@ -844,7 +899,21 @@ export default function LessonClient({
     }
     setPickedAnswer(answer);
     setWasCorrect(correct);
+    if (correct) setCorrectCount((c) => c + 1);
     setShowFeedback(true);
+  }
+
+  function handleRetake() {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    setStep(0);
+    setPickedAnswer(null);
+    setShowFeedback(false);
+    setWasCorrect(false);
+    setCorrectCount(0);
+    setCompletion(null);
+    setPhase("exercises");
   }
 
   function handleContinue() {
@@ -853,6 +922,18 @@ export default function LessonClient({
       setPickedAnswer(null);
       setShowFeedback(false);
       setWasCorrect(false);
+      return;
+    }
+    // Unit test: fail → show "Try again" without saving progress.
+    if (isUnitTest && correctCount < passingScore) {
+      setCompletion({
+        xp_earned: 0,
+        already_completed: false,
+        saved: false,
+        unit_test_score: correctCount,
+        unit_test_total: exercises.length,
+        unit_test_passed: false,
+      });
       return;
     }
     startTransition(async () => {
@@ -868,6 +949,9 @@ export default function LessonClient({
           saved: result.ok,
           not_authenticated: result.not_authenticated,
           error: result.ok ? undefined : (result.error ?? "Could not save progress"),
+          unit_test_score: isUnitTest ? correctCount : undefined,
+          unit_test_total: isUnitTest ? exercises.length : undefined,
+          unit_test_passed: isUnitTest ? correctCount >= passingScore : undefined,
         });
       } catch (err) {
         setCompletion({
@@ -878,6 +962,68 @@ export default function LessonClient({
         });
       }
     });
+  }
+
+  if (completion && isUnitTest) {
+    const score = completion.unit_test_score ?? 0;
+    const total = completion.unit_test_total ?? exercises.length;
+    const passed = completion.unit_test_passed ?? false;
+    const headerBg = passed ? "from-teal to-teal-dark" : "from-amber-400 to-amber-600";
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-teal-light to-background flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl border border-border p-8 sm:p-12 text-center max-w-md w-full shadow-xl">
+          <div className={`w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br ${headerBg} flex items-center justify-center shadow-lg`}>
+            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+              {passed ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              )}
+            </svg>
+          </div>
+          <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-2">
+            {lesson.title}
+          </p>
+          <h1 className="text-3xl font-bold text-navy mb-2">
+            {passed ? "Passed!" : "Try again"}
+          </h1>
+          <p className="text-sm text-navy/60 mb-6">
+            You scored <span className="font-bold text-navy">{score} / {total}</span>.{" "}
+            {passed ? "Great work!" : `You need ${passingScore} to pass.`}
+          </p>
+          {passed && (
+            <div className="bg-teal-light rounded-2xl p-4 mb-6">
+              <p className="text-xs text-teal-dark font-semibold uppercase tracking-wide mb-1">
+                XP earned
+              </p>
+              <p className="text-2xl font-bold text-teal-dark">
+                {completion.already_completed ? 0 : completion.xp_earned}
+              </p>
+            </div>
+          )}
+          {!completion.saved && completion.error && (
+            <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-4 text-start">
+              {completion.error}
+            </p>
+          )}
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleRetake}
+              className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+            >
+              {passed ? "Take the test again" : "Try again"}
+            </button>
+            <Link
+              href={sectionUrl}
+              className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
+            >
+              Back to the section
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (completion) {
