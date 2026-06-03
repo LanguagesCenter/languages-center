@@ -115,7 +115,7 @@ export default function PaywallClient({
             </svg>
           </div>
           <p className="text-navy font-bold text-xl">Unlock this exam</p>
-          <p className="text-sm text-navy/60 mt-1">$2.00 one-time</p>
+          <p className="text-sm text-navy/60 mt-1">Free with Premium · $0.99 one-time</p>
           <p className="text-xs text-navy/50 mt-2 max-w-sm">
             Languages Center Premium subscribers get all placement exams free.
           </p>
@@ -128,21 +128,23 @@ export default function PaywallClient({
         </div>
       )}
 
-      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+      <div className="mt-6 flex flex-col gap-3">
+        {/* Premium upsell first (primary call to action) */}
+        <Link
+          href="/pricing"
+          className="w-full py-3 text-sm font-semibold text-white bg-teal rounded-xl text-center hover:bg-teal-dark transition-colors"
+        >
+          Upgrade to Premium — all exams included
+        </Link>
+        {/* Single-exam fallback below */}
         <button
           type="button"
           onClick={handlePay}
           disabled={loading}
-          className="flex-1 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50"
+          className="w-full py-3 text-sm font-semibold text-teal-dark bg-white border border-teal rounded-xl hover:bg-teal-light transition-colors disabled:opacity-50"
         >
-          {loading ? "Starting checkout…" : "Pay $2 to unlock this exam"}
+          {loading ? "Starting checkout…" : "or pay $0.99 to unlock just this exam"}
         </button>
-        <Link
-          href="/pricing"
-          className="flex-1 py-3 text-sm font-semibold text-teal-dark bg-white border border-teal rounded-xl text-center hover:bg-teal-light transition-colors"
-        >
-          Upgrade to Premium — all exams included
-        </Link>
       </div>
       <p className="mt-3 text-xs text-navy/40 text-center">
         Skipping is OK — you can take this exam anytime and it never blocks your progress to A2.

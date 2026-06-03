@@ -184,9 +184,9 @@ function PlacementExamCard({ languageSlug, level }: { languageSlug: string; leve
         </div>
         <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
           <span className="px-3 py-1 rounded-full bg-teal-light text-teal-dark text-xs font-bold">
-            $2.00
+            Free with Premium
           </span>
-          <span className="text-[10px] text-navy/50">or Free with Premium</span>
+          <span className="text-[10px] text-navy/50">or $0.99 one-time</span>
         </div>
         <svg className="shrink-0 w-5 h-5 text-teal" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

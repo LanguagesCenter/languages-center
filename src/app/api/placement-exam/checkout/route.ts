@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
             product_data: {
               name: `${languageSlug.charAt(0).toUpperCase() + languageSlug.slice(1)} ${level} Placement Exam`,
             },
-            unit_amount: 200,
+            unit_amount: 99,
           },
           quantity: 1,
         };
