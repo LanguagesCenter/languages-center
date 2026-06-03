@@ -4,6 +4,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/server";
 import { getAllAttemptsForUser, type PlacementAttempt } from "@/lib/placement-exam";
+import { signOut } from "@/lib/profile-actions";
+import UsernameForm from "./UsernameForm";
 
 export const metadata = {
   title: "Profile — Languages Center",
@@ -86,18 +88,23 @@ export default async function ProfilePage() {
                   </p>
                 )}
               </div>
-              <button
-                type="button"
-                className="px-4 py-2 text-sm font-semibold text-teal-dark bg-teal-light rounded-full hover:bg-teal hover:text-white transition-colors"
-              >
-                Edit profile
-              </button>
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 rounded-full hover:bg-red-100 transition-colors"
+                >
+                  Sign out
+                </button>
+              </form>
             </div>
           </div>
 
           {/* SETTINGS */}
           <div className="bg-white border border-border rounded-2xl p-6 mb-6">
             <h2 className="text-lg font-bold text-navy mb-4">Settings</h2>
+            <div className="mb-6 pb-6 border-b border-border">
+              <UsernameForm initial={displayName} />
+            </div>
             <dl className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
                 <dt className="text-navy/60">Site language</dt>
