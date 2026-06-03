@@ -11,16 +11,6 @@ export const metadata = {
   title: "Profile — Languages Center",
 };
 
-// Known placement exams we currently offer. Add to this as new ones land.
-const KNOWN_EXAMS: Array<{ language_slug: string; language_name: string; level: string; href: string }> = [
-  {
-    language_slug: "spanish",
-    language_name: "Spanish",
-    level: "A1",
-    href: "/learn/spanish/placement/a1",
-  },
-];
-
 type AttemptWithLanguage = PlacementAttempt & {
   language: { code: string; name: string };
 };
@@ -140,71 +130,59 @@ export default async function ProfilePage() {
           {/* CERTIFICATIONS */}
           <div className="bg-white border border-border rounded-2xl p-6">
             <h2 className="text-lg font-bold text-navy mb-4">Certifications</h2>
-            <div className="space-y-3">
-              {KNOWN_EXAMS.map((exam) => {
-                const key = `${exam.language_slug}::${exam.level}`;
-                const attempt = latestByKey.get(key);
-                if (!attempt) {
+            {latestByKey.size === 0 ? (
+              <div className="text-center py-8 border border-dashed border-border rounded-xl">
+                <p className="text-sm text-navy/50">No tests taken yet.</p>
+                <p className="text-xs text-navy/40 mt-1">
+                  Your placement-exam results will appear here once you've taken one.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {Array.from(latestByKey.values()).map((attempt) => {
+                  const key = `${attempt.language.code}::${attempt.level}`;
+                  const examHref = `/learn/${attempt.language.code}/placement/${attempt.level.toLowerCase()}`;
                   return (
                     <div
                       key={key}
-                      className="flex items-center justify-between gap-4 border border-dashed border-border rounded-xl p-4 bg-navy/2"
+                      className="border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-start"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-navy">
-                          {exam.language_name} {exam.level}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-semibold text-navy">
+                            {attempt.language.name} {attempt.level}
+                          </p>
+                          <span
+                            className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
+                              attempt.passed
+                                ? "bg-teal-light text-teal-dark"
+                                : "bg-red-50 text-red-700"
+                            }`}
+                          >
+                            {attempt.passed ? "Pass" : "Fail"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-navy/40 mb-2">
+                          Taken {new Date(attempt.completed_at).toLocaleDateString()}
                         </p>
-                        <p className="text-xs text-navy/40">Not yet attempted</p>
+                        <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+                          <ScoreBar pct={attempt.score_percentage} />
+                          <span className="text-sm font-bold text-navy tabular-nums">
+                            {attempt.score_percentage}%
+                          </span>
+                        </div>
                       </div>
                       <Link
-                        href={exam.href}
-                        className="px-4 py-2 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors"
+                        href={examHref}
+                        className="px-4 py-2 text-sm font-semibold text-teal-dark bg-teal-light rounded-full hover:bg-teal hover:text-white transition-colors text-center"
                       >
-                        Take exam
+                        Retake
                       </Link>
                     </div>
                   );
-                }
-                return (
-                  <div
-                    key={key}
-                    className="border border-border rounded-xl p-4 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-start"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-semibold text-navy">
-                          {exam.language_name} {exam.level}
-                        </p>
-                        <span
-                          className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full ${
-                            attempt.passed
-                              ? "bg-teal-light text-teal-dark"
-                              : "bg-red-50 text-red-700"
-                          }`}
-                        >
-                          {attempt.passed ? "Pass" : "Fail"}
-                        </span>
-                      </div>
-                      <p className="text-xs text-navy/40 mb-2">
-                        Taken {new Date(attempt.completed_at).toLocaleDateString()}
-                      </p>
-                      <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-                        <ScoreBar pct={attempt.score_percentage} />
-                        <span className="text-sm font-bold text-navy tabular-nums">
-                          {attempt.score_percentage}%
-                        </span>
-                      </div>
-                    </div>
-                    <Link
-                      href={exam.href}
-                      className="px-4 py-2 text-sm font-semibold text-teal-dark bg-teal-light rounded-full hover:bg-teal hover:text-white transition-colors text-center"
-                    >
-                      Retake
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         </section>
       </main>

@@ -428,7 +428,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
               sectionsLabel={t("cefr.sections")}
               sectionLabel={t("cefr.section")}
               noSectionsLabel={t("cefr.noSections")}
-              showPlacementExam={slug === "spanish" && group.level === "A1"}
+              showPlacementExam={slug === "spanish" && (group.level === "A1" || group.level === "A2")}
             />
           ))}
         </section>

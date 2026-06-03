@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/server";
@@ -15,16 +15,28 @@ import PaywallClient from "./PaywallClient";
 import CooldownView from "./CooldownView";
 import ResultsView from "./ResultsView";
 
-export const metadata = {
-  title: "Spanish A1 Placement Exam — Languages Center",
-};
-
 const LANGUAGE_SLUG = "spanish";
-const LEVEL = "A1";
+const SUPPORTED_LEVELS = ["A1", "A2"] as const;
+
+export async function generateMetadata(props: {
+  params: Promise<{ level: string }>;
+}) {
+  const { level } = await props.params;
+  const upper = level.toUpperCase();
+  return {
+    title: `Spanish ${upper} Placement Exam — Languages Center`,
+  };
+}
 
 export default async function PlacementExamPage(props: {
+  params: Promise<{ level: string }>;
   searchParams: Promise<{ paid?: string; session_id?: string; show_result?: string }>;
 }) {
+  const { level: rawLevel } = await props.params;
+  const LEVEL = rawLevel.toUpperCase();
+  if (!(SUPPORTED_LEVELS as readonly string[]).includes(LEVEL)) {
+    notFound();
+  }
   const sp = await props.searchParams;
   const supabase = await createClient();
   const {
