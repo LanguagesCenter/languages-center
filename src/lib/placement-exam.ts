@@ -1,39 +1,25 @@
+import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type {
+  PlacementQuestion,
+  PlacementQuestionWithAnswer,
+  PlacementAttempt,
+} from "@/lib/placement-exam-types";
 
-export const PASSING_PERCENTAGE = 50;
-export const COOLDOWN_HOURS = 48;
-export const EXAM_DURATION_SECONDS = 45 * 60;
-
-export type ExamCategory = "vocabulary" | "listening" | "speaking" | "writing";
-
-export interface PlacementQuestion {
-  id: number;
-  category: ExamCategory;
-  question: string;
-  options?: string[]; // only for vocabulary + listening
-  hint: string | null;
-  order_index: number;
-}
-
-export interface PlacementQuestionWithAnswer extends PlacementQuestion {
-  correct_answer: string;
-  wrong_answers: string[];
-}
-
-export interface PlacementAttempt {
-  id: string;
-  language_id: number;
-  level: string;
-  score_percentage: number;
-  vocabulary_score: number;
-  listening_score: number;
-  speaking_score: number;
-  writing_score: number;
-  passed: boolean;
-  completed_at: string;
-  time_taken_seconds: number;
-  last_attempt_at: string;
-}
+// Re-export the shared bits so existing server-side imports of these names
+// from "@/lib/placement-exam" still work.
+export {
+  PASSING_PERCENTAGE,
+  COOLDOWN_HOURS,
+  EXAM_DURATION_SECONDS,
+  cooldownRemainingMs,
+} from "@/lib/placement-exam-types";
+export type {
+  ExamCategory,
+  PlacementQuestion,
+  PlacementQuestionWithAnswer,
+  PlacementAttempt,
+} from "@/lib/placement-exam-types";
 
 /** Fetch questions WITH answers — used by server actions only. */
 export async function getQuestionsWithAnswers(
@@ -123,16 +109,6 @@ export async function getLastAttempt(
     .limit(1)
     .maybeSingle();
   return (data as PlacementAttempt | null) ?? null;
-}
-
-/** Returns milliseconds until cooldown expires, or 0 if no cooldown. */
-export function cooldownRemainingMs(attempt: PlacementAttempt | null): number {
-  if (!attempt) return 0;
-  // Passed users can retake anytime.
-  if (attempt.passed) return 0;
-  const completedAt = new Date(attempt.completed_at).getTime();
-  const expiresAt = completedAt + COOLDOWN_HOURS * 60 * 60 * 1000;
-  return Math.max(0, expiresAt - Date.now());
 }
 
 export async function getLanguageIdBySlug(slug: string): Promise<number | null> {

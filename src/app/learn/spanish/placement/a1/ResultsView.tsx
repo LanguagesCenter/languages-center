@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { PlacementAttempt } from "@/lib/placement-exam";
+import type { PlacementAttempt } from "@/lib/placement-exam-types";
 
 function ScoreBar({ pct }: { pct: number }) {
   // 0% red → 100% green

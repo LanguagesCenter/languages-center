@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   EXAM_DURATION_SECONDS,
   type PlacementQuestion,
-} from "@/lib/placement-exam";
+} from "@/lib/placement-exam-types";
 import { submitPlacementExam, type ExamAnswer } from "@/lib/placement-exam-actions";
 
 function formatTime(seconds: number): string {
