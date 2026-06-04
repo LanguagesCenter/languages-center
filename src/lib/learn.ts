@@ -9,7 +9,8 @@ export type LessonType =
   | "reading"
   | "writing"
   | "podcast"
-  | "unit_test";
+  | "unit_test"
+  | "conversation";
 export type ExerciseType = "multiple_choice" | "fill_blank" | "matching" | "listening" | "speaking";
 export type CEFRLevel = "A1" | "A2" | "B1" | "B2" | "C1";
 

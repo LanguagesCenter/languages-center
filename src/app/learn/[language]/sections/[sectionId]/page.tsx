@@ -250,10 +250,15 @@ export default async function SectionPage(
                     reviewLabel={t("section.review")}
                   />
                 );
-                // After every lesson except the last, drop in an alternating
-                // video/podcast placeholder card. Index 0 → video, 1 → podcast, etc.
+                // After lessons 1-7, drop in an alternating video/podcast
+                // placeholder. Index 0,2,4,6 → video; 1,3,5 → podcast. Skip
+                // after the dialogue (conversation) and the section test.
                 const isLast = idx === lessons.length - 1;
-                if (isLast) return [card];
+                const skipGap =
+                  isLast ||
+                  lesson.type === "conversation" ||
+                  lesson.type === "unit_test";
+                if (skipGap) return [card];
                 const kind: "video" | "podcast" = idx % 2 === 0 ? "video" : "podcast";
                 return [
                   card,

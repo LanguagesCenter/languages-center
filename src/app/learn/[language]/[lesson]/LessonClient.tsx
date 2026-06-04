@@ -588,6 +588,82 @@ function SpeakingExercise({
 
 type TeachingPhase = "intro" | "vocab" | "dialogue" | "grammar" | "exercises";
 
+function DialoguePhase({
+  lesson,
+  speak,
+}: {
+  lesson: DbLesson;
+  speak: (text: string) => void;
+}) {
+  // For conversation lessons (lesson 8), hide English by default and let the
+  // user reveal it. For teaching dialogues, show both side by side.
+  const isConversation = lesson.type === "conversation";
+  const [showEnglish, setShowEnglish] = useState(!isConversation);
+  return (
+    <>
+      <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
+        {isConversation ? "Conversation" : "Dialogue"}
+      </p>
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <h2 className="text-xl font-bold text-navy">
+          {isConversation ? "Read or listen, then answer below" : "In context"}
+        </h2>
+        <div className="flex items-center gap-2">
+          {isConversation && (
+            <button
+              type="button"
+              onClick={() => setShowEnglish((v) => !v)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full bg-navy/5 text-navy/70 hover:bg-navy/10 transition-colors"
+            >
+              {showEnglish ? "Hide English" : "Reveal English"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => speak(lesson.dialogue!.map((d) => d.spanish).join(". "))}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full bg-teal-light text-teal-dark hover:bg-teal hover:text-white transition-colors"
+          >
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Listen to full dialogue
+          </button>
+        </div>
+      </div>
+      <div className="space-y-3">
+        {lesson.dialogue!.map((d, i) => (
+          <div
+            key={i}
+            className={`grid ${showEnglish ? "grid-cols-[auto_1fr_1fr]" : "grid-cols-[auto_1fr]"} gap-3 items-start text-sm`}
+          >
+            <button
+              type="button"
+              onClick={() => speak(d.spanish)}
+              className="mt-0.5 p-1.5 rounded-full bg-teal-light hover:bg-teal hover:text-white transition-colors text-teal-dark"
+              aria-label={`Play line ${i + 1}`}
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <div>
+              {d.speaker && (
+                <div className="text-xs font-semibold text-navy/40 uppercase tracking-wide mb-0.5">
+                  {d.speaker}
+                </div>
+              )}
+              <div className="text-navy">{d.spanish}</div>
+            </div>
+            {showEnglish && (
+              <div className="text-navy/50 italic pt-4">{d.english}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function TeachingCard({
   languageSlug,
   speechLang,
@@ -699,51 +775,7 @@ function TeachingCard({
           )}
 
           {phase === "dialogue" && hasDialogue && (
-            <>
-              <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
-                Dialogue
-              </p>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-bold text-navy">In context</h2>
-                <button
-                  type="button"
-                  onClick={() =>
-                    speak(lesson.dialogue!.map((d) => d.spanish).join(". "))
-                  }
-                  className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full bg-teal-light text-teal-dark hover:bg-teal hover:text-white transition-colors"
-                >
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                  Listen to full dialogue
-                </button>
-              </div>
-              <div className="space-y-3">
-                {lesson.dialogue!.map((d, i) => (
-                  <div key={i} className="grid grid-cols-[auto_1fr_1fr] gap-3 items-start text-sm">
-                    <button
-                      type="button"
-                      onClick={() => speak(d.spanish)}
-                      className="mt-0.5 p-1.5 rounded-full bg-teal-light hover:bg-teal hover:text-white transition-colors text-teal-dark"
-                      aria-label={`Play line ${i + 1}`}
-                    >
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    </button>
-                    <div>
-                      {d.speaker && (
-                        <div className="text-xs font-semibold text-navy/40 uppercase tracking-wide mb-0.5">
-                          {d.speaker}
-                        </div>
-                      )}
-                      <div className="text-navy">{d.spanish}</div>
-                    </div>
-                    <div className="text-navy/50 italic pt-4">{d.english}</div>
-                  </div>
-                ))}
-              </div>
-            </>
+            <DialoguePhase lesson={lesson} speak={speak} />
           )}
 
           {phase === "grammar" && hasGrammar && (
