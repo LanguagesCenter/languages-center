@@ -297,7 +297,7 @@ function ListeningQuestion({
   return (
     <>
       <h2 className="text-lg sm:text-xl font-bold text-navy mb-2">
-        Listen and pick the English meaning.
+        What did you hear? Pick the Spanish phrase.
       </h2>
       <button
         type="button"

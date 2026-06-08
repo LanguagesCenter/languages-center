@@ -40,6 +40,17 @@ function normalize(str: string): string {
     .trim();
 }
 
+// Removes phonetic guides like "[OH-lah]" or "[KOOM-breh]" from a string.
+// Phonetics belong in the teaching/vocab card, not in exercise text where
+// they give the answer away.
+function stripPhonetic(s: string | null | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/\s*\[[A-Za-z][A-Za-z\s/\-]*\]\s*/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // ---------------- TTS voice picker ----------------
 // Browsers ship many voices; if we don't pick one explicitly, English
 // engines pronounce Spanish words like an English speaker would. Find a
@@ -448,6 +459,14 @@ function ListeningExercise({
           );
         })}
       </div>
+      {disabled && exercise.translation && (
+        <p className="text-xs text-navy/50 text-center">
+          Meaning:{" "}
+          <span className="font-semibold text-navy/70">
+            {stripPhonetic(exercise.translation)}
+          </span>
+        </p>
+      )}
     </div>
   );
 }
@@ -832,6 +851,15 @@ export default function LessonClient({
   const [showFeedback, setShowFeedback] = useState(false);
   const [wasCorrect, setWasCorrect] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  // Indexes (into the `exercises` array) of questions the user got wrong on
+  // their first pass through the lesson. They'll be re-shown in a review
+  // phase before the user can finish.
+  const [wrongIndexes, setWrongIndexes] = useState<number[]>([]);
+  const [inReview, setInReview] = useState(false);
+  const [reviewIdx, setReviewIdx] = useState(0);
+  // Bumped on every review retry to force the exercise component to remount,
+  // clearing any typed-in input or matched pairs from the failed attempt.
+  const [attemptKey, setAttemptKey] = useState(0);
   const isUnitTest = lesson.type === "unit_test";
   const passingScore = 7;
   const [completion, setCompletion] = useState<{
@@ -908,10 +936,19 @@ export default function LessonClient({
     );
   }
 
-  const exercise = exercises[step];
-  const isLast = step === exercises.length - 1;
+  // Which exercise is currently on screen: during the main pass it's
+  // `step`; during the review pass we look up the next index that the user
+  // got wrong.
+  const reviewExerciseIdx = inReview ? wrongIndexes[reviewIdx] ?? 0 : step;
+  const exercise = exercises[reviewExerciseIdx];
+  const isLastMain = step === exercises.length - 1;
+  const isLastReview = inReview && reviewIdx === wrongIndexes.length - 1;
   const xpPerExercise = Math.max(1, Math.floor(lesson.xp_reward / exercises.length));
-  const progressPct = ((step + (showFeedback ? 1 : 0)) / exercises.length) * 100;
+  // Progress: main pass fills the bar to 100% by the last exercise; the
+  // review pass holds it at 100% (we're past "doing the lesson" now).
+  const progressPct = inReview
+    ? 100
+    : ((step + (showFeedback ? 1 : 0)) / exercises.length) * 100;
 
   function handleAnswer(answer: string) {
     if (showFeedback) return;
@@ -931,7 +968,12 @@ export default function LessonClient({
     }
     setPickedAnswer(answer);
     setWasCorrect(correct);
-    if (correct) setCorrectCount((c) => c + 1);
+    if (correct && !inReview) setCorrectCount((c) => c + 1);
+    // First-pass wrong answers go into the review queue. We don't re-add
+    // when the user is already in the review pass.
+    if (!correct && !inReview) {
+      setWrongIndexes((arr) => (arr.includes(step) ? arr : [...arr, step]));
+    }
     setShowFeedback(true);
   }
 
@@ -944,36 +986,21 @@ export default function LessonClient({
     setShowFeedback(false);
     setWasCorrect(false);
     setCorrectCount(0);
+    setWrongIndexes([]);
+    setInReview(false);
+    setReviewIdx(0);
     setCompletion(null);
     setPhase("exercises");
   }
 
-  function handleContinue() {
-    if (!isLast) {
-      setStep((s) => s + 1);
-      setPickedAnswer(null);
-      setShowFeedback(false);
-      setWasCorrect(false);
-      return;
-    }
-    // Unit test: fail → show "Try again" without saving progress.
-    if (isUnitTest && correctCount < passingScore) {
-      setCompletion({
-        xp_earned: 0,
-        already_completed: false,
-        saved: false,
-        unit_test_score: correctCount,
-        unit_test_total: exercises.length,
-        unit_test_passed: false,
-      });
-      return;
-    }
+  function finishLesson() {
+    // Always save progress and redirect. No score-based gate — even if the
+    // user fails a unit test, we record the attempt and let them retake
+    // from the section page. Stranding them on a completion screen is
+    // worse than recording a failed attempt.
     startTransition(async () => {
       try {
         const result = await completeLesson(lesson.id, languageSlug);
-        // Always set completion so the user is never stranded — even if the
-        // save failed, we show a clear message and only auto-redirect on
-        // success.
         setCompletion({
           xp_earned: result.ok ? result.xp_earned : 0,
           already_completed: result.ok ? result.already_completed : false,
@@ -994,6 +1021,50 @@ export default function LessonClient({
         });
       }
     });
+  }
+
+  function handleContinue() {
+    // ----- REVIEW PASS -----
+    if (inReview) {
+      // Wrong on a review item: stay on this question, let them retry.
+      if (!wasCorrect) {
+        setPickedAnswer(null);
+        setShowFeedback(false);
+        setWasCorrect(false);
+        setAttemptKey((k) => k + 1);
+        return;
+      }
+      // Correct: advance to the next review item, or finish if done.
+      if (isLastReview) {
+        finishLesson();
+        return;
+      }
+      setReviewIdx((i) => i + 1);
+      setPickedAnswer(null);
+      setShowFeedback(false);
+      setWasCorrect(false);
+      return;
+    }
+
+    // ----- MAIN PASS -----
+    if (!isLastMain) {
+      setStep((s) => s + 1);
+      setPickedAnswer(null);
+      setShowFeedback(false);
+      setWasCorrect(false);
+      return;
+    }
+    // Last main-pass exercise just answered. If the user got anything wrong,
+    // enter the review phase first.
+    if (wrongIndexes.length > 0) {
+      setInReview(true);
+      setReviewIdx(0);
+      setPickedAnswer(null);
+      setShowFeedback(false);
+      setWasCorrect(false);
+      return;
+    }
+    finishLesson();
   }
 
   if (completion && isUnitTest) {
@@ -1203,22 +1274,39 @@ export default function LessonClient({
             />
           </div>
           <span className="text-xs font-semibold text-navy/60 tabular-nums">
-            {step + 1} / {exercises.length}
+            {inReview
+              ? `Review ${reviewIdx + 1} / ${wrongIndexes.length}`
+              : `${step + 1} / ${exercises.length}`}
           </span>
         </div>
       </header>
 
       <section className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-10">
+        {inReview && (
+          <div className="mb-6 rounded-2xl border-2 border-red-300 bg-red-50 px-5 py-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-1">
+              Review · {reviewIdx + 1} of {wrongIndexes.length}
+            </p>
+            <p className="text-sm font-semibold text-red-700">
+              You answered this incorrectly. Try again — you need to get it
+              right to finish the lesson.
+            </p>
+          </div>
+        )}
         <p className="text-xs font-semibold uppercase tracking-wider text-teal-dark mb-2">
           {exercise.type.replace("_", " ")}
         </p>
         <h1 className="text-2xl sm:text-3xl font-bold text-navy mb-2 leading-snug">
-          {exercise.question}
+          {stripPhonetic(exercise.question)}
         </h1>
-        {exercise.translation && exercise.type !== "speaking" && (
-          <p className="text-sm text-navy/50 mb-8">{exercise.translation}</p>
-        )}
-        <div className="mt-8">
+        {exercise.translation &&
+          exercise.type !== "speaking" &&
+          exercise.type !== "listening" && (
+            <p className="text-sm text-navy/50 mb-8">
+              {stripPhonetic(exercise.translation)}
+            </p>
+          )}
+        <div className="mt-8" key={`${exercise.id}-${attemptKey}`}>
           {exercise.type === "multiple_choice" && (
             <MultipleChoice
               exercise={exercise}
@@ -1283,7 +1371,19 @@ export default function LessonClient({
                 wasCorrect ? "bg-teal hover:bg-teal-dark" : "bg-red-500 hover:bg-red-600"
               }`}
             >
-              {pending ? "Saving..." : isLast ? "Finish lesson" : "Continue"}
+              {pending
+                ? "Saving..."
+                : inReview
+                  ? wasCorrect
+                    ? isLastReview
+                      ? "Finish lesson"
+                      : "Next review →"
+                    : "Try again"
+                  : isLastMain
+                    ? wrongIndexes.length > 0
+                      ? "Review mistakes →"
+                      : "Finish lesson"
+                    : "Continue"}
             </button>
           </div>
         </footer>
