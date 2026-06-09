@@ -22,6 +22,13 @@ export default async function Home() {
     getLanguagesUserHasStarted().catch(() => new Set<string>()),
   ]);
 
+  // Global "returning learner" flag: once the user has any completed
+  // lesson anywhere, every homepage card flips its CTA to
+  // "Continue learning X" — even for languages they haven't tried yet.
+  // The user knows the site; "Start learning" only makes sense for
+  // first-time visitors with zero progress.
+  const userIsReturning = started.size > 0;
+
   const langs: LanguageGridItem[] = dbLangs.map((db) => ({
     name: db.name,
     slug: db.code,
@@ -29,7 +36,7 @@ export default async function Home() {
     grammar: db.difficulty_grammar,
     pronunciation: db.difficulty_pronunciation,
     lessonsTotal: db.lessonsTotal,
-    hasProgress: started.has(db.code),
+    hasProgress: userIsReturning,
   }));
 
   return (

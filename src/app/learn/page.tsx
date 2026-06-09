@@ -148,33 +148,64 @@ export default async function LearnPage() {
         </section>
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {sortByPopularity(
-              progress.map((entry) => ({
-                ...entry,
-                slug: entry.language.code,
-              })),
-            ).map((entry) => {
-              const localizedName = getLocalizedLanguageName(
-                entry.language.code,
-                uiLang,
-                entry.language.name,
-              );
+          {/* Only show languages the user has actually started. Anything
+              else lives on the homepage where the user can pick one to
+              begin. */}
+          {(() => {
+            const started = progress.filter(
+              (entry) =>
+                entry.completedLessons > 0 ||
+                (entry.stats?.total_xp ?? 0) > 0,
+            );
+
+            if (started.length === 0) {
               return (
-                <LanguageProgressCard
-                  key={entry.language.id}
-                  entry={entry}
-                  localizedName={localizedName}
-                  notStartedLabel={t("learn.notStarted")}
-                  lessonsLabel={t("learn.lessons")}
-                  startLabel={t("card.startLearning", { language: localizedName })}
-                  continueLabel={t("card.continueLearning", {
-                    language: localizedName,
-                  })}
-                />
+                <div className="text-center py-16 border border-dashed border-border rounded-2xl bg-white">
+                  <p className="text-sm text-navy/60 mb-4">
+                    {t("learn.noStartedYet")}
+                  </p>
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors"
+                  >
+                    {t("learn.browseLanguages")}
+                  </Link>
+                </div>
               );
-            })}
-          </div>
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {sortByPopularity(
+                  started.map((entry) => ({
+                    ...entry,
+                    slug: entry.language.code,
+                  })),
+                ).map((entry) => {
+                  const localizedName = getLocalizedLanguageName(
+                    entry.language.code,
+                    uiLang,
+                    entry.language.name,
+                  );
+                  return (
+                    <LanguageProgressCard
+                      key={entry.language.id}
+                      entry={entry}
+                      localizedName={localizedName}
+                      notStartedLabel={t("learn.notStarted")}
+                      lessonsLabel={t("learn.lessons")}
+                      startLabel={t("card.startLearning", {
+                        language: localizedName,
+                      })}
+                      continueLabel={t("card.continueLearning", {
+                        language: localizedName,
+                      })}
+                    />
+                  );
+                })}
+              </div>
+            );
+          })()}
         </section>
       </main>
       <Footer />
