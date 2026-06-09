@@ -21,9 +21,6 @@ export default function PricingPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const premiumPrice = billing === "yearly" ? "$7.99" : "$9.99";
-  const premiumPeriod = t("pricing.month");
-
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
@@ -82,11 +79,12 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="p-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      {/* Header — both sides explicitly h-9 so the home pill, the logo
+          link, and the back-to-home button share a single centerline. */}
+      <div className="p-6 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 h-9">
           <HomeButton />
-          <Link href="/" className="flex items-center gap-2.5 w-fit">
+          <Link href="/" className="flex items-center gap-2.5 h-9">
             <Image
               src="/Logo fianl.jpg"
               alt="Languages Center logo"
@@ -94,14 +92,14 @@ export default function PricingPage() {
               height={36}
               className="rounded-lg"
             />
-            <span className="text-lg font-bold text-navy tracking-tight">
+            <span className="text-lg font-bold text-navy tracking-tight leading-none">
               Languages Center
             </span>
           </Link>
         </div>
         <Link
           href="/"
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-teal-dark bg-teal-light rounded-full hover:bg-teal hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 h-9 px-4 text-sm font-semibold text-teal-dark bg-teal-light rounded-full hover:bg-teal hover:text-white transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -160,15 +158,14 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl items-stretch">
           {/* Free plan */}
-          <div className="relative rounded-2xl p-8 border border-border bg-white">
+          <div className="relative rounded-2xl p-8 border border-border bg-white flex flex-col">
             <h2 className="text-lg font-bold text-navy mb-1">{t("pricing.free")}</h2>
             <p className="text-sm text-navy/50 mb-5">{t("pricing.freeDesc")}</p>
 
             <div className="flex items-baseline gap-1 mb-6">
               <span className="text-4xl font-extrabold text-navy">$0</span>
-              <span className="text-sm text-navy/40">{t("pricing.forever")}</span>
             </div>
 
             <ul className="space-y-2.5 mb-8">
@@ -190,29 +187,92 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            <div className="w-full py-2.5 text-sm font-semibold text-center text-navy/40 bg-background rounded-xl border border-border">
-              {t("pricing.cta.current")}
+            {/* mt-auto pins the CTA to the bottom so it aligns with the
+                Subscribe button in the Premium card across both heights. */}
+            <div className="mt-auto">
+              <div className="w-full py-2.5 text-sm font-semibold text-center text-navy/40 bg-background rounded-xl border border-border">
+                {t("pricing.cta.current")}
+              </div>
             </div>
           </div>
 
           {/* Premium plan */}
-          <div className="relative rounded-2xl p-8 border border-teal bg-white shadow-lg">
+          <div className="relative rounded-2xl p-8 border border-teal bg-white shadow-lg flex flex-col">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-teal text-white text-xs font-semibold rounded-full">
               {t("pricing.mostPopular")}
             </div>
 
             <h2 className="text-lg font-bold text-navy mb-1">{t("pricing.premium")}</h2>
-            <p className="text-sm text-navy/50 mb-5">{t("pricing.premiumDesc")}</p>
+            <p className="text-sm text-navy/50 mb-4">{t("pricing.premiumDesc")}</p>
 
-            <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-4xl font-extrabold text-navy">{premiumPrice}</span>
-              <span className="text-sm text-navy/40">{premiumPeriod}</span>
+            {/* 7-day free trial banner — prominent peach highlight so users
+                immediately see they can start without paying. */}
+            <div className="mb-5 rounded-xl bg-peach-light border border-peach-dark/40 px-4 py-3">
+              <p className="text-xs font-semibold text-amber-900 leading-snug">
+                {t("pricing.trial.banner")}
+              </p>
             </div>
-            <p className="text-xs text-navy/50 mb-6 min-h-[2.5rem]">
-              {billing === "yearly"
-                ? t("pricing.yearlyBilling")
-                : t("pricing.monthlyBilling")}
-            </p>
+
+            {/* Price area: when yearly is selected, show the crossed-out
+                monthly rate, the discounted rate, and a green SAVE 20%
+                badge. When monthly is selected, show $9.99/mo and a small
+                CTA to switch to yearly. */}
+            {billing === "yearly" ? (
+              <div className="mb-6">
+                <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
+                  <span className="text-lg font-semibold text-navy/35 line-through tabular-nums">
+                    $9.99
+                  </span>
+                  <svg
+                    className="w-4 h-4 text-navy/30 self-center"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13 5l7 7-7 7M5 12h15"
+                    />
+                  </svg>
+                  <span className="text-4xl font-extrabold text-teal-dark tabular-nums">
+                    $7.99
+                  </span>
+                  <span className="text-sm text-navy/50">
+                    {t("pricing.month")}
+                  </span>
+                  <span className="ms-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wider">
+                    {t("pricing.save20")}
+                  </span>
+                </div>
+                <p className="text-xs text-navy/50 mt-1.5">
+                  {t("pricing.yearlyBilledAs")}
+                </p>
+              </div>
+            ) : (
+              <div className="mb-6">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-extrabold text-navy tabular-nums">
+                    $9.99
+                  </span>
+                  <span className="text-sm text-navy/40">
+                    {t("pricing.month")}
+                  </span>
+                </div>
+                <p className="text-xs text-navy/50 mt-1.5">
+                  {t("pricing.monthlyBilling")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setBilling("yearly")}
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-teal-dark hover:text-teal"
+                >
+                  {t("pricing.switchToYearly")}
+                  <span aria-hidden>→</span>
+                </button>
+              </div>
+            )}
 
             <ul className="space-y-2.5 mb-8">
               {premiumFeatures.map((feature) => (
@@ -225,31 +285,33 @@ export default function PricingPage() {
               ))}
             </ul>
 
-            {isPremium ? (
-              <div className="w-full py-2.5 text-sm font-semibold text-center text-teal bg-teal-light rounded-xl">
-                {t("pricing.cta.manage")}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <button
-                  onClick={() => handleSubscribe(true)}
-                  disabled={loading}
-                  className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? t("login.loading") : t("pricing.cta.startTrial")}
-                </button>
-                <button
-                  onClick={() => handleSubscribe(false)}
-                  disabled={loading}
-                  className="w-full py-2.5 text-sm font-semibold text-teal-dark bg-white border border-teal rounded-xl hover:bg-teal-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t("pricing.cta.startNow")}
-                </button>
-                <p className="text-[11px] text-navy/40 text-center pt-1">
-                  {t("pricing.trial.cancelAnytime")}
-                </p>
-              </div>
-            )}
+            <div className="mt-auto">
+              {isPremium ? (
+                <div className="w-full py-2.5 text-sm font-semibold text-center text-teal bg-teal-light rounded-xl">
+                  {t("pricing.cta.manage")}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => handleSubscribe(true)}
+                    disabled={loading}
+                    className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? t("login.loading") : t("pricing.cta.startTrial")}
+                  </button>
+                  <button
+                    onClick={() => handleSubscribe(false)}
+                    disabled={loading}
+                    className="w-full py-2.5 text-sm font-semibold text-teal-dark bg-white border border-teal rounded-xl hover:bg-teal-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {t("pricing.cta.startNow")}
+                  </button>
+                  <p className="text-[11px] text-navy/40 text-center pt-1">
+                    {t("pricing.trial.cancelAnytime")}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

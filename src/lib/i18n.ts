@@ -539,6 +539,10 @@ const en: Dict = {
   "pricing.monthlyBilling": "Billed monthly. Cancel anytime.",
   "pricing.yearlyBilling": "$95.88 billed once per year (saves 20%).",
   "pricing.trial.cancelAnytime": "No charge for 7 days. Cancel anytime before the trial ends.",
+  "pricing.trial.banner":
+    "Start with a 7-day free trial — no charge until day 8. Cancel anytime.",
+  "pricing.yearlyBilledAs": "Billed as $95.88/year",
+  "pricing.switchToYearly": "Switch to yearly to save 20%",
   "resetBanner.body": "Your password has been reset. You're signed in and ready to go.",
 };
 
@@ -747,6 +751,10 @@ const es: Dict = {
   "pricing.monthlyBilling": "Facturación mensual. Cancela cuando quieras.",
   "pricing.yearlyBilling": "95,88 $ facturados una vez al año (ahorras 20 %).",
   "pricing.trial.cancelAnytime": "Sin cargos durante 7 días. Cancela antes de que termine la prueba.",
+  "pricing.trial.banner":
+    "Empieza con una prueba gratis de 7 días — sin cargos hasta el día 8. Cancela cuando quieras.",
+  "pricing.yearlyBilledAs": "Se facturan $95.88 al año",
+  "pricing.switchToYearly": "Cambia a facturación anual y ahorra un 20%",
   "resetBanner.body": "Tu contraseña se ha restablecido. Has iniciado sesión y estás listo.",
   "article.allArticles": "Todos los artículos de {language}",
   "article.minRead": "min de lectura",
