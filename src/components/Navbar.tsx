@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { useI18n } from "@/components/I18nProvider";
-import { getLocalizedLanguageName } from "@/lib/i18n";
+import { getLocalizedLanguageName, UI_LANG_NAMES } from "@/lib/i18n";
 import { sortByPopularity } from "@/lib/language-proximity";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import HomeButton from "@/components/HomeButton";
@@ -142,7 +142,14 @@ export default function Navbar() {
                   onWheel={(e) => e.stopPropagation()}
                   onTouchMove={(e) => e.stopPropagation()}
                 >
-                  {languages.map((lang) => (
+                  {/* Hide the row that matches the user's UI language —
+                      we don't promote learning the language they already
+                      use to navigate the site. */}
+                  {languages
+                    .filter(
+                      (l) => l.slug !== (UI_LANG_NAMES[uiLang]?.slug ?? null),
+                    )
+                    .map((lang) => (
                     <Link
                       key={lang.slug}
                       href={`/languages/${lang.slug}`}
