@@ -44,7 +44,7 @@ export default async function Home() {
       <ResetSuccessBanner />
       <Navbar />
       <main className="flex-1">
-        <Hero />
+        <Hero hasProgress={userIsReturning} />
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
           <LanguageGrid languages={langs} />
         </section>

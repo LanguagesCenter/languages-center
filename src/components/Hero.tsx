@@ -3,7 +3,14 @@
 import Link from "next/link";
 import { useI18n } from "@/components/I18nProvider";
 
-export default function Hero() {
+export default function Hero({
+  hasProgress = false,
+}: {
+  // If the user has any recorded progress in any language, the primary
+  // CTA reads "Continue learning" instead of "Start learning". Resolved
+  // server-side on the homepage and passed in as a prop.
+  hasProgress?: boolean;
+}) {
   const { t } = useI18n();
   return (
     <section className="relative pt-20 pb-16 px-4 text-center overflow-hidden">
@@ -22,7 +29,7 @@ export default function Hero() {
             href="/learn"
             className="inline-flex items-center gap-2 px-7 py-3.5 text-base font-semibold text-white bg-teal rounded-full hover:bg-teal-dark hover:shadow-lg transition-all"
           >
-            {t("hero.startLearning")}
+            {t(hasProgress ? "hero.continueLearning" : "hero.startLearning")}
             <svg
               className="w-4 h-4"
               fill="none"
