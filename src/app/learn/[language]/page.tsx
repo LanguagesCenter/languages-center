@@ -8,6 +8,7 @@ import {
   getLanguageBySlug,
   getCEFRTreeForLanguage,
   getHighestReachedLevel,
+  isCurrentUserPremium,
   CEFR_LABEL,
   type CEFRLevelGroup,
   type SectionWithProgress,
@@ -159,7 +160,15 @@ function SectionCard({
   );
 }
 
-function PlacementExamCard({ languageSlug, level }: { languageSlug: string; level: string }) {
+function PlacementExamCard({
+  languageSlug,
+  level,
+  isPremium,
+}: {
+  languageSlug: string;
+  level: string;
+  isPremium: boolean;
+}) {
   return (
     <Link
       href={`/learn/${languageSlug}/placement/${level.toLowerCase()}`}
@@ -182,12 +191,20 @@ function PlacementExamCard({ languageSlug, level }: { languageSlug: string; leve
             45 min · vocabulary, listening, speaking, writing
           </p>
         </div>
-        <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
-          <span className="px-3 py-1 rounded-full bg-teal-light text-teal-dark text-xs font-bold">
-            Free with Premium
+        {/* Pricing badge only for non-premium users. Premium users get a
+            clean "Take Exam" pill with no paywall mention. */}
+        {isPremium ? (
+          <span className="shrink-0 hidden sm:inline-flex px-4 py-2 rounded-full bg-teal text-white text-sm font-semibold">
+            Take Exam
           </span>
-          <span className="text-[10px] text-navy/50">or $0.99 one-time</span>
-        </div>
+        ) : (
+          <div className="shrink-0 hidden sm:flex flex-col items-end gap-1">
+            <span className="px-3 py-1 rounded-full bg-teal-light text-teal-dark text-xs font-bold">
+              Free with Premium
+            </span>
+            <span className="text-[10px] text-navy/50">or $0.99 one-time</span>
+          </div>
+        )}
         <svg className="shrink-0 w-5 h-5 text-teal" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
@@ -208,6 +225,7 @@ function LevelAccordion({
   sectionLabel,
   noSectionsLabel,
   showPlacementExam,
+  isPremium,
 }: {
   group: CEFRLevelGroup;
   languageSlug: string;
@@ -220,6 +238,7 @@ function LevelAccordion({
   sectionLabel: string;
   noSectionsLabel: string;
   showPlacementExam: boolean;
+  isPremium: boolean;
 }) {
   const styles = LEVEL_STYLES[group.level] ?? LEVEL_STYLES.A1;
   const pct =
@@ -272,7 +291,11 @@ function LevelAccordion({
 
       <div className="px-6 sm:px-7 pb-6 sm:pb-7">
         {showPlacementExam && (
-          <PlacementExamCard languageSlug={languageSlug} level={group.level} />
+          <PlacementExamCard
+            languageSlug={languageSlug}
+            level={group.level}
+            isPremium={isPremium}
+          />
         )}
         {group.sections.length === 0 ? (
           <p className="text-sm text-navy/50">{noSectionsLabel}</p>
@@ -319,6 +342,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
   const tree = await getCEFRTreeForLanguage(language.id);
   const flagCode = FLAG_CODES[language.code] ?? language.code;
   const reachedLevel = getHighestReachedLevel(tree);
+  const isPremium = await isCurrentUserPremium();
 
   const totalLessons = tree.reduce((sum, g) => sum + g.lessonsTotal, 0);
   const completedLessons = tree.reduce((sum, g) => sum + g.lessonsCompleted, 0);
@@ -429,6 +453,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
               sectionLabel={t("cefr.section")}
               noSectionsLabel={t("cefr.noSections")}
               showPlacementExam={slug === "spanish" && (group.level === "A1" || group.level === "A2")}
+              isPremium={isPremium}
             />
           ))}
         </section>

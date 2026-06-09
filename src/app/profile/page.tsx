@@ -58,6 +58,12 @@ export default async function ProfilePage() {
   const joined = user.created_at ? new Date(user.created_at) : null;
   const isPremium = await isCurrentUserPremium();
   const t = await getServerT();
+  const subStatus = (user.user_metadata?.subscription_status as
+    | string
+    | undefined) ?? null;
+  const cancelAt = (user.user_metadata?.subscription_cancel_at as
+    | string
+    | undefined) ?? null;
 
   return (
     <>
@@ -115,13 +121,17 @@ export default async function ProfilePage() {
                   {t("profile.comingSoon")}
                 </dd>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <dt className="text-navy/60">{t("profile.subscription")}</dt>
-                <dd className="flex items-center gap-3">
+                <dd className="flex flex-wrap items-center justify-end gap-2">
                   <span
                     className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                       isPremium
-                        ? "bg-teal-light text-teal-dark"
+                        ? subStatus === "past_due"
+                          ? "bg-red-50 text-red-700"
+                          : subStatus === "canceling"
+                            ? "bg-amber-50 text-amber-800"
+                            : "bg-teal-light text-teal-dark"
                         : "bg-navy/5 text-navy/60"
                     }`}
                   >
@@ -129,6 +139,31 @@ export default async function ProfilePage() {
                       ? t("profile.premium")
                       : t("profile.free")}
                   </span>
+                  {/* Status detail: canceling on date, past-due, etc. */}
+                  {subStatus === "canceling" && (
+                    <span className="text-xs text-amber-800">
+                      {cancelAt
+                        ? t("profile.subCancelingOn", {
+                            date: new Date(cancelAt).toLocaleDateString(),
+                          })
+                        : t("profile.subCanceling")}
+                    </span>
+                  )}
+                  {subStatus === "past_due" && (
+                    <span className="text-xs text-red-700">
+                      {t("profile.subPastDue")}
+                    </span>
+                  )}
+                  {subStatus === "trialing" && (
+                    <span className="text-xs text-teal-dark">
+                      {t("profile.subTrialing")}
+                    </span>
+                  )}
+                  {!isPremium && subStatus === "canceled" && (
+                    <span className="text-xs text-navy/50">
+                      {t("profile.subCanceled")}
+                    </span>
+                  )}
                   <Link
                     href="/pricing"
                     className="text-xs font-semibold text-teal-dark hover:text-teal"
