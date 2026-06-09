@@ -213,14 +213,14 @@ export default function Navbar() {
                           onClick={() => setUserMenuOpen(false)}
                           className="block w-full px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
                         >
-                          Profile
+                          {t("nav.profile")}
                         </Link>
                         <Link
                           href="/profile"
                           onClick={() => setUserMenuOpen(false)}
                           className="block w-full px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
                         >
-                          Settings
+                          {t("nav.settings")}
                         </Link>
                         <div className="border-t border-border my-1" />
                         <button

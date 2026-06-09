@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { DbExercise, DbLesson } from "@/lib/learn";
 import { SPEECH_LANG_CODES } from "@/lib/speech";
 import { completeLesson } from "@/lib/learn-actions";
+import { useI18n } from "@/components/I18nProvider";
 
 interface Props {
   languageSlug: string;
@@ -14,13 +15,6 @@ interface Props {
   exercises: DbExercise[];
   sectionId: number;
 }
-
-const ENCOURAGEMENTS_RIGHT = ["Nice!", "Great job!", "You're on fire!", "Brilliant!"];
-const ENCOURAGEMENTS_WRONG = [
-  "Not quite, keep going!",
-  "Close — try again next time.",
-  "No worries, learning takes practice.",
-];
 
 function shuffle<T>(arr: T[]): T[] {
   const copy = [...arr];
@@ -387,6 +381,7 @@ function ListeningExercise({
   pickedAnswer: string | null;
   speechLang: string;
 }) {
+  const { t } = useI18n();
   const options = useMemo(
     () => shuffle([exercise.correct_answer, ...exercise.wrong_answers].filter(Boolean)),
     [exercise.correct_answer, exercise.wrong_answers],
@@ -424,14 +419,14 @@ function ListeningExercise({
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-teal-dark mb-1">
-            Listen carefully
+            {t("lesson.listen.heading")}
           </p>
           <p className="text-sm text-navy/70">
             {hasTts
               ? isPlaying
-                ? "Playing… tap to pause."
-                : "Tap play to hear the word again, then choose what you heard."
-              : "Your browser does not support audio playback for this exercise."}
+                ? t("lesson.listen.playing")
+                : t("lesson.listen.tap")
+              : t("lesson.listen.unsupported")}
           </p>
         </div>
       </div>
@@ -461,7 +456,7 @@ function ListeningExercise({
       </div>
       {disabled && exercise.translation && (
         <p className="text-xs text-navy/50 text-center">
-          Meaning:{" "}
+          {t("lesson.listen.meaning")}{" "}
           <span className="font-semibold text-navy/70">
             {stripPhonetic(exercise.translation)}
           </span>
@@ -482,6 +477,7 @@ function SpeakingExercise({
   disabled: boolean;
   speechLang: string;
 }) {
+  const { t } = useI18n();
   const [transcript, setTranscript] = useState("");
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -506,7 +502,11 @@ function SpeakingExercise({
       setTranscript(text);
     };
     rec.onerror = (ev) => {
-      setError(ev.error === "not-allowed" ? "Microphone access blocked." : `Speech error: ${ev.error}`);
+      setError(
+        ev.error === "not-allowed"
+          ? t("lesson.speak.micBlocked")
+          : t("lesson.speak.error", { detail: ev.error }),
+      );
       setListening(false);
     };
     rec.onend = () => {
@@ -537,7 +537,7 @@ function SpeakingExercise({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 mb-1">
-            Say it out loud
+            {t("lesson.speak.heading")}
           </p>
           <p className="text-lg font-semibold text-navy">
             {exercise.correct_answer}
@@ -550,10 +550,15 @@ function SpeakingExercise({
 
       <div className="rounded-2xl border-2 border-border bg-white p-5 min-h-[100px]">
         <p className="text-xs font-semibold uppercase tracking-wider text-navy/50 mb-2">
-          What we heard
+          {t("lesson.speak.heard")}
         </p>
         <p className="text-base text-navy min-h-[1.5rem]">
-          {transcript || (listening ? "Listening…" : <span className="text-navy/30">Press the mic and speak.</span>)}
+          {transcript ||
+            (listening ? (
+              t("lesson.speak.listening")
+            ) : (
+              <span className="text-navy/30">{t("lesson.speak.press")}</span>
+            ))}
         </p>
       </div>
 
@@ -565,8 +570,7 @@ function SpeakingExercise({
 
       {!supported && (
         <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5">
-          Your browser does not support speech recognition. Try Chrome, Edge, or Safari to practice speaking — or skip
-          this exercise.
+          {t("lesson.speak.unsupported")}
         </div>
       )}
 
@@ -578,7 +582,7 @@ function SpeakingExercise({
             disabled={disabled}
             className="flex-1 py-3 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
           >
-            Stop recording
+            {t("lesson.speak.stopRecording")}
           </button>
         ) : (
           <button
@@ -587,7 +591,9 @@ function SpeakingExercise({
             disabled={disabled || !supported}
             className="flex-1 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {transcript ? "Try again" : "Start recording"}
+            {transcript
+              ? t("lesson.speak.tryAgain")
+              : t("lesson.speak.startRecording")}
           </button>
         )}
         <button
@@ -596,7 +602,7 @@ function SpeakingExercise({
           disabled={disabled || !transcript.trim()}
           className="flex-1 py-3 text-sm font-semibold text-teal-dark bg-teal-light border border-teal/40 rounded-xl hover:bg-teal-light/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {supported ? "Submit" : "Skip (no mic)"}
+          {supported ? t("lesson.speak.submit") : t("lesson.speak.skip")}
         </button>
       </div>
     </div>
@@ -614,6 +620,7 @@ function DialoguePhase({
   lesson: DbLesson;
   speak: (text: string) => void;
 }) {
+  const { t } = useI18n();
   // For conversation lessons (lesson 8), hide English by default and let the
   // user reveal it. For teaching dialogues, show both side by side.
   const isConversation = lesson.type === "conversation";
@@ -621,11 +628,15 @@ function DialoguePhase({
   return (
     <>
       <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
-        {isConversation ? "Conversation" : "Dialogue"}
+        {isConversation
+          ? t("lesson.dialogue.conversation")
+          : t("lesson.dialogue.dialogue")}
       </p>
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <h2 className="text-xl font-bold text-navy">
-          {isConversation ? "Read or listen, then answer below" : "In context"}
+          {isConversation
+            ? t("lesson.dialogue.convHeading")
+            : t("lesson.dialogue.inContext")}
         </h2>
         <div className="flex items-center gap-2">
           {isConversation && (
@@ -634,7 +645,9 @@ function DialoguePhase({
               onClick={() => setShowEnglish((v) => !v)}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-full bg-navy/5 text-navy/70 hover:bg-navy/10 transition-colors"
             >
-              {showEnglish ? "Hide English" : "Reveal English"}
+              {showEnglish
+                ? t("lesson.dialogue.hideEnglish")
+                : t("lesson.dialogue.revealEnglish")}
             </button>
           )}
           <button
@@ -645,7 +658,7 @@ function DialoguePhase({
             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
-            Listen to full dialogue
+            {t("lesson.dialogue.listenAll")}
           </button>
         </div>
       </div>
@@ -700,6 +713,7 @@ function TeachingCard({
   hasExercises: boolean;
   onStartExercises: () => void;
 }) {
+  const { t } = useI18n();
   const hasVocab = (lesson.vocab_items?.length ?? 0) > 0;
   const hasDialogue = (lesson.dialogue?.length ?? 0) > 0;
   const hasGrammar = !!lesson.grammar_note?.trim();
@@ -737,10 +751,13 @@ function TeachingCard({
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-6 text-xs text-navy/50">
           <Link href={`/learn/${languageSlug}`} className="hover:text-teal transition-colors">
-            ← Back to course
+            ← {t("lesson.teaching.backToCourse")}
           </Link>
           <span>
-            Step {idx + 1} of {phasesInOrder.length + (hasExercises ? 1 : 0)}
+            {t("lesson.teaching.step", {
+              current: idx + 1,
+              total: phasesInOrder.length + (hasExercises ? 1 : 0),
+            })}
           </span>
         </div>
 
@@ -748,7 +765,7 @@ function TeachingCard({
           {phase === "intro" && (
             <>
               <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
-                Introduction
+                {t("lesson.teaching.intro")}
               </p>
               <h1 className="text-2xl font-bold text-navy mb-4">{lesson.title}</h1>
               <p className="text-base text-navy/80 leading-relaxed">
@@ -760,9 +777,11 @@ function TeachingCard({
           {phase === "vocab" && hasVocab && (
             <>
               <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
-                Vocabulary
+                {t("lesson.teaching.vocab")}
               </p>
-              <h2 className="text-xl font-bold text-navy mb-5">Learn these words</h2>
+              <h2 className="text-xl font-bold text-navy mb-5">
+                {t("lesson.teaching.learnWords")}
+              </h2>
               <div className="space-y-3">
                 {lesson.vocab_items!.map((v, i) => (
                   <div key={i} className="border border-border rounded-xl p-4">
@@ -800,9 +819,11 @@ function TeachingCard({
           {phase === "grammar" && hasGrammar && (
             <>
               <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-3">
-                Grammar note
+                {t("lesson.teaching.grammar")}
               </p>
-              <h2 className="text-xl font-bold text-navy mb-4">Quick rule</h2>
+              <h2 className="text-xl font-bold text-navy mb-4">
+                {t("lesson.teaching.quickRule")}
+              </h2>
               <div className="bg-peach-light border border-peach rounded-xl p-5">
                 <p className="text-sm text-navy/80 leading-relaxed">{lesson.grammar_note}</p>
               </div>
@@ -819,14 +840,18 @@ function TeachingCard({
               disabled={idx === 0}
               className="text-sm font-medium text-navy/60 hover:text-navy disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              ← Back
+              ← {t("lesson.teaching.back")}
             </button>
             <button
               type="button"
               onClick={next}
               className="px-6 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
             >
-              {isLastPhase ? (hasExercises ? "Start exercises →" : "Done") : "Next →"}
+              {isLastPhase
+                ? hasExercises
+                  ? `${t("lesson.teaching.startExercises")} →`
+                  : t("lesson.teaching.done")
+                : `${t("lesson.teaching.next")} →`}
             </button>
           </div>
         </div>
@@ -843,6 +868,7 @@ export default function LessonClient({
   sectionId,
 }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
   const speechLang = SPEECH_LANG_CODES[languageSlug] ?? "en-US";
   const [pending, startTransition] = useTransition();
   const [phase, setPhase] = useState<TeachingPhase>("intro");
@@ -921,15 +947,15 @@ export default function LessonClient({
     return (
       <main className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl border border-border p-8 text-center max-w-md">
-          <h1 className="text-xl font-bold text-navy mb-2">No exercises yet</h1>
-          <p className="text-sm text-navy/60 mb-6">
-            This lesson is still being prepared. Check back soon!
-          </p>
+          <h1 className="text-xl font-bold text-navy mb-2">
+            {t("lesson.empty.heading")}
+          </h1>
+          <p className="text-sm text-navy/60 mb-6">{t("lesson.empty.body")}</p>
           <Link
             href={`/learn/${languageSlug}`}
             className="inline-block px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
           >
-            Back to course
+            {t("lesson.teaching.backToCourse")}
           </Link>
         </div>
       </main>
@@ -1007,7 +1033,9 @@ export default function LessonClient({
           current_streak: result.ok ? result.current_streak : undefined,
           saved: result.ok,
           not_authenticated: result.not_authenticated,
-          error: result.ok ? undefined : (result.error ?? "Could not save progress"),
+          error: result.ok
+            ? undefined
+            : (result.error ?? t("lesson.errors.couldNotSave")),
           unit_test_score: isUnitTest ? correctCount : undefined,
           unit_test_total: isUnitTest ? exercises.length : undefined,
           unit_test_passed: isUnitTest ? correctCount >= passingScore : undefined,
@@ -1017,7 +1045,8 @@ export default function LessonClient({
           xp_earned: 0,
           already_completed: false,
           saved: false,
-          error: err instanceof Error ? err.message : "Unexpected error",
+          error:
+            err instanceof Error ? err.message : t("lesson.errors.unexpected"),
         });
       }
     });
@@ -1088,16 +1117,27 @@ export default function LessonClient({
             {lesson.title}
           </p>
           <h1 className="text-3xl font-bold text-navy mb-2">
-            {passed ? "Passed!" : "Try again"}
+            {passed
+              ? t("lesson.unitTest.passed")
+              : t("lesson.unitTest.failed")}
           </h1>
           <p className="text-sm text-navy/60 mb-6">
-            You scored <span className="font-bold text-navy">{score} / {total}</span>.{" "}
-            {passed ? "Great work!" : `You need ${passingScore} to pass.`}
+            <span
+              dangerouslySetInnerHTML={{
+                __html: t("lesson.unitTest.score", { score, total }).replace(
+                  /(\d+\s*\/\s*\d+)/,
+                  '<span class="font-bold text-navy">$1</span>',
+                ),
+              }}
+            />{" "}
+            {passed
+              ? t("lesson.unitTest.great")
+              : t("lesson.unitTest.needPass", { needed: passingScore })}
           </p>
           {passed && (
             <div className="bg-teal-light rounded-2xl p-4 mb-6">
               <p className="text-xs text-teal-dark font-semibold uppercase tracking-wide mb-1">
-                XP earned
+                {t("lesson.complete.xpEarned")}
               </p>
               <p className="text-2xl font-bold text-teal-dark">
                 {completion.already_completed ? 0 : completion.xp_earned}
@@ -1115,13 +1155,15 @@ export default function LessonClient({
               onClick={handleRetake}
               className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
             >
-              {passed ? "Take the test again" : "Try again"}
+              {passed
+                ? t("lesson.unitTest.retake")
+                : t("lesson.unitTest.tryAgain")}
             </button>
             <Link
               href={sectionUrl}
               className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
             >
-              Back to the section
+              {t("lesson.complete.backToSection")}
             </Link>
           </div>
         </div>
@@ -1151,17 +1193,22 @@ export default function LessonClient({
 
           {completion.saved ? (
             <>
-              <h1 className="text-3xl font-bold text-navy mb-2">Lesson complete!</h1>
+              <h1 className="text-3xl font-bold text-navy mb-2">
+                {t("lesson.complete.heading")}
+              </h1>
               <p className="text-sm text-navy/60 mb-6">
                 {completion.already_completed
-                  ? "You've already mastered this lesson — practice never hurts."
-                  : `Great work on ${lesson.title} in ${languageName}.`}
+                  ? t("lesson.complete.alreadyMastered")
+                  : t("lesson.complete.body", {
+                      title: lesson.title,
+                      language: languageName,
+                    })}
               </p>
 
               <div className="grid grid-cols-2 gap-3 mb-8">
                 <div className="bg-teal-light rounded-2xl p-4">
                   <p className="text-xs text-teal-dark font-semibold uppercase tracking-wide mb-1">
-                    XP earned
+                    {t("lesson.complete.xpEarned")}
                   </p>
                   <p className="text-2xl font-bold text-teal-dark">
                     {completion.already_completed ? 0 : completion.xp_earned}
@@ -1169,7 +1216,7 @@ export default function LessonClient({
                 </div>
                 <div className="bg-peach-light rounded-2xl p-4">
                   <p className="text-xs text-amber-700 font-semibold uppercase tracking-wide mb-1">
-                    Streak
+                    {t("lesson.complete.streak")}
                   </p>
                   <p className="text-2xl font-bold text-amber-700">
                     🔥 {completion.current_streak ?? 0}
@@ -1177,50 +1224,55 @@ export default function LessonClient({
                 </div>
               </div>
 
-              <p className="text-xs text-navy/40 mb-3">Taking you back to the section…</p>
+              <p className="text-xs text-navy/40 mb-3">
+                {t("lesson.complete.redirecting")}
+              </p>
               <div className="flex flex-col gap-2">
                 <Link
                   href={sectionUrl}
                   className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
                 >
-                  Back to the section
+                  {t("lesson.complete.backToSection")}
                 </Link>
                 <Link
                   href="/dashboard"
                   className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
                 >
-                  View dashboard
+                  {t("lesson.complete.viewDashboard")}
                 </Link>
               </div>
             </>
           ) : completion.not_authenticated ? (
             <>
-              <h1 className="text-2xl font-bold text-navy mb-2">Sign in to save progress</h1>
+              <h1 className="text-2xl font-bold text-navy mb-2">
+                {t("lesson.signIn.heading")}
+              </h1>
               <p className="text-sm text-navy/60 mb-6">
-                You completed {lesson.title}, but you need to be signed in for the XP and
-                streak to stick.
+                {t("lesson.signIn.body", { title: lesson.title })}
               </p>
               <div className="flex flex-col gap-2">
                 <Link
                   href={`/login?next=/learn/${languageSlug}/${lesson.id}`}
                   className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
                 >
-                  Sign in
+                  {t("lesson.signIn.cta")}
                 </Link>
                 <button
                   type="button"
                   onClick={() => setCompletion(null)}
                   className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
                 >
-                  Back to the lesson
+                  {t("lesson.signIn.back")}
                 </button>
               </div>
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-bold text-navy mb-2">Couldn&apos;t save progress</h1>
+              <h1 className="text-2xl font-bold text-navy mb-2">
+                {t("lesson.saveFail.heading")}
+              </h1>
               <p className="text-sm text-navy/60 mb-3">
-                Your lesson was completed, but the save to Supabase failed.
+                {t("lesson.saveFail.body")}
               </p>
               {completion.error && (
                 <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2 mb-6 text-start">
@@ -1234,13 +1286,15 @@ export default function LessonClient({
                   disabled={pending}
                   className="block py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50"
                 >
-                  {pending ? "Retrying…" : "Try again"}
+                  {pending
+                    ? t("lesson.saveFail.retrying")
+                    : t("lesson.saveFail.retry")}
                 </button>
                 <Link
                   href={sectionUrl}
                   className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
                 >
-                  Skip and return to the section
+                  {t("lesson.saveFail.skip")}
                 </Link>
               </div>
             </>
@@ -1251,8 +1305,8 @@ export default function LessonClient({
   }
 
   const encouragement = wasCorrect
-    ? ENCOURAGEMENTS_RIGHT[step % ENCOURAGEMENTS_RIGHT.length]
-    : ENCOURAGEMENTS_WRONG[step % ENCOURAGEMENTS_WRONG.length];
+    ? t(`lesson.encouragement.right.${step % 4}`)
+    : t(`lesson.encouragement.wrong.${step % 3}`);
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -1260,7 +1314,7 @@ export default function LessonClient({
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
           <Link
             href={`/learn/${languageSlug}`}
-            aria-label="Quit lesson"
+            aria-label={t("lesson.header.quit")}
             className="text-navy/40 hover:text-navy/70 transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1275,8 +1329,14 @@ export default function LessonClient({
           </div>
           <span className="text-xs font-semibold text-navy/60 tabular-nums">
             {inReview
-              ? `Review ${reviewIdx + 1} / ${wrongIndexes.length}`
-              : `${step + 1} / ${exercises.length}`}
+              ? t("lesson.review.counter", {
+                  current: reviewIdx + 1,
+                  total: wrongIndexes.length,
+                })
+              : t("lesson.header.progress", {
+                  current: step + 1,
+                  total: exercises.length,
+                })}
           </span>
         </div>
       </header>
@@ -1285,11 +1345,13 @@ export default function LessonClient({
         {inReview && (
           <div className="mb-6 rounded-2xl border-2 border-red-300 bg-red-50 px-5 py-4">
             <p className="text-xs font-bold uppercase tracking-wider text-red-700 mb-1">
-              Review · {reviewIdx + 1} of {wrongIndexes.length}
+              {t("lesson.review.banner", {
+                current: reviewIdx + 1,
+                total: wrongIndexes.length,
+              })}
             </p>
             <p className="text-sm font-semibold text-red-700">
-              You answered this incorrectly. Try again — you need to get it
-              right to finish the lesson.
+              {t("lesson.review.body")}
             </p>
           </div>
         )}
@@ -1358,9 +1420,13 @@ export default function LessonClient({
                 {encouragement}
               </p>
               {wasCorrect ? (
-                <p className="text-sm text-teal-dark/80">+{xpPerExercise} XP</p>
+                <p className="text-sm text-teal-dark/80">
+                  {t("lesson.footer.xp", { xp: xpPerExercise })}
+                </p>
               ) : (
-                <p className="text-sm text-red-700/80">No XP this time</p>
+                <p className="text-sm text-red-700/80">
+                  {t("lesson.footer.noXp")}
+                </p>
               )}
             </div>
             <button
@@ -1372,18 +1438,18 @@ export default function LessonClient({
               }`}
             >
               {pending
-                ? "Saving..."
+                ? t("lesson.footer.saving")
                 : inReview
                   ? wasCorrect
                     ? isLastReview
-                      ? "Finish lesson"
-                      : "Next review →"
-                    : "Try again"
+                      ? t("lesson.footer.finish")
+                      : `${t("lesson.review.next")} →`
+                    : t("lesson.review.tryAgain")
                   : isLastMain
                     ? wrongIndexes.length > 0
-                      ? "Review mistakes →"
-                      : "Finish lesson"
-                    : "Continue"}
+                      ? `${t("lesson.footer.reviewMistakes")} →`
+                      : t("lesson.footer.finish")
+                    : t("lesson.footer.continue")}
             </button>
           </div>
         </footer>

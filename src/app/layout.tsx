@@ -31,7 +31,7 @@ export default async function RootLayout({
       className={`${inter.variable} antialiased`}
     >
       <body className="min-h-screen flex flex-col bg-background text-foreground">
-        <I18nProvider>{children}</I18nProvider>
+        <I18nProvider initialLang={lang}>{children}</I18nProvider>
       </body>
     </html>
   );

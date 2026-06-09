@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAllAttemptsForUser, type PlacementAttempt } from "@/lib/placement-exam";
 import { isCurrentUserPremium } from "@/lib/learn";
 import { signOut } from "@/lib/profile-actions";
+import { getServerT } from "@/lib/i18n-server";
 import UsernameForm from "./UsernameForm";
 
 export const metadata = {
@@ -56,6 +57,7 @@ export default async function ProfilePage() {
     .slice(0, 2);
   const joined = user.created_at ? new Date(user.created_at) : null;
   const isPremium = await isCurrentUserPremium();
+  const t = await getServerT();
 
   return (
     <>
@@ -75,7 +77,9 @@ export default async function ProfilePage() {
                 <p className="text-sm text-navy/60 truncate">{user.email}</p>
                 {joined && (
                   <p className="text-xs text-navy/40 mt-0.5">
-                    Joined {joined.toLocaleDateString()}
+                    {t("profile.joined", {
+                      date: joined.toLocaleDateString(),
+                    })}
                   </p>
                 )}
               </div>
@@ -84,7 +88,7 @@ export default async function ProfilePage() {
                   type="submit"
                   className="px-4 py-2 text-sm font-semibold text-red-700 bg-red-50 rounded-full hover:bg-red-100 transition-colors"
                 >
-                  Sign out
+                  {t("profile.signOut")}
                 </button>
               </form>
             </div>
@@ -92,21 +96,27 @@ export default async function ProfilePage() {
 
           {/* SETTINGS */}
           <div className="bg-white border border-border rounded-2xl p-6 mb-6">
-            <h2 className="text-lg font-bold text-navy mb-4">Settings</h2>
+            <h2 className="text-lg font-bold text-navy mb-4">
+              {t("profile.settings")}
+            </h2>
             <div className="mb-6 pb-6 border-b border-border">
               <UsernameForm initial={displayName} />
             </div>
             <dl className="space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <dt className="text-navy/60">Site language</dt>
-                <dd className="text-navy font-medium">Use the language switcher in the navbar.</dd>
+                <dt className="text-navy/60">{t("switcher.label")}</dt>
+                <dd className="text-navy font-medium">
+                  {t("profile.useNavbarSwitcher")}
+                </dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-navy/60">Email notifications</dt>
-                <dd className="text-navy font-medium">Coming soon</dd>
+                <dt className="text-navy/60">{t("profile.emailNotifs")}</dt>
+                <dd className="text-navy font-medium">
+                  {t("profile.comingSoon")}
+                </dd>
               </div>
               <div className="flex items-center justify-between">
-                <dt className="text-navy/60">Subscription</dt>
+                <dt className="text-navy/60">{t("profile.subscription")}</dt>
                 <dd className="flex items-center gap-3">
                   <span
                     className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -115,13 +125,15 @@ export default async function ProfilePage() {
                         : "bg-navy/5 text-navy/60"
                     }`}
                   >
-                    {isPremium ? "Premium" : "Free"}
+                    {isPremium
+                      ? t("profile.premium")
+                      : t("profile.free")}
                   </span>
                   <Link
                     href="/pricing"
                     className="text-xs font-semibold text-teal-dark hover:text-teal"
                   >
-                    Manage
+                    {t("profile.manage")}
                   </Link>
                 </dd>
               </div>
@@ -130,12 +142,16 @@ export default async function ProfilePage() {
 
           {/* CERTIFICATIONS */}
           <div className="bg-white border border-border rounded-2xl p-6">
-            <h2 className="text-lg font-bold text-navy mb-4">Certifications</h2>
+            <h2 className="text-lg font-bold text-navy mb-4">
+              {t("profile.certifications")}
+            </h2>
             {latestByKey.size === 0 ? (
               <div className="text-center py-8 border border-dashed border-border rounded-xl">
-                <p className="text-sm text-navy/50">No tests taken yet.</p>
+                <p className="text-sm text-navy/50">
+                  {t("profile.noTests")}
+                </p>
                 <p className="text-xs text-navy/40 mt-1">
-                  Your placement-exam results will appear here once you've taken one.
+                  {t("profile.noTestsBody")}
                 </p>
               </div>
             ) : (
@@ -160,11 +176,17 @@ export default async function ProfilePage() {
                                 : "bg-red-50 text-red-700"
                             }`}
                           >
-                            {attempt.passed ? "Pass" : "Fail"}
+                            {attempt.passed
+                              ? t("profile.pass")
+                              : t("profile.fail")}
                           </span>
                         </div>
                         <p className="text-xs text-navy/40 mb-2">
-                          Taken {new Date(attempt.completed_at).toLocaleDateString()}
+                          {t("profile.taken", {
+                            date: new Date(
+                              attempt.completed_at,
+                            ).toLocaleDateString(),
+                          })}
                         </p>
                         <div className="grid grid-cols-[1fr_auto] items-center gap-3">
                           <ScoreBar pct={attempt.score_percentage} />
@@ -177,7 +199,7 @@ export default async function ProfilePage() {
                         href={examHref}
                         className="px-4 py-2 text-sm font-semibold text-teal-dark bg-teal-light rounded-full hover:bg-teal hover:text-white transition-colors text-center"
                       >
-                        Retake
+                        {t("profile.retake")}
                       </Link>
                     </div>
                   );

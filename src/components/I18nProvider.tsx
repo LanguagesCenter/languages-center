@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   DEFAULT_UI_LANG,
   RTL_LANGS,
@@ -37,9 +38,19 @@ function writeCookie(value: string) {
   }
 }
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<UiLang>(DEFAULT_UI_LANG);
-  const [ready, setReady] = useState(false);
+export function I18nProvider({
+  children,
+  initialLang,
+}: {
+  children: React.ReactNode;
+  // Server-detected language from the cookie. Lets the first render match
+  // what the server already produced, so users on a non-English language
+  // never see an English flash before hydration.
+  initialLang?: UiLang;
+}) {
+  const router = useRouter();
+  const [lang, setLangState] = useState<UiLang>(initialLang ?? DEFAULT_UI_LANG);
+  const [ready, setReady] = useState(!!initialLang);
 
   // First-load detection: prefer saved preference; otherwise walk
   // navigator.languages[] in priority order and accept the first supported
@@ -78,15 +89,23 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lang]);
 
-  const setLang = useCallback((next: UiLang) => {
-    setLangState(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* ignore */
-    }
-    writeCookie(next);
-  }, []);
+  const setLang = useCallback(
+    (next: UiLang) => {
+      setLangState(next);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, next);
+      } catch {
+        /* ignore */
+      }
+      writeCookie(next);
+      // Force every server component on the current route to re-render
+      // against the new cookie. Without this, all the server-rendered
+      // headings / labels stay in the previously-selected language until
+      // the user manually navigates.
+      router.refresh();
+    },
+    [router],
+  );
 
   const value = useMemo<I18nContextValue>(
     () => ({

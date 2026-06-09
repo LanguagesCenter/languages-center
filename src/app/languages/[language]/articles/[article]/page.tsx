@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { getLanguageBySlug, getArticleBySlug } from "@/lib/learn";
+import { getServerT } from "@/lib/i18n-server";
 import ArticleTranslation from "./ArticleTranslation";
 
 const LEVEL_PILL: Record<string, string> = {
@@ -29,6 +30,7 @@ export default async function ArticleDetailPage(
   const article = await getArticleBySlug(language.id, articleSlug);
   if (!article) notFound();
 
+  const t = await getServerT();
   const pill = LEVEL_PILL[article.level] ?? LEVEL_PILL.A1;
   const targetParas = paragraphs(article.content_target);
   const englishParas = paragraphs(article.content_english);
@@ -45,7 +47,7 @@ export default async function ArticleDetailPage(
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            All {language.name} articles
+            {t("article.allArticles", { language: language.name })}
           </Link>
 
           <div className="flex items-center gap-3 mb-4">
@@ -57,7 +59,7 @@ export default async function ArticleDetailPage(
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
-              {article.reading_minutes} min read
+              {article.reading_minutes} {t("article.minRead")}
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight mb-1">
@@ -77,7 +79,17 @@ export default async function ArticleDetailPage(
               </div>
             </div>
             <div className="md:border-s md:border-border md:ps-8 lg:ps-10">
-              <ArticleTranslation paragraphs={englishParas} />
+              <ArticleTranslation
+                englishParagraphs={englishParas}
+                paragraphsByLang={
+                  // The articles table has no per-UI-language translations
+                  // yet, so only English is populated. The component falls
+                  // back to English (with a labeled banner) for every other
+                  // UI language. Wire this up to a future
+                  // article.content_translations jsonb column when added.
+                  { en: englishParas }
+                }
+              />
             </div>
           </div>
         </article>
