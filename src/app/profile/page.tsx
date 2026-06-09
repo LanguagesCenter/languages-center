@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/server";
 import { getAllAttemptsForUser, type PlacementAttempt } from "@/lib/placement-exam";
+import { isCurrentUserPremium } from "@/lib/learn";
 import { signOut } from "@/lib/profile-actions";
 import UsernameForm from "./UsernameForm";
 
@@ -54,7 +55,7 @@ export default async function ProfilePage() {
     .join("")
     .slice(0, 2);
   const joined = user.created_at ? new Date(user.created_at) : null;
-  const isPremium = !!user.user_metadata?.is_premium;
+  const isPremium = await isCurrentUserPremium();
 
   return (
     <>

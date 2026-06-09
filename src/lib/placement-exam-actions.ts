@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { isCurrentUserPremium } from "@/lib/learn";
 import {
   EXAM_DURATION_SECONDS,
   PASSING_PERCENTAGE,
@@ -66,7 +67,7 @@ export async function submitPlacementExam(
   if (!languageId) return { ok: false, error: "Unknown language" };
 
   // Gate: user must be Premium OR have paid for this exam.
-  const isPremium = !!user.user_metadata?.is_premium;
+  const isPremium = await isCurrentUserPremium();
   const paid = isPremium || (await hasPaid(user.id, languageId, level));
   if (!paid) return { ok: false, error: "Payment required" };
 

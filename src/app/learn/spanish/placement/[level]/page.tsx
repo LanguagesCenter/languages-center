@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/server";
+import { isCurrentUserPremium } from "@/lib/learn";
 import {
   COOLDOWN_HOURS,
   cooldownRemainingMs,
@@ -51,7 +52,7 @@ export default async function PlacementExamPage(props: {
     redirect("/learn");
   }
 
-  const isPremium = !!user.user_metadata?.is_premium;
+  const isPremium = await isCurrentUserPremium();
   const paid = isPremium || (await hasPaid(user.id, languageId, LEVEL));
   const lastAttempt = await getLastAttempt(user.id, languageId, LEVEL);
   const remainingMs = cooldownRemainingMs(lastAttempt);

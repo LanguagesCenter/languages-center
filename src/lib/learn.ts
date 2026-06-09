@@ -710,10 +710,17 @@ export async function getVideosForLanguage(
   return (data as DbVideo[]) ?? [];
 }
 
-// Premium status — stubbed for now. Wire up to your Stripe subscription
-// table or customer metadata when ready. Returns true if the current user
-// has an active premium subscription.
+// Premium status. Reads the user's `is_premium` flag from Supabase Auth
+// user_metadata — the same field the Stripe checkout/verify route writes
+// and the same field every other premium gate checks. This is THE single
+// source of truth for premium status; route all reads through here so a
+// future move to a real subscriptions table touches one function instead
+// of six.
 export async function isCurrentUserPremium(): Promise<boolean> {
-  // TODO: read from Stripe customer/subscription record on Supabase.
-  return false;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  return user.user_metadata?.is_premium === true;
 }
