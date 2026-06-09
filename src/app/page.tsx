@@ -3,15 +3,24 @@ import Hero from "@/components/Hero";
 import LanguageGrid, { type LanguageGridItem } from "@/components/LanguageGrid";
 import Footer from "@/components/Footer";
 import ResetSuccessBanner from "@/components/ResetSuccessBanner";
-import { getLanguagesWithLessonCounts } from "@/lib/learn";
+import {
+  getLanguagesWithLessonCounts,
+  getLanguagesUserHasStarted,
+} from "@/lib/learn";
 import { FLAG_CODES } from "@/lib/flag-codes";
 
-export const revalidate = 60; // refresh every minute so newly seeded langs appear quickly
+// Per-user CTA on each card (Start vs Continue) means the homepage has
+// to render per request now. Dropping the static cache; the page is
+// still cheap to render.
+export const dynamic = "force-dynamic";
 
 export default async function Home() {
   // Source of truth: the `languages` table in Supabase. Every row in the
   // table renders a card — no hardcoded list anywhere.
-  const dbLangs = await getLanguagesWithLessonCounts().catch(() => []);
+  const [dbLangs, started] = await Promise.all([
+    getLanguagesWithLessonCounts().catch(() => []),
+    getLanguagesUserHasStarted().catch(() => new Set<string>()),
+  ]);
 
   const langs: LanguageGridItem[] = dbLangs.map((db) => ({
     name: db.name,
@@ -20,6 +29,7 @@ export default async function Home() {
     grammar: db.difficulty_grammar,
     pronunciation: db.difficulty_pronunciation,
     lessonsTotal: db.lessonsTotal,
+    hasProgress: started.has(db.code),
   }));
 
   return (

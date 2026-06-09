@@ -49,3 +49,50 @@ export function sortByProximity<T extends { slug: string }>(
   };
   return [...items].sort((a, b) => indexOf(a.slug) - indexOf(b.slug));
 }
+
+// Site-wide popularity ranking. Used by every list that doesn't have its
+// own per-user ordering (navbar dropdown, homepage cards, /learn page,
+// language overview "related languages" fallback). Slugs not in this
+// list fall to the end. Keep this list authoritative — when adding a
+// new language to the curriculum, place it here too.
+export const POPULARITY_ORDER: readonly string[] = [
+  "spanish",
+  "french",
+  "italian",
+  "portuguese",
+  "german",
+  "japanese",
+  "korean",
+  "chinese",
+  "arabic",
+  "russian",
+  "hindi",
+  "turkish",
+  "vietnamese",
+  "greek",
+  "swedish",
+  "danish",
+  "finnish",
+  "indonesian",
+  "malay",
+  "bengali",
+  "urdu",
+  "albanian",
+  "icelandic",
+  "faroese",
+  "corsican",
+  "english",
+];
+
+export function sortByPopularity<T extends { slug?: string; code?: string }>(
+  items: T[],
+): T[] {
+  const indexOf = (key: string | undefined) => {
+    if (!key) return POPULARITY_ORDER.length + 1;
+    const idx = POPULARITY_ORDER.indexOf(key);
+    return idx === -1 ? POPULARITY_ORDER.length + 1 : idx;
+  };
+  return [...items].sort(
+    (a, b) => indexOf(a.slug ?? a.code) - indexOf(b.slug ?? b.code),
+  );
+}

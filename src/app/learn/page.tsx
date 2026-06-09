@@ -13,6 +13,7 @@ import {
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { getServerLang, getServerT } from "@/lib/i18n-server";
 import { getLocalizedLanguageName } from "@/lib/i18n";
+import { sortByPopularity } from "@/lib/language-proximity";
 
 export const metadata = {
   title: "Learn — Languages Center",
@@ -34,17 +35,22 @@ function LanguageProgressCard({
   localizedName,
   notStartedLabel,
   lessonsLabel,
+  startLabel,
+  continueLabel,
 }: {
   entry: LanguageProgress;
   localizedName: string;
   notStartedLabel: string;
   lessonsLabel: string;
+  startLabel: string;
+  continueLabel: string;
 }) {
   const code = FLAG_CODES[entry.language.code] ?? entry.language.code;
+  const hasProgress = entry.completedLessons > 0;
   return (
     <Link
       href={`/learn/${entry.language.code}`}
-      className="group bg-white border border-border rounded-2xl p-6 hover:shadow-lg hover:border-teal/40 hover:scale-[1.02] transition-all duration-200"
+      className="group flex flex-col bg-white border border-border rounded-2xl p-6 hover:shadow-lg hover:border-teal/40 hover:scale-[1.02] transition-all duration-200"
     >
       <div className="flex items-center justify-between mb-4">
         <Image
@@ -74,6 +80,12 @@ function LanguageProgressCard({
           <span className="font-medium text-navy/70">{entry.progressPct}%</span>
         </div>
       </div>
+      <span className="mt-5 inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl group-hover:bg-teal-dark transition-colors">
+        {hasProgress ? continueLabel : startLabel}
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+      </span>
     </Link>
   );
 }
@@ -137,19 +149,31 @@ export default async function LearnPage() {
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {progress.map((entry) => (
-              <LanguageProgressCard
-                key={entry.language.id}
-                entry={entry}
-                localizedName={getLocalizedLanguageName(
-                  entry.language.code,
-                  uiLang,
-                  entry.language.name,
-                )}
-                notStartedLabel={t("learn.notStarted")}
-                lessonsLabel={t("learn.lessons")}
-              />
-            ))}
+            {sortByPopularity(
+              progress.map((entry) => ({
+                ...entry,
+                slug: entry.language.code,
+              })),
+            ).map((entry) => {
+              const localizedName = getLocalizedLanguageName(
+                entry.language.code,
+                uiLang,
+                entry.language.name,
+              );
+              return (
+                <LanguageProgressCard
+                  key={entry.language.id}
+                  entry={entry}
+                  localizedName={localizedName}
+                  notStartedLabel={t("learn.notStarted")}
+                  lessonsLabel={t("learn.lessons")}
+                  startLabel={t("card.startLearning", { language: localizedName })}
+                  continueLabel={t("card.continueLearning", {
+                    language: localizedName,
+                  })}
+                />
+              );
+            })}
           </div>
         </section>
       </main>

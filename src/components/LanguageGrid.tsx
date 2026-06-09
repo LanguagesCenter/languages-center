@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import LanguageCard from "@/components/LanguageCard";
 import { useI18n } from "@/components/I18nProvider";
 import { UI_LANG_NAMES, getLocalizedLanguageName } from "@/lib/i18n";
-import { sortByProximity } from "@/lib/language-proximity";
+import { sortByPopularity } from "@/lib/language-proximity";
 import type { Language } from "@/lib/languages";
 
 export interface LanguageGridItem extends Language {
   lessonsTotal?: number;
+  hasProgress?: boolean;
 }
 
 export default function LanguageGrid({
@@ -31,8 +32,10 @@ export default function LanguageGrid({
     const filtered = ready
       ? languages.filter((l) => showNative || l.slug !== nativeSlug)
       : languages;
-    return ready ? sortByProximity(filtered, lang) : filtered;
-  }, [languages, ready, lang, nativeSlug, showNative]);
+    // Site-wide popularity ranking — matches the navbar dropdown and the
+    // /learn page so cards appear in the same order everywhere.
+    return sortByPopularity(filtered);
+  }, [languages, ready, nativeSlug, showNative]);
 
   if (languages.length === 0) {
     return (
@@ -70,6 +73,7 @@ export default function LanguageGrid({
             key={entry.slug}
             language={entry}
             lessonsTotal={entry.lessonsTotal}
+            hasProgress={entry.hasProgress}
           />
         ))}
       </div>

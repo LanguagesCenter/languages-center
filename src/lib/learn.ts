@@ -325,6 +325,56 @@ export async function getAllLanguages(): Promise<DbLanguage[]> {
   return (data as DbLanguage[]) ?? [];
 }
 
+/**
+ * Set of language codes (slugs) the current user has at least one completed
+ * lesson in. Used by homepage cards to decide between "Start learning X"
+ * and "Continue learning X". Returns an empty set for unauthenticated
+ * visitors so they always see "Start learning".
+ */
+export async function getLanguagesUserHasStarted(): Promise<Set<string>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return new Set();
+
+  const { data: progress } = await supabase
+    .from("user_progress")
+    .select("lesson_id")
+    .eq("user_id", user.id)
+    .eq("completed", true);
+  const lessonIds = (progress ?? []).map(
+    (p: { lesson_id: number }) => p.lesson_id,
+  );
+  if (lessonIds.length === 0) return new Set();
+
+  const { data: lessons } = await supabase
+    .from("lessons")
+    .select("id, course_id")
+    .in("id", lessonIds);
+  const courseIds = Array.from(
+    new Set((lessons ?? []).map((l: { course_id: number }) => l.course_id)),
+  );
+  if (courseIds.length === 0) return new Set();
+
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("id, language_id")
+    .in("id", courseIds);
+  const languageIds = Array.from(
+    new Set(
+      (courses ?? []).map((c: { language_id: number }) => c.language_id),
+    ),
+  );
+  if (languageIds.length === 0) return new Set();
+
+  const { data: languages } = await supabase
+    .from("languages")
+    .select("code")
+    .in("id", languageIds);
+  return new Set((languages ?? []).map((l: { code: string }) => l.code));
+}
+
 export interface LanguageWithLessonCount extends DbLanguage {
   lessonsTotal: number;
 }

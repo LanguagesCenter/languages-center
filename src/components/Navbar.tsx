@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName } from "@/lib/i18n";
+import { sortByPopularity } from "@/lib/language-proximity";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import HomeButton from "@/components/HomeButton";
 import type { User } from "@supabase/supabase-js";
@@ -49,13 +50,14 @@ export default function Navbar() {
       .order("id")
       .then(({ data }) => {
         if (!data) return;
-        setLanguages(
-          (data as { name: string; code: string }[]).map((row) => ({
-            name: row.name,
-            slug: row.code,
-            countryCode: FLAG_CODES[row.code] ?? row.code,
-          })),
-        );
+        const mapped = (data as { name: string; code: string }[]).map((row) => ({
+          name: row.name,
+          slug: row.code,
+          countryCode: FLAG_CODES[row.code] ?? row.code,
+        }));
+        // Site-wide popularity order so the dropdown matches the
+        // homepage and /learn page lists.
+        setLanguages(sortByPopularity(mapped));
       });
 
     return () => subscription.unsubscribe();
@@ -73,6 +75,19 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // While the languages dropdown is open, freeze the page behind it. Without
+  // this, wheel events that reach the dropdown's max-height boundary scroll
+  // the body underneath. `overscroll-contain` alone is unreliable on
+  // touchpads and across browsers; locking the body is the robust fix.
+  useEffect(() => {
+    if (!open) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -120,7 +135,13 @@ export default function Navbar() {
                 </svg>
               </button>
               {open && (
-                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-56 bg-white rounded-xl shadow-lg border border-border py-2 max-h-[70vh] overflow-y-auto overscroll-contain">
+                <div
+                  className="absolute top-full start-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-border py-2 max-h-80 overflow-y-auto overscroll-contain"
+                  // Mousewheel/touch events stay inside this list; body
+                  // scroll-lock handled by the open-effect above.
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
                   {languages.map((lang) => (
                     <Link
                       key={lang.slug}

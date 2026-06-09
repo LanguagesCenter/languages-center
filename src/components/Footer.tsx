@@ -13,10 +13,9 @@ export default function Footer() {
     { key: "footer.contact", label: t("footer.contact") },
   ];
   const resourceItems = [
-    { key: "footer.lessons", label: t("footer.lessons") },
-    { key: "footer.grammarGuides", label: t("footer.grammarGuides") },
-    { key: "footer.pronunciationTips", label: t("footer.pronunciationTips") },
-    { key: "footer.community", label: t("footer.community") },
+    { key: "footer.lessons", label: t("footer.lessons"), href: "/learn" },
+    { key: "footer.grammarGuides", label: t("footer.grammarGuides"), href: "#" },
+    { key: "footer.pronunciationTips", label: t("footer.pronunciationTips"), href: "#" },
   ];
   return (
     <footer className="bg-navy mt-20">
@@ -63,7 +62,10 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {resourceItems.map((item) => (
                 <li key={item.key}>
-                  <Link href="#" className="text-sm text-white/40 hover:text-peach transition-colors">
+                  <Link
+                    href={item.href}
+                    className="text-sm text-white/40 hover:text-peach transition-colors"
+                  >
                     {item.label}
                   </Link>
                 </li>
