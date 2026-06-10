@@ -1248,7 +1248,7 @@ begin
   (v_l1,'speaking','Say this aloud: "Cada voto cuenta."','Cada voto cuenta',array[]::text[],'Every vote counts.',5),
   (v_l2,'multiple_choice','What follows "no creo que"?','subjunctive',array['preterite','imperfect','indicative'],'subjunctive',1),
   (v_l2,'fill_blank','Complete: "No creo que ____" (it''s - subj)','sea',array['es','era','será'],'be (subj)',2),
-  (v_l2,'multiple_choice','What does "oponerse a" mean?','to oppose','to agree with','to support','to ignore','to oppose',3),
+  (v_l2,'multiple_choice','What does "oponerse a" mean?','to oppose',array['to agree with','to support','to ignore'],'to oppose',3),
   (v_l2,'listening','What did you hear?','No creo que sea justa para todos',array['Creo que esa ley es justa','Pues no estamos de acuerdo','Se oponen a la ley'],'I don''t think it''s fair for everyone',4),
   (v_l2,'speaking','Say this aloud: "No creo que sea justo."','No creo que sea justo',array[]::text[],'I don''t think it''s fair.',5),
   (v_l3,'multiple_choice','What is "proposal"?','la propuesta',array['el debate','el impuesto','la reforma'],'proposal',1),
@@ -1553,7 +1553,7 @@ begin
   (v_l6,'speaking','Say this aloud: "Sus libros están traducidos a treinta idiomas."','Sus libros están traducidos a treinta idiomas',array[]::text[],'Her books are translated into thirty languages.',5),
   (v_l7,'multiple_choice','What is "plot"?','el argumento',array['los personajes','el escritor','la obra'],'plot',1),
   (v_l7,'fill_blank','Complete: "____ desde la primera página." (it hooks)','Engancha',array['Termina','Empieza','Sigue'],'it hooks',2),
-  (v_l7,'multiple_choice','What does "acabar de + inf" mean?','to have just done','to finish doing','to start doing','to need to do','to have just done',3),
+  (v_l7,'multiple_choice','What does "acabar de + inf" mean?','to have just done',array['to finish doing','to start doing','to need to do'],'to have just done',3),
   (v_l7,'listening','What did you hear?','Engancha desde la primera página',array['Acabo de terminar','El argumento es complejo','Totalmente recomendable'],'It hooks you from the first page',4),
   (v_l7,'speaking','Say this aloud: "Acabo de terminar la novela."','Acabo de terminar la novela',array[]::text[],'I just finished the novel.',5);
 
