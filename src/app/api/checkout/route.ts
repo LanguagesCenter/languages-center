@@ -30,13 +30,39 @@ export async function POST(request: NextRequest) {
         : process.env.STRIPE_PRICE_ID;
 
     if (!priceId) {
+      const envName =
+        plan === "yearly" ? "STRIPE_YEARLY_PRICE_ID" : "STRIPE_PRICE_ID";
+      console.error(
+        `[checkout] ${envName} is not configured. Set it to a Stripe Price ID (price_...) in Vercel.`,
+      );
       return Response.json(
-        { error: `Missing price ID for ${plan} plan` },
+        {
+          error: `Subscription plans aren't configured. Please contact support. (${envName} missing)`,
+        },
         { status: 500 },
       );
     }
 
-    const origin = request.nextUrl.origin;
+    // Catch a common foot-gun: pasting a Stripe Product ID (prod_...) into
+    // the price-ID env var. The Checkout API needs a Price ID (price_...).
+    if (priceId.startsWith("prod_")) {
+      console.error(
+        `[checkout] Price ID for ${plan} plan looks like a Product ID (prod_...). Use a Price ID (price_...) instead.`,
+      );
+      return Response.json(
+        {
+          error: `Subscription plans aren't configured correctly (product ID used instead of price ID).`,
+        },
+        { status: 500 },
+      );
+    }
+
+    // Prefer the public site URL if configured (so success_url isn't
+    // accidentally https://languagescenter.vercel.app); fall back to the
+    // request's own origin.
+    const origin =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+      request.nextUrl.origin;
 
     const session = await stripe.checkout.sessions.create({
       customer_email: user.email,
