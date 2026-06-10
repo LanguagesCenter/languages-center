@@ -241,7 +241,7 @@ begin
   (v_l1,'speaking','Say this aloud: "No podemos prescindir de la tecnología."','No podemos prescindir de la tecnología',array[]::text[],'We can''t do without technology.',5),
   (v_l2,'multiple_choice','Future perfect of "cambiar" (he/she)?','habrá cambiado',array['cambiará','cambió','cambiaba'],'will have changed',1),
   (v_l2,'fill_blank','Complete: "Para ____ ya habremos terminado." (then)','entonces',array['ahora','antes','luego'],'then',2),
-  (v_l2,'multiple_choice','What does "de aquí a diez años" mean?','from now until ten years','ten years ago','for ten years','in ten years exactly','from now until ten years',3),
+  (v_l2,'multiple_choice','What does "de aquí a diez años" mean?','from now until ten years',array['ten years ago','for ten years','in ten years exactly'],'from now until ten years',3),
   (v_l2,'listening','What did you hear?','Sin reformas, habría sido un desastre',array['De aquí a diez años, los coches autónomos','Para entonces, mucha gente habrá perdido','Mucha gente habrá perdido su trabajo'],'Without reforms, it would have been a disaster',4),
   (v_l2,'speaking','Say this aloud: "Para entonces ya habremos terminado."','Para entonces ya habremos terminado',array[]::text[],'By then we''ll have finished.',5),
   (v_l3,'multiple_choice','How to say "a double-edged sword"?','una espada de doble filo',array['sacar provecho','a costa de','poner en riesgo'],'double-edged sword',1),
