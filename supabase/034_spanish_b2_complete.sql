@@ -323,4 +323,144 @@ begin
   (v_lesson_id,'speaking','Say this aloud: "Me preocupa que perdamos privacidad."','Me preocupa que perdamos privacidad',array[]::text[],'I''m worried we''ll lose privacy.',9),
   (v_lesson_id,'speaking','Say this aloud: "Cabe destacar el avance vertiginoso."','Cabe destacar el avance vertiginoso',array[]::text[],'It''s worth noting the vertiginous progress.',10);
 
+  -- ===========================================================
+  -- B2.3 PHILOSOPHY & ETHICS
+  -- ===========================================================
+  select id into v_course_id from public.courses where language_id = v_lang_id and cefr_level = 'B2' and title = 'Philosophy & Ethics';
+  select id into v_l1 from public.lessons where course_id = v_course_id and order_index = 1;
+  select id into v_l2 from public.lessons where course_id = v_course_id and order_index = 2;
+  select id into v_l3 from public.lessons where course_id = v_course_id and order_index = 3;
+  select id into v_l4 from public.lessons where course_id = v_course_id and order_index = 4;
+  select id into v_l5 from public.lessons where course_id = v_course_id and order_index = 5;
+  select id into v_l6 from public.lessons where course_id = v_course_id and order_index = 6;
+  select id into v_l7 from public.lessons where course_id = v_course_id and order_index = 7;
+  select id into v_l8 from public.lessons where course_id = v_course_id and order_index = 8;
+
+  update public.lessons set intro='Philosophy and ethics vocabulary.',
+    vocab_items='[{"word":"la moral","phonetic":"[moh-RAHL]","english":"morality","example_es":"La moral varía entre culturas.","example_en":"Morality varies across cultures."},{"word":"el dilema","phonetic":"[dee-LEH-mah]","english":"dilemma","example_es":"Es un dilema clásico.","example_en":"It''s a classic dilemma."},{"word":"el libre albedrío","phonetic":"[LEE-breh ahl-beh-DREE-oh]","english":"free will","example_es":"El libre albedrío sigue debatiéndose.","example_en":"Free will is still debated."},{"word":"justificar","phonetic":"[hoos-tee-fee-KAR]","english":"to justify","example_es":"¿Cómo se justifica una guerra?","example_en":"How do you justify a war?"}]'::jsonb,
+    dialogue='[{"speaker":"Ana","spanish":"¿Crees que tenemos libre albedrío?","english":"Do you believe we have free will?"},{"speaker":"Luis","spanish":"Es un dilema clásico de la filosofía.","english":"It''s a classic philosophical dilemma."},{"speaker":"Ana","spanish":"La moral depende mucho del contexto.","english":"Morality depends a lot on context."}]'::jsonb,
+    grammar_note='"Seguir + gerundio" = "to keep / continue doing": "sigue debatiéndose", "sigue creciendo". Common B2 construction.'
+  where id = v_l1;
+  update public.lessons set intro='Hypothetical structures with subjunctive.',
+    vocab_items='[{"word":"si pudiera","phonetic":"[see poo-DYEH-rah]","english":"if I could","example_es":"Si pudiera elegir, cambiaría el sistema.","example_en":"If I could choose, I''d change the system."},{"word":"si hubiera","phonetic":"[see oo-BYEH-rah]","english":"if I had","example_es":"Si hubiera nacido en otro siglo.","example_en":"If I had been born in another century."},{"word":"sería preferible","phonetic":"[seh-REE-ah preh-feh-REE-bleh]","english":"it would be preferable","example_es":"Sería preferible no juzgar.","example_en":"It would be preferable not to judge."},{"word":"hipotéticamente","phonetic":"[ee-poh-TEH-tee-kah-MEHN-teh]","english":"hypothetically","example_es":"Hipotéticamente, todo es posible.","example_en":"Hypothetically, everything is possible."}]'::jsonb,
+    dialogue='[{"speaker":"Eva","spanish":"Si pudiera vivir en otra época, elegiría la Ilustración.","english":"If I could live in another era, I''d choose the Enlightenment."},{"speaker":"Iván","spanish":"Hipotéticamente, ¿qué cambiarías?","english":"Hypothetically, what would you change?"},{"speaker":"Eva","spanish":"Sería preferible no juzgar antes de saber.","english":"It would be preferable not to judge before knowing."}]'::jsonb,
+    grammar_note='"Si pudiera + conditional" / "si hubiera + past conditional" — second and third conditional. Hallmark B2 hypothetical structures.'
+  where id = v_l2;
+  update public.lessons set intro='Phrases for moral arguments.',
+    vocab_items='[{"word":"desde un punto de vista ético","phonetic":"[POON-toh deh BEES-tah]","english":"from an ethical standpoint","example_es":"Desde un punto de vista ético, es inaceptable.","example_en":"From an ethical standpoint, it''s unacceptable."},{"word":"el fin no justifica los medios","phonetic":"[ehl feen]","english":"the end doesn''t justify the means","example_es":"El fin no justifica los medios.","example_en":"The end doesn''t justify the means."},{"word":"el imperativo","phonetic":"[eem-peh-rah-TEE-boh]","english":"imperative","example_es":"Es un imperativo moral ayudar.","example_en":"It''s a moral imperative to help."},{"word":"sin caer en","phonetic":"[seen kah-EHR ehn]","english":"without falling into","example_es":"Sin caer en el cinismo.","example_en":"Without falling into cynicism."}]'::jsonb,
+    dialogue='[{"speaker":"Marta","spanish":"Desde un punto de vista ético, no podemos aceptar la tortura.","english":"From an ethical standpoint, we can''t accept torture."},{"speaker":"Pedro","spanish":"Aunque el fin sea bueno, no justifica los medios.","english":"Even if the end is good, it doesn''t justify the means."},{"speaker":"Marta","spanish":"Exacto. Es un imperativo moral.","english":"Exactly. It''s a moral imperative."}]'::jsonb,
+    grammar_note='"Aunque + subjunctive" = "even if (hypothetical)": "aunque sea bueno". "Aunque + indicative" = "although (factual)". Subtle but B2-essential.'
+  where id = v_l3;
+  update public.lessons set intro='Listen to a philosophy lecture excerpt.',
+    vocab_items='[{"word":"el utilitarismo","phonetic":"[oo-tee-lee-tah-REES-moh]","english":"utilitarianism","example_es":"El utilitarismo busca el mayor bien.","example_en":"Utilitarianism seeks the greatest good."},{"word":"el deontologismo","phonetic":"[deh-ohn-toh-loh-HEES-moh]","english":"deontology","example_es":"Para el deontologismo, los principios son absolutos.","example_en":"For deontology, principles are absolute."},{"word":"la consecuencia","phonetic":"[kohn-seh-KWEHN-syah]","english":"consequence","example_es":"Cada acción tiene consecuencias.","example_en":"Every action has consequences."},{"word":"el deber","phonetic":"[deh-BEHR]","english":"duty","example_es":"Cumplir con el deber moral.","example_en":"To fulfill moral duty."}]'::jsonb,
+    dialogue='[{"speaker":"Profesor","spanish":"El utilitarismo evalúa una acción por sus consecuencias.","english":"Utilitarianism evaluates an action by its consequences."},{"speaker":"Profesor","spanish":"En cambio, el deontologismo prioriza el deber sobre las consecuencias.","english":"By contrast, deontology prioritises duty over consequences."},{"speaker":"Profesor","spanish":"Cada teoría plantea un dilema distinto.","english":"Each theory poses a different dilemma."}]'::jsonb,
+    grammar_note='"En cambio" = "by contrast / on the other hand". A B2 connector with subtle nuance — softer than "sin embargo".'
+  where id = v_l4;
+  update public.lessons set intro='Defend a philosophical position.',
+    vocab_items='[{"word":"Defiendo la idea de que","phonetic":"[deh-FYEHN-doh]","english":"I defend the idea that","example_es":"Defiendo la idea de que somos libres.","example_en":"I defend the idea that we are free."},{"word":"se podría argumentar","phonetic":"[seh poh-DREE-ah ahr-goo-mehn-TAR]","english":"it could be argued","example_es":"Se podría argumentar lo contrario.","example_en":"It could be argued otherwise."},{"word":"poner sobre la mesa","phonetic":"[poh-NEHR SOH-breh lah MEH-sah]","english":"to put on the table","example_es":"Pongo sobre la mesa otra perspectiva.","example_en":"I put another perspective on the table."},{"word":"rebatir","phonetic":"[rreh-bah-TEER]","english":"to refute","example_es":"Es difícil rebatir ese argumento.","example_en":"It''s hard to refute that argument."}]'::jsonb,
+    dialogue='[{"speaker":"Tú","spanish":"Defiendo la idea de que el libre albedrío existe.","english":"I defend the idea that free will exists."},{"speaker":"Persona","spanish":"Se podría argumentar lo contrario, ¿no?","english":"It could be argued otherwise, no?"},{"speaker":"Tú","spanish":"Pongo sobre la mesa otra perspectiva, pero es difícil rebatir la experiencia subjetiva.","english":"I put another perspective on the table, but subjective experience is hard to refute."}]'::jsonb,
+    grammar_note='"Se podría + infinitive" — impersonal conditional: "it could be done". Useful for hypothetical formal discussion.'
+  where id = v_l5;
+  update public.lessons set intro='Read a short philosophical text.',
+    vocab_items='[{"word":"la conciencia","phonetic":"[kohn-SYEHN-syah]","english":"consciousness","example_es":"La conciencia es un misterio.","example_en":"Consciousness is a mystery."},{"word":"el determinismo","phonetic":"[deh-tehr-mee-NEES-moh]","english":"determinism","example_es":"El determinismo niega el libre albedrío.","example_en":"Determinism denies free will."},{"word":"imprescindible","phonetic":"[eem-prehs-seen-DEE-bleh]","english":"essential","example_es":"La ética es imprescindible.","example_en":"Ethics is essential."},{"word":"a fin de cuentas","phonetic":"[ah feen deh KWEHN-tahs]","english":"at the end of the day","example_es":"A fin de cuentas, decidimos nosotros.","example_en":"At the end of the day, we decide."}]'::jsonb,
+    dialogue='[{"speaker":"Texto","spanish":"El debate entre libre albedrío y determinismo lleva siglos sin resolverse.","english":"The debate between free will and determinism has gone unresolved for centuries."},{"speaker":"Texto","spanish":"La ética sigue siendo imprescindible, independientemente de la respuesta.","english":"Ethics remains essential, regardless of the answer."},{"speaker":"Texto","spanish":"A fin de cuentas, vivimos como si fuéramos libres, y eso ya dice mucho.","english":"At the end of the day, we live as if we were free, and that already says a lot."}]'::jsonb,
+    grammar_note='"Llevar + time + sin + infinitive" = "has gone X long without doing Y": "lleva siglos sin resolverse". Great B2 phrase.'
+  where id = v_l6;
+  update public.lessons set intro='Write a short philosophical essay.',
+    vocab_items='[{"word":"plantearse","phonetic":"[plahn-teh-AR-seh]","english":"to wonder / pose to oneself","example_es":"Hay que plantearse preguntas difíciles.","example_en":"We have to ask ourselves hard questions."},{"word":"profundizar","phonetic":"[proh-foon-dee-SAR]","english":"to go deeper","example_es":"Conviene profundizar en el tema.","example_en":"It''s worth going deeper into the topic."},{"word":"en último término","phonetic":"[ehn OOL-tee-moh TEHR-mee-noh]","english":"ultimately","example_es":"En último término, nadie sabe.","example_en":"Ultimately, no one knows."},{"word":"abordar","phonetic":"[ah-bohr-DAR]","english":"to address","example_es":"Abordamos el problema con cuidado.","example_en":"We address the problem carefully."}]'::jsonb,
+    dialogue='[{"speaker":"Modelo","spanish":"La filosofía nos obliga a plantearnos preguntas que evitamos en lo cotidiano.","english":"Philosophy forces us to ask ourselves questions we avoid in daily life."},{"speaker":"Modelo","spanish":"Conviene profundizar en cuestiones de ética antes de juzgar.","english":"It''s worth going deeper into ethical questions before judging."},{"speaker":"Modelo","spanish":"En último término, la reflexión nos hace más humanos.","english":"Ultimately, reflection makes us more human."}]'::jsonb,
+    grammar_note='"Convenir + infinitive" = "it''s advisable / worth doing X". Impersonal use: "conviene profundizar", "conviene esperar". B2 essay register.'
+  where id = v_l7;
+
+  delete from public.exercises where lesson_id in (v_l1, v_l2, v_l3, v_l4, v_l5, v_l6, v_l7);
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_l1,'multiple_choice','What is "free will"?','el libre albedrío',array['la moral','el dilema','la conciencia'],'free will',1),
+  (v_l1,'fill_blank','Complete: "La ____ varía entre culturas." (morality)','moral',array['ética','virtud','justicia'],'morality',2),
+  (v_l1,'multiple_choice','What does "justificar" mean?','to justify',array['to deny','to forgive','to repeat'],'to justify',3),
+  (v_l1,'listening','What did you hear?','La moral depende mucho del contexto',array['¿Crees que tenemos libre albedrío?','Es un dilema clásico','La moral varía entre culturas'],'Morality depends a lot on context',4),
+  (v_l1,'speaking','Say this aloud: "El libre albedrío sigue debatiéndose."','El libre albedrío sigue debatiéndose',array[]::text[],'Free will is still debated.',5),
+  (v_l2,'multiple_choice','How to say "if I could"?','si pudiera',array['si tuviera','si fuera','si hubiera'],'if I could',1),
+  (v_l2,'fill_blank','Complete: "Si ____ nacido en otro siglo." (had I)','hubiera',array['pudiera','fuera','tuviera'],'had I',2),
+  (v_l2,'multiple_choice','What does "hipotéticamente" mean?','hypothetically',array['definitely','rarely','obviously'],'hypothetically',3),
+  (v_l2,'listening','What did you hear?','Si pudiera vivir en otra época, elegiría la Ilustración',array['Hipotéticamente, ¿qué cambiarías?','Sería preferible no juzgar antes de saber','Si hubiera nacido en otro siglo'],'If I could live in another era, I''d choose the Enlightenment',4),
+  (v_l2,'speaking','Say this aloud: "Sería preferible no juzgar."','Sería preferible no juzgar',array[]::text[],'It would be preferable not to judge.',5),
+  (v_l3,'multiple_choice','How to say "from an ethical standpoint"?','desde un punto de vista ético',array['el fin justifica los medios','el imperativo','sin caer en'],'from an ethical standpoint',1),
+  (v_l3,'fill_blank','Complete: "Es un ____ moral ayudar." (imperative)','imperativo',array['dilema','deber','principio'],'imperative',2),
+  (v_l3,'multiple_choice','What does "sin caer en el cinismo" mean?','without falling into cynicism',array['without being noble','without being right','without giving up'],'without falling into cynicism',3),
+  (v_l3,'listening','What did you hear?','Aunque el fin sea bueno, no justifica los medios',array['Desde un punto de vista ético','Es un imperativo moral','El fin no justifica los medios'],'Even if the end is good, it doesn''t justify the means',4),
+  (v_l3,'speaking','Say this aloud: "El fin no justifica los medios."','El fin no justifica los medios',array[]::text[],'The end doesn''t justify the means.',5),
+  (v_l4,'multiple_choice','What is "utilitarianism"?','el utilitarismo',array['el deontologismo','el determinismo','el imperativo'],'utilitarianism',1),
+  (v_l4,'fill_blank','Complete: "Cumplir con el ____ moral." (duty)','deber',array['principio','dilema','dilemna'],'duty',2),
+  (v_l4,'multiple_choice','What does "en cambio" mean?','by contrast',array['for example','therefore','suddenly'],'by contrast',3),
+  (v_l4,'listening','What did you hear?','Cada teoría plantea un dilema distinto',array['El utilitarismo evalúa una acción por sus consecuencias','El deontologismo prioriza el deber','Cada acción tiene consecuencias'],'Each theory poses a different dilemma',4),
+  (v_l4,'speaking','Say this aloud: "El utilitarismo busca el mayor bien."','El utilitarismo busca el mayor bien',array[]::text[],'Utilitarianism seeks the greatest good.',5),
+  (v_l5,'multiple_choice','How to say "it could be argued"?','se podría argumentar',array['defiendo la idea de que','pongo sobre la mesa','rebatir'],'it could be argued',1),
+  (v_l5,'fill_blank','Complete: "____ sobre la mesa otra perspectiva." (I put)','Pongo',array['Rebato','Defiendo','Argumenta'],'I put on the table',2),
+  (v_l5,'multiple_choice','What does "rebatir" mean?','to refute',array['to defend','to ignore','to repeat'],'to refute',3),
+  (v_l5,'listening','What did you hear?','Defiendo la idea de que el libre albedrío existe',array['Se podría argumentar lo contrario','Pongo sobre la mesa otra perspectiva','Es difícil rebatir ese argumento'],'I defend the idea that free will exists',4),
+  (v_l5,'speaking','Say this aloud: "Se podría argumentar lo contrario."','Se podría argumentar lo contrario',array[]::text[],'It could be argued otherwise.',5),
+  (v_l6,'multiple_choice','What is "consciousness"?','la conciencia',array['el determinismo','el utilitarismo','el deber'],'consciousness',1),
+  (v_l6,'fill_blank','Complete: "La ética es ____" (essential)','imprescindible',array['imposible','probable','urgente'],'essential',2),
+  (v_l6,'multiple_choice','What does "a fin de cuentas" mean?','at the end of the day',array['next week','first of all','suddenly'],'at the end of the day',3),
+  (v_l6,'listening','What did you hear?','El debate lleva siglos sin resolverse',array['La ética sigue siendo imprescindible','Vivimos como si fuéramos libres','El determinismo niega el libre albedrío'],'The debate has gone unresolved for centuries',4),
+  (v_l6,'speaking','Say this aloud: "Vivimos como si fuéramos libres."','Vivimos como si fuéramos libres',array[]::text[],'We live as if we were free.',5),
+  (v_l7,'multiple_choice','How to say "to ask ourselves"?','plantearnos',array['profundizar','abordar','convenir'],'to ask ourselves',1),
+  (v_l7,'fill_blank','Complete: "____ profundizar en el tema." (it''s worth)','Conviene',array['Permite','Prohíbe','Demuestra'],'it''s worth',2),
+  (v_l7,'multiple_choice','What does "abordar" mean?','to address',array['to abort','to argue','to assist'],'to address',3),
+  (v_l7,'listening','What did you hear?','En último término, la reflexión nos hace más humanos',array['La filosofía nos obliga a plantearnos preguntas','Conviene profundizar en cuestiones de ética','La filosofía nos obliga'],'Ultimately, reflection makes us more human',4),
+  (v_l7,'speaking','Say this aloud: "Conviene profundizar en el tema."','Conviene profundizar en el tema',array[]::text[],'It''s worth going deeper into the topic.',5);
+
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_l1,'listening','What did you hear?','Es un dilema clásico de la filosofía',array['¿Crees que tenemos libre albedrío?','La moral varía entre culturas','¿Cómo se justifica una guerra?'],'It''s a classic philosophical dilemma',6),
+  (v_l1,'listening','What did you hear?','El libre albedrío sigue debatiéndose',array['Es un dilema clásico','La moral varía','¿Cómo se justifica?'],'Free will is still debated',7),
+  (v_l1,'speaking','Say this aloud: "Es un dilema clásico."','Es un dilema clásico',array[]::text[],'It''s a classic dilemma.',8),
+  (v_l1,'speaking','Say this aloud: "¿Cómo se justifica una guerra?"','¿Cómo se justifica una guerra?',array[]::text[],'How do you justify a war?',9),
+  (v_l2,'listening','What did you hear?','Si hubiera nacido en otro siglo',array['Si pudiera elegir','Sería preferible no juzgar','Hipotéticamente, todo es posible'],'If I had been born in another century',6),
+  (v_l2,'listening','What did you hear?','Hipotéticamente, todo es posible',array['Si pudiera elegir','Si hubiera nacido','Sería preferible no juzgar'],'Hypothetically, everything is possible',7),
+  (v_l2,'speaking','Say this aloud: "Si hubiera nacido en otro siglo."','Si hubiera nacido en otro siglo',array[]::text[],'If I had been born in another century.',8),
+  (v_l2,'speaking','Say this aloud: "Si pudiera elegir, cambiaría el sistema."','Si pudiera elegir, cambiaría el sistema',array[]::text[],'If I could choose, I''d change the system.',9),
+  (v_l3,'listening','What did you hear?','Es un imperativo moral ayudar',array['Sin caer en el cinismo','Desde un punto de vista ético','El fin no justifica los medios'],'It''s a moral imperative to help',6),
+  (v_l3,'listening','What did you hear?','Sin caer en el cinismo',array['Es un imperativo moral','Aunque el fin sea bueno','Desde un punto de vista ético'],'Without falling into cynicism',7),
+  (v_l3,'speaking','Say this aloud: "Desde un punto de vista ético, es inaceptable."','Desde un punto de vista ético, es inaceptable',array[]::text[],'From an ethical standpoint, it''s unacceptable.',8),
+  (v_l3,'speaking','Say this aloud: "Sin caer en el cinismo."','Sin caer en el cinismo',array[]::text[],'Without falling into cynicism.',9),
+  (v_l6,'listening','What did you hear?','La ética sigue siendo imprescindible',array['El debate lleva siglos sin resolverse','Vivimos como si fuéramos libres','El determinismo niega el libre albedrío'],'Ethics remains essential',6),
+  (v_l6,'listening','What did you hear?','A fin de cuentas, decidimos nosotros',array['La conciencia es un misterio','La ética sigue siendo imprescindible','Vivimos como si fuéramos libres'],'At the end of the day, we decide',7),
+  (v_l6,'speaking','Say this aloud: "A fin de cuentas, decidimos nosotros."','A fin de cuentas, decidimos nosotros',array[]::text[],'At the end of the day, we decide.',8),
+  (v_l6,'speaking','Say this aloud: "La conciencia es un misterio."','La conciencia es un misterio',array[]::text[],'Consciousness is a mystery.',9),
+  (v_l7,'listening','What did you hear?','Conviene profundizar en cuestiones de ética antes de juzgar',array['La filosofía nos obliga a plantearnos preguntas','En último término, la reflexión nos hace más humanos','Abordamos el problema con cuidado'],'It''s worth going deeper into ethical questions before judging',6),
+  (v_l7,'listening','What did you hear?','La filosofía nos obliga a plantearnos preguntas',array['Conviene profundizar','En último término','Abordamos el problema'],'Philosophy forces us to ask ourselves questions',7),
+  (v_l7,'speaking','Say this aloud: "Abordamos el problema con cuidado."','Abordamos el problema con cuidado',array[]::text[],'We address the problem carefully.',8),
+  (v_l7,'speaking','Say this aloud: "En último término, nadie sabe."','En último término, nadie sabe',array[]::text[],'Ultimately, no one knows.',9);
+
+  update public.lessons set type='conversation', title='Philosophy & Ethics — Conversation Practice',
+    description='Two friends discuss free will and morality.',
+    intro='Ana and Luis explore whether free will exists.',
+    vocab_items='[]'::jsonb, grammar_note=null,
+    dialogue='[{"speaker":"Ana","spanish":"¿Crees de verdad que tenemos libre albedrío?","english":"Do you really believe we have free will?"},{"speaker":"Luis","spanish":"Hipotéticamente, sí. Pero el determinismo es un argumento fuerte.","english":"Hypothetically, yes. But determinism is a strong argument."},{"speaker":"Ana","spanish":"Se podría argumentar que vivimos como si fuéramos libres, y eso basta.","english":"It could be argued that we live as if we were free, and that''s enough."},{"speaker":"Luis","spanish":"Si pudiera demostrarlo, ya lo habrían demostrado los filósofos.","english":"If it could be proved, philosophers would already have proved it."},{"speaker":"Ana","spanish":"A fin de cuentas, la ética sigue siendo imprescindible.","english":"At the end of the day, ethics remains essential."},{"speaker":"Luis","spanish":"En eso estamos de acuerdo, sin caer en el cinismo.","english":"On that we agree, without falling into cynicism."}]'::jsonb
+  where id = v_l8;
+  delete from public.exercises where lesson_id = v_l8;
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_l8,'multiple_choice','What does Luis say about free will?','Hypothetically yes',array['Definitely yes','Definitely no','He has no opinion'],'Hipotéticamente, sí',1),
+  (v_l8,'multiple_choice','Ana''s argument?','We live as if we were free, that''s enough',array['Free will is proved','Determinism wins','Ethics doesn''t matter'],'vivimos como si fuéramos libres, y eso basta',2),
+  (v_l8,'multiple_choice','True or false: Luis thinks philosophers have proved free will.','False',array['True'],'Si pudiera demostrarlo, ya lo habrían demostrado',3),
+  (v_l8,'multiple_choice','What is essential according to Ana?','Ethics',array['Free will','Determinism','Philosophy'],'la ética sigue siendo imprescindible',4),
+  (v_l8,'fill_blank','Complete: "Si ____ demostrarlo." (it could)','pudiera',array['fuera','hubiera','tuviera'],'it could',5),
+  (v_l8,'multiple_choice','What do they agree on at the end?','Avoiding cynicism',array['Free will exists','Determinism is right','Philosophy is useless'],'sin caer en el cinismo',6);
+
+  delete from public.lessons where course_id = v_course_id and order_index = 9;
+  insert into public.lessons (course_id, title, description, type, order_index, xp_reward)
+  values (v_course_id, 'Section Test: Philosophy & Ethics', 'Review test for the Philosophy & Ethics section. Pass with 7 or more out of 10 to earn 50 XP.', 'unit_test', 9, 50)
+  returning id into v_lesson_id;
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_lesson_id,'multiple_choice','What is "free will"?','el libre albedrío',array['la moral','el dilema','el deber'],'free will',1),
+  (v_lesson_id,'multiple_choice','Imperfect subjunctive of "ser" (we)?','fuéramos',array['somos','éramos','seríamos'],'we were (subj)',2),
+  (v_lesson_id,'multiple_choice','What does "aunque + subj" mean?','even if (hypothetical)',array['although (factual)','because','despite'],'even if',3),
+  (v_lesson_id,'multiple_choice','True/false: "convenir + inf" expresses advisability.','True',array['False'],'conviene profundizar',4),
+  (v_lesson_id,'fill_blank','Complete: "A fin de ____" (end of the day)','cuentas',array['vista','manera','contexto'],'at the end',5),
+  (v_lesson_id,'fill_blank','Complete: "Se ____ argumentar lo contrario." (it could)','podría',array['puede','pudiera','poder'],'it could',6),
+  (v_lesson_id,'listening','What did you hear?','La moral varía entre culturas',array['Es un dilema clásico de la filosofía','El libre albedrío sigue debatiéndose','¿Cómo se justifica una guerra?'],'Morality varies across cultures',7),
+  (v_lesson_id,'listening','What did you hear?','Vivimos como si fuéramos libres',array['La ética sigue siendo imprescindible','El determinismo niega el libre albedrío','La conciencia es un misterio'],'We live as if we were free',8),
+  (v_lesson_id,'speaking','Say this aloud: "Si pudiera elegir, cambiaría el sistema."','Si pudiera elegir, cambiaría el sistema',array[]::text[],'If I could choose, I''d change the system.',9),
+  (v_lesson_id,'speaking','Say this aloud: "A fin de cuentas, la ética es imprescindible."','A fin de cuentas, la ética es imprescindible',array[]::text[],'At the end of the day, ethics is essential.',10);
+
 end $$;
