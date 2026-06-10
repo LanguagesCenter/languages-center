@@ -206,7 +206,7 @@ begin
   update public.lessons set
     intro='Sequence of tenses in subjunctive: when the main verb is in past/conditional, the subordinate uses imperfect subjunctive. Master "quería que vinieras" not "quería que vengas".',
     vocab_items='[{"spanish":"la concordancia","english":"agreement"},{"spanish":"la consecutio temporum","english":"sequence of tenses"},{"spanish":"la subordinada","english":"subordinate clause"},{"spanish":"la principal","english":"main clause"},{"spanish":"el modo","english":"mood"},{"spanish":"el tiempo verbal","english":"verb tense"},{"spanish":"regir","english":"to govern"},{"spanish":"depender de","english":"to depend on"},{"spanish":"imponer","english":"to impose"},{"spanish":"la restricción","english":"restriction"}]'::jsonb,
-    dialogue='[{"speaker":"Profesor","spanish":"Si dices "quería que vengas", el oyente percibe una incongruencia temporal.","english":"If you say ''quería que vengas'', the listener perceives a temporal incongruity."},{"speaker":"Alumna","spanish":"¿Por qué exactamente?","english":"Why exactly?"},{"speaker":"Profesor","spanish":"Porque "quería" pide imperfecto: "que vinieras".","english":"Because ''quería'' requires the imperfect: ''que vinieras''."}]'::jsonb,
+    dialogue='[{"speaker":"Profesor","spanish":"Si dices «quería que vengas», el oyente percibe una incongruencia temporal.","english":"If you say ''quería que vengas'', the listener perceives a temporal incongruity."},{"speaker":"Alumna","spanish":"¿Por qué exactamente?","english":"Why exactly?"},{"speaker":"Profesor","spanish":"Porque «quería» pide imperfecto: «que vinieras».","english":"Because ''quería'' requires the imperfect: ''que vinieras''."}]'::jsonb,
     grammar_note='Sequence of tenses: past main → past subjunctive subordinate ("quería que vinieras"); present main → present subjunctive ("quiero que vengas"). The mismatch sounds ungrammatical.'
   where id = v_l1;
 
@@ -248,7 +248,7 @@ begin
   update public.lessons set
     intro='Write analyzing a grammatical pattern. Use precise terminology and clear examples.',
     vocab_items='[{"spanish":"analizar","english":"to analyze"},{"spanish":"sintáctico","english":"syntactic"},{"spanish":"semántico","english":"semantic"},{"spanish":"pragmático","english":"pragmatic"},{"spanish":"distinguir","english":"to distinguish"},{"spanish":"el matiz","english":"nuance"},{"spanish":"el contraste","english":"contrast"},{"spanish":"contrastar","english":"to contrast"}]'::jsonb,
-    dialogue='[{"speaker":"Texto","spanish":"Conviene distinguir entre "porque" causal y "para que" final, dos conectores cuyo uso varía radicalmente.","english":"It is appropriate to distinguish between causal ''porque'' and final ''para que'', two connectors whose use varies radically."}]'::jsonb,
+    dialogue='[{"speaker":"Texto","spanish":"Conviene distinguir entre «porque» causal y «para que» final, dos conectores cuyo uso varía radicalmente.","english":"It is appropriate to distinguish between causal ''porque'' and final ''para que'', two connectors whose use varies radically."}]'::jsonb,
     grammar_note='"Conviene + infinitive" = "it is appropriate/wise to + verb". A neutral, slightly formal alternative to "se debe" or "hay que".'
   where id = v_l7;
 
@@ -316,7 +316,7 @@ begin
     description='Two linguists discuss a tricky rule.',
     intro='Carla and Esteban prepare a workshop.',
     vocab_items='[]'::jsonb, grammar_note=null,
-    dialogue='[{"speaker":"Carla","spanish":"¿Cómo explicamos el contraste entre indicativo y subjuntivo en "aunque"?","english":"How do we explain the contrast between indicative and subjunctive in ''aunque''?"},{"speaker":"Esteban","spanish":"Sea como fuere, el ejemplo más claro es: "aunque llueve, salgo" vs "aunque llueva, salgo".","english":"Be that as it may, the clearest example is: ''aunque llueve, salgo'' vs ''aunque llueva, salgo''."},{"speaker":"Carla","spanish":"Conviene matizar que el indicativo presenta un hecho y el subjuntivo, una posibilidad.","english":"It''s appropriate to nuance that the indicative presents a fact and the subjunctive a possibility."},{"speaker":"Esteban","spanish":"Y si el alumno preguntara por qué, le diríamos: "el subjuntivo expresa información no asertada".","english":"And if the student asked why, we''d say: ''the subjunctive expresses non-asserted information''."},{"speaker":"Carla","spanish":"Bien. La clave es que comprendan el matiz, no que memoricen reglas.","english":"Right. The key is that they understand the nuance, not memorize rules."},{"speaker":"Esteban","spanish":"De acuerdo. Cuando hayan asimilado eso, lo demás vendrá solo.","english":"Agreed. When they''ve assimilated that, the rest will come on its own."}]'::jsonb
+    dialogue='[{"speaker":"Carla","spanish":"¿Cómo explicamos el contraste entre indicativo y subjuntivo en «aunque»?","english":"How do we explain the contrast between indicative and subjunctive in ''aunque''?"},{"speaker":"Esteban","spanish":"Sea como fuere, el ejemplo más claro es: «aunque llueve, salgo» vs «aunque llueva, salgo».","english":"Be that as it may, the clearest example is: ''aunque llueve, salgo'' vs ''aunque llueva, salgo''."},{"speaker":"Carla","spanish":"Conviene matizar que el indicativo presenta un hecho y el subjuntivo, una posibilidad.","english":"It''s appropriate to nuance that the indicative presents a fact and the subjunctive a possibility."},{"speaker":"Esteban","spanish":"Y si el alumno preguntara por qué, le diríamos: «el subjuntivo expresa información no asertada».","english":"And if the student asked why, we''d say: ''the subjunctive expresses non-asserted information''."},{"speaker":"Carla","spanish":"Bien. La clave es que comprendan el matiz, no que memoricen reglas.","english":"Right. The key is that they understand the nuance, not memorize rules."},{"speaker":"Esteban","spanish":"De acuerdo. Cuando hayan asimilado eso, lo demás vendrá solo.","english":"Agreed. When they''ve assimilated that, the rest will come on its own."}]'::jsonb
   where id = v_l8;
   delete from public.exercises where lesson_id = v_l8;
   insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
@@ -387,7 +387,7 @@ begin
   update public.lessons set
     intro='Quoting and citing: formal writing demands proper attribution. "Según afirma...", "tal como sostiene...".',
     vocab_items='[{"spanish":"la cita","english":"quotation"},{"spanish":"citar","english":"to cite"},{"spanish":"según afirma","english":"as states"},{"spanish":"tal como sostiene","english":"as maintains"},{"spanish":"en palabras de","english":"in the words of"},{"spanish":"a juicio de","english":"in the judgment of"},{"spanish":"la fuente","english":"source"},{"spanish":"reproducir","english":"to reproduce"},{"spanish":"parafrasear","english":"to paraphrase"}]'::jsonb,
-    dialogue='[{"speaker":"Ensayo","spanish":"Tal como sostiene el filósofo, "la libertad sin responsabilidad deviene caos".","english":"As the philosopher maintains, ''freedom without responsibility becomes chaos''."}]'::jsonb,
+    dialogue='[{"speaker":"Ensayo","spanish":"Tal como sostiene el filósofo, «la libertad sin responsabilidad deviene caos».","english":"As the philosopher maintains, ''freedom without responsibility becomes chaos''."}]'::jsonb,
     grammar_note='"Devenir + noun" = "to become + noun" (formal, literary). Less common than "convertirse en" or "volverse" but elegant in academic writing.'
   where id = v_l5;
 
@@ -469,7 +469,7 @@ begin
     description='Two colleagues review a formal letter.',
     intro='Ana and Roberto draft a complaint together.',
     vocab_items='[]'::jsonb, grammar_note=null,
-    dialogue='[{"speaker":"Ana","spanish":"¿Has terminado el borrador de la reclamación?","english":"Have you finished the draft of the complaint?"},{"speaker":"Roberto","spanish":"Sí. Empieza con "Estimado Sr. Director: por la presente...".","english":"Yes. It starts with ''Dear Mr. Director: by the present...''."},{"speaker":"Ana","spanish":"Bien. No obstante, convendría matizar el tono.","english":"Good. However, it would be advisable to nuance the tone."},{"speaker":"Roberto","spanish":"De acuerdo. Cambiaré "exigimos" por "solicitamos".","english":"Agreed. I''ll change ''we demand'' to ''we request''."},{"speaker":"Ana","spanish":"Asimismo, le rogamos al final que confirme la recepción.","english":"Likewise, kindly ask him at the end to confirm receipt."},{"speaker":"Roberto","spanish":"Tal como sugieres. Cerraré con "Atentamente, el presente que suscribe".","english":"As you suggest. I''ll close with ''Sincerely, the undersigned''."}]'::jsonb
+    dialogue='[{"speaker":"Ana","spanish":"¿Has terminado el borrador de la reclamación?","english":"Have you finished the draft of the complaint?"},{"speaker":"Roberto","spanish":"Sí. Empieza con «Estimado Sr. Director: por la presente...».","english":"Yes. It starts with ''Dear Mr. Director: by the present...''."},{"speaker":"Ana","spanish":"Bien. No obstante, convendría matizar el tono.","english":"Good. However, it would be advisable to nuance the tone."},{"speaker":"Roberto","spanish":"De acuerdo. Cambiaré «exigimos» por «solicitamos».","english":"Agreed. I''ll change ''we demand'' to ''we request''."},{"speaker":"Ana","spanish":"Asimismo, le rogamos al final que confirme la recepción.","english":"Likewise, kindly ask him at the end to confirm receipt."},{"speaker":"Roberto","spanish":"Tal como sugieres. Cerraré con «Atentamente, el presente que suscribe».","english":"As you suggest. I''ll close with ''Sincerely, the undersigned''."}]'::jsonb
   where id = v_l8;
   delete from public.exercises where lesson_id = v_l8;
   insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
@@ -540,7 +540,7 @@ begin
   update public.lessons set
     intro='Asking for clarification: "¿podrías concretar?", "¿qué quieres decir exactamente?", "¿podrías ilustrarlo con un ejemplo?".',
     vocab_items='[{"spanish":"concretar","english":"to specify"},{"spanish":"aclarar","english":"to clarify"},{"spanish":"ilustrar","english":"to illustrate"},{"spanish":"profundizar","english":"to deepen"},{"spanish":"el ejemplo concreto","english":"specific example"},{"spanish":"la matización","english":"qualification"},{"spanish":"el contexto","english":"context"},{"spanish":"la implicación","english":"implication"}]'::jsonb,
-    dialogue='[{"speaker":"Moderadora","spanish":"¿Podría usted concretar a qué se refiere con "modelo alternativo"?","english":"Could you specify what you mean by ''alternative model''?"}]'::jsonb,
+    dialogue='[{"speaker":"Moderadora","spanish":"¿Podría usted concretar a qué se refiere con «modelo alternativo»?","english":"Could you specify what you mean by ''alternative model''?"}]'::jsonb,
     grammar_note='"A qué se refiere con + noun" = "what they mean by + noun". Indirect question + "se refiere con" structure for asking about reference/meaning.'
   where id = v_l5;
 
@@ -1159,7 +1159,7 @@ begin
   update public.lessons set
     intro='Listen to a casual conversation between Spanish speakers. Note implicit codes — tone, irony, pauses.',
     vocab_items='[{"spanish":"el matiz","english":"nuance"},{"spanish":"el tono","english":"tone"},{"spanish":"la entonación","english":"intonation"},{"spanish":"implícito","english":"implicit"},{"spanish":"sobreentender","english":"to understand implicitly"},{"spanish":"leer entre líneas","english":"to read between lines"}]'::jsonb,
-    dialogue='[{"speaker":"Amigo 1","spanish":"Vino el jefe, "majísimo", como siempre.","english":"The boss came, "wonderful", as always."},{"speaker":"Amigo 2","spanish":"Ya, ya. Te entiendo perfectamente.","english":"Yeah, yeah. I get you perfectly."}]'::jsonb,
+    dialogue='[{"speaker":"Amigo 1","spanish":"Vino el jefe, «majísimo», como siempre.","english":"The boss came, ''wonderful'', as always."},{"speaker":"Amigo 2","spanish":"Ya, ya. Te entiendo perfectamente.","english":"Yeah, yeah. I get you perfectly."}]'::jsonb,
     grammar_note='Quotation marks around adjectives often signal irony: "majísimo" with quotes = the opposite. "Ya, ya" doubled means "I get it / message received" — implicit code.'
   where id = v_l6;
 
@@ -1234,7 +1234,7 @@ begin
     description='Two friends discuss culture shock.',
     intro='Anna (an expat) talks with her local friend Lola.',
     vocab_items='[]'::jsonb, grammar_note=null,
-    dialogue='[{"speaker":"Anna","spanish":"Llevo tres años aquí y todavía me cuesta acostumbrarme a la hora de la cena.","english":"I''ve been here three years and I still struggle to get used to dinner time."},{"speaker":"Lola","spanish":"Qué va. En tres años ya tienes que estar adaptada.","english":"No way. In three years you must already be adapted."},{"speaker":"Anna","spanish":"Y lo que más me chocó al principio fue la sobremesa.","english":"And what shocked me most at first was the sobremesa."},{"speaker":"Lola","spanish":"Sí, aquí prolongamos la comida una hora más, como mínimo.","english":"Yes, here we extend the meal at least one more hour."},{"speaker":"Anna","spanish":"Y aprendí a entender el tono — cuando alguien dice "majísimo" con sorna.","english":"And I learned to understand the tone — when someone says "wonderful" mockingly."},{"speaker":"Lola","spanish":"Ya, ya. Eso es señal de que has llegado de verdad.","english":"Yeah, yeah. That''s a sign you''ve truly arrived."}]'::jsonb
+    dialogue='[{"speaker":"Anna","spanish":"Llevo tres años aquí y todavía me cuesta acostumbrarme a la hora de la cena.","english":"I''ve been here three years and I still struggle to get used to dinner time."},{"speaker":"Lola","spanish":"Qué va. En tres años ya tienes que estar adaptada.","english":"No way. In three years you must already be adapted."},{"speaker":"Anna","spanish":"Y lo que más me chocó al principio fue la sobremesa.","english":"And what shocked me most at first was the sobremesa."},{"speaker":"Lola","spanish":"Sí, aquí prolongamos la comida una hora más, como mínimo.","english":"Yes, here we extend the meal at least one more hour."},{"speaker":"Anna","spanish":"Y aprendí a entender el tono — cuando alguien dice «majísimo» con sorna.","english":"And I learned to understand the tone — when someone says ''wonderful'' mockingly."},{"speaker":"Lola","spanish":"Ya, ya. Eso es señal de que has llegado de verdad.","english":"Yeah, yeah. That''s a sign you''ve truly arrived."}]'::jsonb
   where id = v_l8;
   delete from public.exercises where lesson_id = v_l8;
   insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
@@ -1387,7 +1387,7 @@ begin
     description='A speechwriter coaches a candidate.',
     intro='Marisa helps Javier prepare a speech.',
     vocab_items='[]'::jsonb, grammar_note=null,
-    dialogue='[{"speaker":"Marisa","spanish":"Arranca con una pregunta retórica. Algo que cautive al público desde el primer instante.","english":"Open with a rhetorical question. Something that captivates the audience from the first instant."},{"speaker":"Javier","spanish":"¿Algo así como "¿acaso no merecemos un futuro mejor?"?","english":"Something like "do we not deserve a better future?"?"},{"speaker":"Marisa","spanish":"Justo. Y después aplicas anáfora: hoy luchamos por X, hoy luchamos por Y.","english":"Exactly. And then you apply anaphora: today we fight for X, today we fight for Y."},{"speaker":"Javier","spanish":"¿Y la metáfora? Quiero comparar la justicia con el aire.","english":"And the metaphor? I want to compare justice to air."},{"speaker":"Marisa","spanish":"La justicia es como el aire: solo se nota cuando falta. Funciona.","english":"Justice is like air: you only notice it when it''s missing. It works."},{"speaker":"Javier","spanish":"Y cierro con un llamamiento: no podemos quedarnos de brazos cruzados.","english":"And I close with a call: we cannot stand by with arms crossed."}]'::jsonb
+    dialogue='[{"speaker":"Marisa","spanish":"Arranca con una pregunta retórica. Algo que cautive al público desde el primer instante.","english":"Open with a rhetorical question. Something that captivates the audience from the first instant."},{"speaker":"Javier","spanish":"¿Algo así como «¿acaso no merecemos un futuro mejor?»?","english":"Something like ''do we not deserve a better future?''?"},{"speaker":"Marisa","spanish":"Justo. Y después aplicas anáfora: hoy luchamos por X, hoy luchamos por Y.","english":"Exactly. And then you apply anaphora: today we fight for X, today we fight for Y."},{"speaker":"Javier","spanish":"¿Y la metáfora? Quiero comparar la justicia con el aire.","english":"And the metaphor? I want to compare justice to air."},{"speaker":"Marisa","spanish":"La justicia es como el aire: solo se nota cuando falta. Funciona.","english":"Justice is like air: you only notice it when it''s missing. It works."},{"speaker":"Javier","spanish":"Y cierro con un llamamiento: no podemos quedarnos de brazos cruzados.","english":"And I close with a call: we cannot stand by with arms crossed."}]'::jsonb
   where id = v_l8;
   delete from public.exercises where lesson_id = v_l8;
   insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
@@ -1430,14 +1430,14 @@ begin
   update public.lessons set
     intro='Spanish Golden Age literature: Cervantes, Lope de Vega, Quevedo. Key concepts: el Siglo de Oro, la picaresca.',
     vocab_items='[{"spanish":"el Siglo de Oro","english":"the Golden Age"},{"spanish":"la novela picaresca","english":"picaresque novel"},{"spanish":"el conceptismo","english":"conceptismo"},{"spanish":"el culteranismo","english":"culteranismo (gongorism)"},{"spanish":"la sátira","english":"satire"},{"spanish":"la parodia","english":"parody"},{"spanish":"el hidalgo","english":"low nobleman"},{"spanish":"el ingenioso","english":"the ingenious one"},{"spanish":"la caballería","english":"chivalry"}]'::jsonb,
-    dialogue='[{"speaker":"Profesor","spanish":"Cervantes, cuya obra cumbre es "El Quijote", parodió las novelas de caballería.","english":"Cervantes, whose masterpiece is ''Don Quixote'', parodied chivalric novels."}]'::jsonb,
+    dialogue='[{"speaker":"Profesor","spanish":"Cervantes, cuya obra cumbre es «El Quijote», parodió las novelas de caballería.","english":"Cervantes, whose masterpiece is ''Don Quixote'', parodied chivalric novels."}]'::jsonb,
     grammar_note='"Cuya obra cumbre" = "whose masterpiece". "Cumbre" as adjective means "supreme/peak". The agreement: "cuya" (fem) + "obra cumbre" (fem).'
   where id = v_l1;
 
   update public.lessons set
     intro='Magical realism: García Márquez, Allende, Carpentier. Hallmark of Latin American letters.',
     vocab_items='[{"spanish":"el realismo mágico","english":"magical realism"},{"spanish":"el boom latinoamericano","english":"the Latin American boom"},{"spanish":"lo real maravilloso","english":"the marvelous real"},{"spanish":"el linaje","english":"lineage"},{"spanish":"la saga familiar","english":"family saga"},{"spanish":"el destino","english":"destiny"},{"spanish":"la cosmovisión","english":"worldview"},{"spanish":"la oralidad","english":"orality"},{"spanish":"sobrenatural","english":"supernatural"}]'::jsonb,
-    dialogue='[{"speaker":"Crítica","spanish":"En "Cien años de soledad", la familia Buendía está condenada a un destino del cual no puede escapar.","english":"In ''One Hundred Years of Solitude'', the Buendía family is condemned to a destiny from which it cannot escape."}]'::jsonb,
+    dialogue='[{"speaker":"Crítica","spanish":"En «Cien años de soledad», la familia Buendía está condenada a un destino del cual no puede escapar.","english":"In ''One Hundred Years of Solitude'', the Buendía family is condemned to a destiny from which it cannot escape."}]'::jsonb,
     grammar_note='"Del cual / de la cual" — formal relative pronoun for prepositional objects. "Del cual no puede escapar" = "from which it cannot escape".'
   where id = v_l2;
 
@@ -1465,7 +1465,7 @@ begin
   update public.lessons set
     intro='Listen to a literary lecture. The professor reads excerpts and analyzes them.',
     vocab_items='[{"spanish":"el fragmento","english":"fragment"},{"spanish":"el extracto","english":"excerpt"},{"spanish":"recitar","english":"to recite"},{"spanish":"declamar","english":"to declaim"},{"spanish":"la prosa","english":"prose"},{"spanish":"la cadencia","english":"cadence"},{"spanish":"el ritmo","english":"rhythm"}]'::jsonb,
-    dialogue='[{"speaker":"Profesora","spanish":"Escuchen este fragmento: "En un lugar de la Mancha, de cuyo nombre no quiero acordarme...".","english":"Listen to this fragment: ''In a place of La Mancha, whose name I do not wish to remember...''."},{"speaker":"Profesora","spanish":"La cadencia anuncia el tono burlesco de toda la obra.","english":"The cadence announces the burlesque tone of the entire work."}]'::jsonb,
+    dialogue='[{"speaker":"Profesora","spanish":"Escuchen este fragmento: «En un lugar de la Mancha, de cuyo nombre no quiero acordarme...».","english":"Listen to this fragment: ''In a place of La Mancha, whose name I do not wish to remember...''."},{"speaker":"Profesora","spanish":"La cadencia anuncia el tono burlesco de toda la obra.","english":"The cadence announces the burlesque tone of the entire work."}]'::jsonb,
     grammar_note='"De cuyo nombre no quiero acordarme" — relative clause with preposition: "de" + "cuyo" + noun. The "no quiero" with subjunctive ("acordarme") shows narrative agency.'
   where id = v_l6;
 
@@ -1583,7 +1583,7 @@ begin
   update public.lessons set
     intro='Cleft sentences: "fue Juan quien lo hizo" instead of "Juan lo hizo". They emphasize specific elements.',
     vocab_items='[{"spanish":"la oración hendida","english":"cleft sentence"},{"spanish":"el énfasis","english":"emphasis"},{"spanish":"focalizar","english":"to focalize"},{"spanish":"destacar","english":"to highlight"},{"spanish":"resaltar","english":"to bring out"},{"spanish":"el sujeto","english":"subject"},{"spanish":"el predicado","english":"predicate"}]'::jsonb,
-    dialogue='[{"speaker":"Profesora","spanish":"Fue Juan quien lo hizo es enfático, frente a "Juan lo hizo", neutro.","english":"''Fue Juan quien lo hizo'' is emphatic, versus ''Juan lo hizo'', neutral."}]'::jsonb,
+    dialogue='[{"speaker":"Profesora","spanish":"«Fue Juan quien lo hizo» es enfático, frente a «Juan lo hizo», neutro.","english":"''Fue Juan quien lo hizo'' is emphatic, versus ''Juan lo hizo'', neutral."}]'::jsonb,
     grammar_note='Cleft "fue X quien/lo que Y": split a sentence to focus on X. The verb "fue/es" agrees with the focalized element: "fui yo quien lo dijo".'
   where id = v_l1;
 
@@ -1778,7 +1778,7 @@ begin
   update public.lessons set
     intro='Write describing your experience with regional variation. Reflect on which features charm you or confuse you.',
     vocab_items='[{"spanish":"el dialecto","english":"dialect"},{"spanish":"la variedad","english":"variety"},{"spanish":"la pronunciación","english":"pronunciation"},{"spanish":"el léxico","english":"lexicon"},{"spanish":"adaptar el oído","english":"to attune the ear"},{"spanish":"chocar","english":"to clash"}]'::jsonb,
-    dialogue='[{"speaker":"Reflexión","spanish":"Lo que más me costó al llegar a Argentina fue acostumbrarme al voseo. Pasaron meses hasta que "vos sos" me sonó natural.","english":"What was hardest for me on arriving in Argentina was getting used to voseo. Months passed until ''vos sos'' sounded natural to me."}]'::jsonb,
+    dialogue='[{"speaker":"Reflexión","spanish":"Lo que más me costó al llegar a Argentina fue acostumbrarme al voseo. Pasaron meses hasta que «vos sos» me sonó natural.","english":"What was hardest for me on arriving in Argentina was getting used to voseo. Months passed until ''vos sos'' sounded natural to me."}]'::jsonb,
     grammar_note='"Pasaron meses hasta que + indicative" = "months passed until + clause". The indicative because the event in subordinate is realized.'
   where id = v_l7;
 
@@ -2049,21 +2049,21 @@ begin
   update public.lessons set
     intro='False friends: words that look the same but mean different things. "Embarazada" ≠ "embarrassed".',
     vocab_items='[{"spanish":"el falso amigo","english":"false friend"},{"spanish":"embarazada","english":"pregnant (NOT embarrassed)"},{"spanish":"avergonzada","english":"embarrassed"},{"spanish":"actualmente","english":"currently (NOT actually)"},{"spanish":"en realidad","english":"actually"},{"spanish":"sensible","english":"sensitive (NOT sensible)"},{"spanish":"sensato","english":"sensible"},{"spanish":"asistir","english":"to attend (NOT assist)"},{"spanish":"ayudar","english":"to help/assist"},{"spanish":"el éxito","english":"success (NOT exit)"}]'::jsonb,
-    dialogue='[{"speaker":"Profesor","spanish":"Cuidado: "embarazada" significa "pregnant", no "embarrassed".","english":"Careful: ''embarazada'' means ''pregnant'', not ''embarrassed''."}]'::jsonb,
+    dialogue='[{"speaker":"Profesor","spanish":"Cuidado: «embarazada» significa «pregnant», no «embarrassed».","english":"Careful: ''embarazada'' means ''pregnant'', not ''embarrassed''."}]'::jsonb,
     grammar_note='"Significar" vs "querer decir": "significar" = official meaning; "querer decir" = "to mean" in conversation. Both translate as "to mean".'
   where id = v_l2;
 
   update public.lessons set
     intro='Idiomatic translation: idioms need cultural equivalence, not literal rendering. "It''s raining cats and dogs" = "llueve a cántaros".',
     vocab_items='[{"spanish":"el modismo","english":"idiom"},{"spanish":"la expresión idiomática","english":"idiomatic expression"},{"spanish":"el equivalente cultural","english":"cultural equivalent"},{"spanish":"intraducible","english":"untranslatable"},{"spanish":"la equivalencia","english":"equivalence"},{"spanish":"el sentido","english":"sense"},{"spanish":"el matiz","english":"nuance"},{"spanish":"el registro","english":"register"}]'::jsonb,
-    dialogue='[{"speaker":"Traductora","spanish":""It''s raining cats and dogs" no se traduce literalmente, sino como "llueve a cántaros".","english":"''It''s raining cats and dogs'' is not translated literally, but as ''llueve a cántaros''."}]'::jsonb,
+    dialogue='[{"speaker":"Traductora","spanish":"«It''s raining cats and dogs» no se traduce literalmente, sino como «llueve a cántaros».","english":"''It''s raining cats and dogs'' is not translated literally, but as ''llueve a cántaros''."}]'::jsonb,
     grammar_note='"No X sino Y" = "not X but rather Y" — strong contrastive structure. "No literalmente sino como" pattern frequent in translation studies.'
   where id = v_l3;
 
   update public.lessons set
     intro='Untranslatable concepts: "sobremesa", "duende", "saudade" (PT). Cultural concepts demand explanation.',
     vocab_items='[{"spanish":"intraducible","english":"untranslatable"},{"spanish":"el concepto cultural","english":"cultural concept"},{"spanish":"la explicación","english":"explanation"},{"spanish":"la nota del traductor","english":"translator''s note"},{"spanish":"contextualizar","english":"to contextualize"},{"spanish":"perder en la traducción","english":"to lose in translation"},{"spanish":"preservar","english":"to preserve"}]'::jsonb,
-    dialogue='[{"speaker":"Traductora","spanish":"Algunas palabras son intraducibles. La "sobremesa", por ejemplo, requiere una nota explicativa.","english":"Some words are untranslatable. ''Sobremesa'', for example, requires an explanatory note."}]'::jsonb,
+    dialogue='[{"speaker":"Traductora","spanish":"Algunas palabras son intraducibles. La «sobremesa», por ejemplo, requiere una nota explicativa.","english":"Some words are untranslatable. ''Sobremesa'', for example, requires an explanatory note."}]'::jsonb,
     grammar_note='"Requerir + noun" = "to require + noun". Formal alternative to "necesitar". In translation studies, "requerir" sounds more academic.'
   where id = v_l4;
 
@@ -2152,7 +2152,7 @@ begin
     description='Two translators discuss a project.',
     intro='Carmen and Diego review a passage together.',
     vocab_items='[]'::jsonb, grammar_note=null,
-    dialogue='[{"speaker":"Carmen","spanish":"¿Cómo tradujiste "It''s raining cats and dogs"?","english":"How did you translate ''It''s raining cats and dogs''?"},{"speaker":"Diego","spanish":"Como "llueve a cántaros". No literalmente, sino con el equivalente cultural.","english":"As ''llueve a cántaros''. Not literally, but with the cultural equivalent."},{"speaker":"Carmen","spanish":"Bien. Y para "embarrassed", supongo que no usaste "embarazada".","english":"Good. And for ''embarrassed'', I assume you didn''t use ''embarazada''."},{"speaker":"Diego","spanish":"Qué va. Falso amigo clásico. Usé "avergonzado".","english":"No way. Classic false friend. I used ''avergonzado''."},{"speaker":"Carmen","spanish":"En este poema, opté por sacrificar la rima en aras de preservar el sentido.","english":"In this poem, I chose to sacrifice the rhyme for the sake of preserving the meaning."},{"speaker":"Diego","spanish":"Es lo mejor. La fidelidad léxica a costa del sentido no merece la pena.","english":"It''s the best. Lexical fidelity at the cost of meaning isn''t worth it."}]'::jsonb
+    dialogue='[{"speaker":"Carmen","spanish":"¿Cómo tradujiste «It''s raining cats and dogs»?","english":"How did you translate ''It''s raining cats and dogs''?"},{"speaker":"Diego","spanish":"Como «llueve a cántaros». No literalmente, sino con el equivalente cultural.","english":"As ''llueve a cántaros''. Not literally, but with the cultural equivalent."},{"speaker":"Carmen","spanish":"Bien. Y para «embarrassed», supongo que no usaste «embarazada».","english":"Good. And for ''embarrassed'', I assume you didn''t use ''embarazada''."},{"speaker":"Diego","spanish":"Qué va. Falso amigo clásico. Usé «avergonzado».","english":"No way. Classic false friend. I used ''avergonzado''."},{"speaker":"Carmen","spanish":"En este poema, opté por sacrificar la rima en aras de preservar el sentido.","english":"In this poem, I chose to sacrifice the rhyme for the sake of preserving the meaning."},{"speaker":"Diego","spanish":"Es lo mejor. La fidelidad léxica a costa del sentido no merece la pena.","english":"It''s the best. Lexical fidelity at the cost of meaning isn''t worth it."}]'::jsonb
   where id = v_l8;
   delete from public.exercises where lesson_id = v_l8;
   insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
@@ -2209,7 +2209,7 @@ begin
   update public.lessons set
     intro='Classroom management: instructions, transitions, corrections. The teacher''s linguistic toolkit.',
     vocab_items='[{"spanish":"la gestión de aula","english":"classroom management"},{"spanish":"la instrucción","english":"instruction"},{"spanish":"la transición","english":"transition"},{"spanish":"la corrección","english":"correction"},{"spanish":"el feedback","english":"feedback"},{"spanish":"la autocorrección","english":"self-correction"},{"spanish":"la corrección entre pares","english":"peer correction"},{"spanish":"el silencio","english":"silence"},{"spanish":"la espera","english":"wait time"}]'::jsonb,
-    dialogue='[{"speaker":"Profesora","spanish":"En lugar de corregir directamente, pregunto: "¿Puedes reformularlo?". Suele funcionar.","english":"Instead of correcting directly, I ask: ''Can you rephrase it?''. It usually works."}]'::jsonb,
+    dialogue='[{"speaker":"Profesora","spanish":"En lugar de corregir directamente, pregunto: «¿Puedes reformularlo?». Suele funcionar.","english":"Instead of correcting directly, I ask: ''Can you rephrase it?''. It usually works."}]'::jsonb,
     grammar_note='"En lugar de + infinitive" = "instead of + V-ing": "en lugar de corregir". The "de" is essential — "en lugar que" doesn''t exist.'
   where id = v_l3;
 
@@ -2223,7 +2223,7 @@ begin
   update public.lessons set
     intro='Motivation and learner autonomy: how to foster engagement and self-directed learning.',
     vocab_items='[{"spanish":"la motivación","english":"motivation"},{"spanish":"intrínseco","english":"intrinsic"},{"spanish":"extrínseco","english":"extrinsic"},{"spanish":"la autonomía","english":"autonomy"},{"spanish":"el aprendizaje autónomo","english":"autonomous learning"},{"spanish":"fomentar","english":"to foster"},{"spanish":"empoderar","english":"to empower"},{"spanish":"el reto","english":"challenge"},{"spanish":"la curiosidad","english":"curiosity"}]'::jsonb,
-    dialogue='[{"speaker":"Profesora","spanish":"Lo crucial es fomentar la curiosidad: si el alumno se pregunta "por qué", está aprendiendo de verdad.","english":"What''s crucial is to foster curiosity: if the student asks ''why'', they''re really learning."}]'::jsonb,
+    dialogue='[{"speaker":"Profesora","spanish":"Lo crucial es fomentar la curiosidad: si el alumno se pregunta «por qué», está aprendiendo de verdad.","english":"What''s crucial is to foster curiosity: if the student asks ''why'', they''re really learning."}]'::jsonb,
     grammar_note='"Lo crucial es + infinitive" = "what''s crucial is to + verb". The neuter "lo + adjective" turns the adjective into an abstract subject.'
   where id = v_l5;
 
