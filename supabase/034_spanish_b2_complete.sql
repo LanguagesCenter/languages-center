@@ -463,4 +463,144 @@ begin
   (v_lesson_id,'speaking','Say this aloud: "Si pudiera elegir, cambiaría el sistema."','Si pudiera elegir, cambiaría el sistema',array[]::text[],'If I could choose, I''d change the system.',9),
   (v_lesson_id,'speaking','Say this aloud: "A fin de cuentas, la ética es imprescindible."','A fin de cuentas, la ética es imprescindible',array[]::text[],'At the end of the day, ethics is essential.',10);
 
+  -- ===========================================================
+  -- B2.4 LITERATURE & POETRY
+  -- ===========================================================
+  select id into v_course_id from public.courses where language_id = v_lang_id and cefr_level = 'B2' and title = 'Literature & Poetry';
+  select id into v_l1 from public.lessons where course_id = v_course_id and order_index = 1;
+  select id into v_l2 from public.lessons where course_id = v_course_id and order_index = 2;
+  select id into v_l3 from public.lessons where course_id = v_course_id and order_index = 3;
+  select id into v_l4 from public.lessons where course_id = v_course_id and order_index = 4;
+  select id into v_l5 from public.lessons where course_id = v_course_id and order_index = 5;
+  select id into v_l6 from public.lessons where course_id = v_course_id and order_index = 6;
+  select id into v_l7 from public.lessons where course_id = v_course_id and order_index = 7;
+  select id into v_l8 from public.lessons where course_id = v_course_id and order_index = 8;
+
+  update public.lessons set intro='Literary vocabulary at B2.',
+    vocab_items='[{"word":"el verso","phonetic":"[BEHR-soh]","english":"verse","example_es":"Cada verso esconde un sentido.","example_en":"Each verse hides a meaning."},{"word":"la metáfora","phonetic":"[meh-TAH-foh-rah]","english":"metaphor","example_es":"Una metáfora poderosa.","example_en":"A powerful metaphor."},{"word":"el narrador","phonetic":"[nah-rrah-DOHR]","english":"narrator","example_es":"El narrador es poco fiable.","example_en":"The narrator is unreliable."},{"word":"trasfondo","phonetic":"[trahs-FOHN-doh]","english":"backdrop","example_es":"El trasfondo histórico es clave.","example_en":"The historical backdrop is key."}]'::jsonb,
+    dialogue='[{"speaker":"Eva","spanish":"Cada verso esconde una metáfora.","english":"Each verse hides a metaphor."},{"speaker":"Luis","spanish":"El narrador es poco fiable.","english":"The narrator is unreliable."},{"speaker":"Eva","spanish":"Eso enriquece la lectura.","english":"That enriches the reading."}]'::jsonb,
+    grammar_note='"Poco + adjective" softens a negative: "poco fiable" = "unreliable" (rather than "muy poco fiable"). B2 register.'
+  where id = v_l1;
+  update public.lessons set intro='Subjunctive after expressions of emotion.',
+    vocab_items='[{"word":"me sorprende que","phonetic":"[meh sohr-PREHN-deh keh]","english":"it surprises me that","example_es":"Me sorprende que escriba así.","example_en":"It surprises me that he writes that way."},{"word":"lamento que","phonetic":"[lah-MEHN-toh keh]","english":"I regret that","example_es":"Lamento que sea tan corto.","example_en":"I regret that it''s so short."},{"word":"qué pena que","phonetic":"[keh PEH-nah keh]","english":"what a pity that","example_es":"Qué pena que muriera joven.","example_en":"What a pity he died young."},{"word":"resulta increíble que","phonetic":"[rreh-SOOL-tah]","english":"it''s incredible that","example_es":"Resulta increíble que sea su primer libro.","example_en":"It''s incredible that this is his first book."}]'::jsonb,
+    dialogue='[{"speaker":"Ana","spanish":"Me sorprende que aún no haya ganado un premio.","english":"It surprises me he hasn''t won a prize yet."},{"speaker":"Marco","spanish":"Lamento que sus libros no se traduzcan más.","english":"I regret that his books aren''t translated more."},{"speaker":"Ana","spanish":"Qué pena que muriera joven.","english":"What a pity he died young."}]'::jsonb,
+    grammar_note='Expressions of emotion trigger subjunctive: "me sorprende QUE haya", "lamento QUE sea", "qué pena QUE muriera". A B2 cornerstone.'
+  where id = v_l2;
+  update public.lessons set intro='Phrases for literary discussion.',
+    vocab_items='[{"word":"está bien logrado","phonetic":"[ehs-TAH byehn loh-GRAH-doh]","english":"it''s well done","example_es":"El final está muy bien logrado.","example_en":"The ending is very well done."},{"word":"deja huella","phonetic":"[DEH-hah WEH-yah]","english":"leaves a mark","example_es":"Es un libro que deja huella.","example_en":"It''s a book that leaves a mark."},{"word":"se hace pesado","phonetic":"[seh AH-seh peh-SAH-doh]","english":"becomes tedious","example_es":"La trama se hace pesada.","example_en":"The plot becomes tedious."},{"word":"a mitad de camino","phonetic":"[ah mee-TAHD deh kah-MEE-noh]","english":"halfway through","example_es":"Abandoné a mitad de camino.","example_en":"I gave up halfway through."}]'::jsonb,
+    dialogue='[{"speaker":"Marta","spanish":"El final está muy bien logrado.","english":"The ending is very well done."},{"speaker":"Pedro","spanish":"Para mí, la trama se hace pesada a mitad de camino.","english":"For me, the plot becomes tedious halfway through."},{"speaker":"Marta","spanish":"Pero deja huella.","english":"But it leaves a mark."}]'::jsonb,
+    grammar_note='"Hacerse + adjective" = "to become" (gradual): "se hace pesado", "se hace difícil". Different from "ponerse" (sudden change).'
+  where id = v_l3;
+  update public.lessons set intro='Listen to a book review podcast.',
+    vocab_items='[{"word":"la prosa","phonetic":"[PROH-sah]","english":"prose","example_es":"Una prosa cuidadísima.","example_en":"Extremely careful prose."},{"word":"sorprender al lector","phonetic":"[sohr-prehn-DEHR]","english":"to surprise the reader","example_es":"El giro sorprende al lector.","example_en":"The twist surprises the reader."},{"word":"un golpe maestro","phonetic":"[GOHL-peh mah-EHS-troh]","english":"a masterstroke","example_es":"El final es un golpe maestro.","example_en":"The ending is a masterstroke."},{"word":"polémica","phonetic":"[poh-LEH-mee-kah]","english":"controversy","example_es":"La novela generó polémica.","example_en":"The novel sparked controversy."}]'::jsonb,
+    dialogue='[{"speaker":"Locutor","spanish":"La nueva novela de Vila-Matas presenta una prosa cuidadísima.","english":"Vila-Matas''s new novel features extremely careful prose."},{"speaker":"Locutor","spanish":"El giro final es un golpe maestro que sorprende al lector.","english":"The final twist is a masterstroke that surprises the reader."},{"speaker":"Locutor","spanish":"No falta polémica: el autor cuestiona la propia narración.","english":"Controversy isn''t lacking: the author questions narration itself."}]'::jsonb,
+    grammar_note='"-ísimo/-ísima" intensifier: "cuidadísima" = "extremely careful". Adds emphasis without "muy". B2 essential.'
+  where id = v_l4;
+  update public.lessons set intro='Discuss a book you admire.',
+    vocab_items='[{"word":"Me marcó profundamente","phonetic":"[meh mahr-KOH]","english":"It deeply marked me","example_es":"Me marcó profundamente este libro.","example_en":"This book deeply marked me."},{"word":"Lo releo cada año","phonetic":"[loh rreh-LEH-oh]","english":"I reread it every year","example_es":"Lo releo cada año.","example_en":"I reread it every year."},{"word":"Es de obligada lectura","phonetic":"[ohb-lee-GAH-dah]","english":"It''s essential reading","example_es":"Es de obligada lectura.","example_en":"It''s essential reading."},{"word":"un clásico moderno","phonetic":"[KLAH-see-koh moh-DEHR-noh]","english":"a modern classic","example_es":"Se ha vuelto un clásico moderno.","example_en":"It has become a modern classic."}]'::jsonb,
+    dialogue='[{"speaker":"Tú","spanish":"Cien años de soledad me marcó profundamente.","english":"One Hundred Years of Solitude deeply marked me."},{"speaker":"Amigo","spanish":"¿Lo recomendarías?","english":"Would you recommend it?"},{"speaker":"Tú","spanish":"Es de obligada lectura. Lo releo cada cinco años.","english":"It''s essential reading. I reread it every five years."}]'::jsonb,
+    grammar_note='"Volverse + adjective/noun" = "to become" (slower, often permanent change): "se ha vuelto un clásico". Compare with "convertirse en" (active process).'
+  where id = v_l5;
+  update public.lessons set intro='Read a literary essay extract.',
+    vocab_items='[{"word":"el simbolismo","phonetic":"[seem-boh-LEES-moh]","english":"symbolism","example_es":"El simbolismo es denso.","example_en":"The symbolism is dense."},{"word":"contrastar","phonetic":"[kohn-trahs-TAR]","english":"to contrast","example_es":"Contrasta luz y sombra.","example_en":"It contrasts light and shadow."},{"word":"a través de","phonetic":"[ah trah-BEHS deh]","english":"through","example_es":"A través de la metáfora.","example_en":"Through metaphor."},{"word":"perdurar","phonetic":"[pehr-doo-RAR]","english":"to endure","example_es":"Su obra perdurará en el tiempo.","example_en":"His work will endure over time."}]'::jsonb,
+    dialogue='[{"speaker":"Texto","spanish":"A través de un simbolismo denso, García Lorca contrasta vida y muerte.","english":"Through dense symbolism, García Lorca contrasts life and death."},{"speaker":"Texto","spanish":"Su obra perdurará porque toca lo universal.","english":"His work will endure because it touches the universal."},{"speaker":"Texto","spanish":"Resulta imposible separarlo de su época histórica.","english":"It''s impossible to separate him from his historical era."}]'::jsonb,
+    grammar_note='"Resulta + adjective" = "it turns out to be / proves" (formal): "resulta imposible", "resulta evidente". Common in essay register.'
+  where id = v_l6;
+  update public.lessons set intro='Write a short book review.',
+    vocab_items='[{"word":"sin caer en clichés","phonetic":"[seen kah-EHR]","english":"without falling into clichés","example_es":"Aborda el amor sin caer en clichés.","example_en":"It addresses love without falling into clichés."},{"word":"a primera vista","phonetic":"[ah pree-MEH-rah BEES-tah]","english":"at first glance","example_es":"A primera vista parece simple.","example_en":"At first glance it seems simple."},{"word":"capa de significado","phonetic":"[KAH-pah]","english":"layer of meaning","example_es":"Cada lectura revela otra capa de significado.","example_en":"Each reading reveals another layer of meaning."},{"word":"recomendable","phonetic":"[rreh-koh-mehn-DAH-bleh]","english":"recommendable","example_es":"Una novela altamente recomendable.","example_en":"A highly recommendable novel."}]'::jsonb,
+    dialogue='[{"speaker":"Modelo","spanish":"A primera vista parece una novela simple, pero esconde varias capas de significado.","english":"At first glance it seems a simple novel, but it hides several layers of meaning."},{"speaker":"Modelo","spanish":"La autora aborda temas universales sin caer en clichés.","english":"The author addresses universal themes without falling into clichés."},{"speaker":"Modelo","spanish":"Altamente recomendable para cualquier lector exigente.","english":"Highly recommendable for any demanding reader."}]'::jsonb,
+    grammar_note='"Altamente + adjective" = formal intensifier: "altamente recomendable", "altamente improbable". More elevated than "muy".'
+  where id = v_l7;
+
+  delete from public.exercises where lesson_id in (v_l1, v_l2, v_l3, v_l4, v_l5, v_l6, v_l7);
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_l1,'multiple_choice','What is "verse"?','el verso',array['la metáfora','el narrador','el trasfondo'],'verse',1),
+  (v_l1,'fill_blank','Complete: "El narrador es ____ fiable." (un-)','poco',array['muy','nada','algo'],'unreliable',2),
+  (v_l1,'multiple_choice','What does "trasfondo" mean?','backdrop',array['translator','foreground','prologue'],'backdrop',3),
+  (v_l1,'listening','What did you hear?','El narrador es poco fiable',array['Cada verso esconde un sentido','Una metáfora poderosa','El trasfondo histórico es clave'],'The narrator is unreliable',4),
+  (v_l1,'speaking','Say this aloud: "Una metáfora poderosa."','Una metáfora poderosa',array[]::text[],'A powerful metaphor.',5),
+  (v_l2,'multiple_choice','What follows "me sorprende que"?','subjunctive',array['indicative','preterite','imperfect'],'subjunctive',1),
+  (v_l2,'fill_blank','Complete: "Lamento que ____ tan corto." (it''s - subj)','sea',array['es','era','será'],'be (subj)',2),
+  (v_l2,'multiple_choice','What does "qué pena que" mean?','what a pity that',array['what a joy that','what a doubt that','what an idea that'],'what a pity that',3),
+  (v_l2,'listening','What did you hear?','Me sorprende que aún no haya ganado un premio',array['Lamento que sus libros no se traduzcan','Qué pena que muriera joven','Resulta increíble que sea su primer libro'],'It surprises me he hasn''t won a prize yet',4),
+  (v_l2,'speaking','Say this aloud: "Qué pena que muriera joven."','Qué pena que muriera joven',array[]::text[],'What a pity he died young.',5),
+  (v_l3,'multiple_choice','How to say "it leaves a mark"?','deja huella',array['está bien logrado','se hace pesado','a mitad de camino'],'leaves a mark',1),
+  (v_l3,'fill_blank','Complete: "Abandoné a ____ de camino." (halfway)','mitad',array['mediados','medio','poco'],'halfway',2),
+  (v_l3,'multiple_choice','What does "se hace pesado" mean?','becomes tedious',array['gets heavy','breaks down','speeds up'],'becomes tedious',3),
+  (v_l3,'listening','What did you hear?','El final está muy bien logrado',array['La trama se hace pesada a mitad de camino','Es un libro que deja huella','Abandoné a mitad de camino'],'The ending is very well done',4),
+  (v_l3,'speaking','Say this aloud: "Es un libro que deja huella."','Es un libro que deja huella',array[]::text[],'It''s a book that leaves a mark.',5),
+  (v_l4,'multiple_choice','What is "prose"?','la prosa',array['el verso','la trama','el simbolismo'],'prose',1),
+  (v_l4,'fill_blank','Complete: "Es un ____ maestro." (stroke)','golpe',array['libro','final','autor'],'masterstroke',2),
+  (v_l4,'multiple_choice','What does "polémica" mean?','controversy',array['praise','translation','review'],'controversy',3),
+  (v_l4,'listening','What did you hear?','El giro final es un golpe maestro que sorprende al lector',array['Una prosa cuidadísima','El autor cuestiona la propia narración','La novela generó polémica'],'The final twist is a masterstroke that surprises the reader',4),
+  (v_l4,'speaking','Say this aloud: "Una prosa cuidadísima."','Una prosa cuidadísima',array[]::text[],'Extremely careful prose.',5),
+  (v_l5,'multiple_choice','How to say "essential reading"?','de obligada lectura',array['me marcó profundamente','un clásico moderno','lo releo cada año'],'essential reading',1),
+  (v_l5,'fill_blank','Complete: "Se ha ____ un clásico moderno." (become)','vuelto',array['hecho','convertido','puesto'],'become',2),
+  (v_l5,'multiple_choice','What does "me marcó profundamente" mean?','It deeply marked me',array['I deeply marked it','It marked me lightly','I deeply forgot it'],'It deeply marked me',3),
+  (v_l5,'listening','What did you hear?','Es de obligada lectura. Lo releo cada cinco años',array['Cien años de soledad me marcó profundamente','¿Lo recomendarías?','Se ha vuelto un clásico moderno'],'It''s essential reading. I reread it every five years',4),
+  (v_l5,'speaking','Say this aloud: "Lo releo cada año."','Lo releo cada año',array[]::text[],'I reread it every year.',5),
+  (v_l6,'multiple_choice','What is "symbolism"?','el simbolismo',array['el simbolismo magistral','la metáfora','el verso'],'symbolism',1),
+  (v_l6,'fill_blank','Complete: "Su obra ____ en el tiempo." (will endure)','perdurará',array['acabará','crecerá','viajará'],'will endure',2),
+  (v_l6,'multiple_choice','What does "contrastar" mean?','to contrast',array['to compare','to confuse','to confirm'],'to contrast',3),
+  (v_l6,'listening','What did you hear?','A través de un simbolismo denso, García Lorca contrasta vida y muerte',array['Su obra perdurará porque toca lo universal','Resulta imposible separarlo de su época histórica','Toca lo universal'],'Through dense symbolism, García Lorca contrasts life and death',4),
+  (v_l6,'speaking','Say this aloud: "Su obra perdurará en el tiempo."','Su obra perdurará en el tiempo',array[]::text[],'His work will endure over time.',5),
+  (v_l7,'multiple_choice','How to say "at first glance"?','a primera vista',array['sin caer en clichés','capa de significado','recomendable'],'at first glance',1),
+  (v_l7,'fill_blank','Complete: "Cada lectura revela otra ____ de significado." (layer)','capa',array['página','línea','idea'],'layer',2),
+  (v_l7,'multiple_choice','What does "altamente recomendable" mean?','highly recommendable',array['lightly recommendable','barely recommendable','controversial'],'highly recommendable',3),
+  (v_l7,'listening','What did you hear?','A primera vista parece una novela simple, pero esconde varias capas de significado',array['La autora aborda temas universales sin caer en clichés','Altamente recomendable para cualquier lector exigente','Una novela altamente recomendable'],'At first glance it seems a simple novel, but it hides several layers of meaning',4),
+  (v_l7,'speaking','Say this aloud: "Aborda temas universales sin caer en clichés."','Aborda temas universales sin caer en clichés',array[]::text[],'It addresses universal themes without falling into clichés.',5);
+
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_l1,'listening','What did you hear?','Cada verso esconde un sentido',array['Una metáfora poderosa','El trasfondo histórico es clave','El narrador es poco fiable'],'Each verse hides a meaning',6),
+  (v_l1,'listening','What did you hear?','El trasfondo histórico es clave',array['Cada verso esconde un sentido','Una metáfora poderosa','El narrador es poco fiable'],'The historical backdrop is key',7),
+  (v_l1,'speaking','Say this aloud: "El trasfondo histórico es clave."','El trasfondo histórico es clave',array[]::text[],'The historical backdrop is key.',8),
+  (v_l1,'speaking','Say this aloud: "Cada verso esconde un sentido."','Cada verso esconde un sentido',array[]::text[],'Each verse hides a meaning.',9),
+  (v_l2,'listening','What did you hear?','Resulta increíble que sea su primer libro',array['Me sorprende que escriba así','Lamento que sea tan corto','Qué pena que muriera joven'],'It''s incredible that this is his first book',6),
+  (v_l2,'listening','What did you hear?','Lamento que sus libros no se traduzcan más',array['Me sorprende que aún no haya ganado','Qué pena que muriera joven','Resulta increíble'],'I regret that his books aren''t translated more',7),
+  (v_l2,'speaking','Say this aloud: "Resulta increíble que sea su primer libro."','Resulta increíble que sea su primer libro',array[]::text[],'It''s incredible that this is his first book.',8),
+  (v_l2,'speaking','Say this aloud: "Lamento que sea tan corto."','Lamento que sea tan corto',array[]::text[],'I regret that it''s so short.',9),
+  (v_l3,'listening','What did you hear?','Pero deja huella',array['El final está muy bien logrado','La trama se hace pesada','Abandoné a mitad de camino'],'But it leaves a mark',6),
+  (v_l3,'listening','What did you hear?','La trama se hace pesada',array['El final está muy bien logrado','Es un libro que deja huella','Abandoné a mitad de camino'],'The plot becomes tedious',7),
+  (v_l3,'speaking','Say this aloud: "La trama se hace pesada."','La trama se hace pesada',array[]::text[],'The plot becomes tedious.',8),
+  (v_l3,'speaking','Say this aloud: "Abandoné a mitad de camino."','Abandoné a mitad de camino',array[]::text[],'I gave up halfway through.',9),
+  (v_l6,'listening','What did you hear?','Su obra perdurará porque toca lo universal',array['A través de un simbolismo denso','Resulta imposible separarlo de su época','García Lorca contrasta vida y muerte'],'His work will endure because it touches the universal',6),
+  (v_l6,'listening','What did you hear?','Resulta imposible separarlo de su época histórica',array['A través de un simbolismo denso','Su obra perdurará','García Lorca contrasta'],'It''s impossible to separate him from his historical era',7),
+  (v_l6,'speaking','Say this aloud: "El simbolismo es denso."','El simbolismo es denso',array[]::text[],'The symbolism is dense.',8),
+  (v_l6,'speaking','Say this aloud: "A través de la metáfora."','A través de la metáfora',array[]::text[],'Through metaphor.',9),
+  (v_l7,'listening','What did you hear?','La autora aborda temas universales sin caer en clichés',array['A primera vista parece una novela simple','Cada lectura revela otra capa de significado','Altamente recomendable'],'The author addresses universal themes without falling into clichés',6),
+  (v_l7,'listening','What did you hear?','Altamente recomendable para cualquier lector exigente',array['Aborda temas universales','A primera vista parece simple','Esconde varias capas'],'Highly recommendable for any demanding reader',7),
+  (v_l7,'speaking','Say this aloud: "Cada lectura revela otra capa de significado."','Cada lectura revela otra capa de significado',array[]::text[],'Each reading reveals another layer of meaning.',8),
+  (v_l7,'speaking','Say this aloud: "Altamente recomendable."','Altamente recomendable',array[]::text[],'Highly recommendable.',9);
+
+  update public.lessons set type='conversation', title='Literature & Poetry — Conversation Practice',
+    description='Two literature lovers debate a recent novel.',
+    intro='Eva and Marco discuss Vila-Matas''s newest book.',
+    vocab_items='[]'::jsonb, grammar_note=null,
+    dialogue='[{"speaker":"Eva","spanish":"¿Qué te pareció la nueva de Vila-Matas?","english":"What did you think of Vila-Matas''s latest?"},{"speaker":"Marco","spanish":"Una prosa cuidadísima, aunque la trama se hace pesada a mitad de camino.","english":"Extremely careful prose, although the plot becomes tedious halfway through."},{"speaker":"Eva","spanish":"Me sorprende que digas eso. El giro final es un golpe maestro.","english":"It surprises me you''d say that. The final twist is a masterstroke."},{"speaker":"Marco","spanish":"Lo admito, el final está bien logrado. Pero el narrador es poco fiable.","english":"I admit, the ending is well done. But the narrator is unreliable."},{"speaker":"Eva","spanish":"Exacto, eso enriquece la lectura. Capa tras capa de significado.","english":"Exactly, that enriches the reading. Layer after layer of meaning."},{"speaker":"Marco","spanish":"Altamente recomendable, pero no para todos.","english":"Highly recommendable, but not for everyone."}]'::jsonb
+  where id = v_l8;
+  delete from public.exercises where lesson_id = v_l8;
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_l8,'multiple_choice','How does Marco describe the prose?','Extremely careful',array['Boring','Sloppy','Brief'],'Una prosa cuidadísima',1),
+  (v_l8,'multiple_choice','When does the plot become tedious for Marco?','Halfway through',array['From the start','At the end','Never'],'la trama se hace pesada a mitad de camino',2),
+  (v_l8,'multiple_choice','How does Eva describe the final twist?','A masterstroke',array['Predictable','Confusing','Bad'],'un golpe maestro',3),
+  (v_l8,'multiple_choice','True or false: Marco finds the narrator unreliable.','True',array['False'],'el narrador es poco fiable',4),
+  (v_l8,'fill_blank','Complete: "Me ____ que digas eso." (it surprises me)','sorprende',array['lamenta','encanta','molesta'],'it surprises me',5),
+  (v_l8,'multiple_choice','Marco''s final verdict?','Highly recommendable but not for everyone',array['Terrible','Perfect','Boring'],'Altamente recomendable, pero no para todos',6);
+
+  delete from public.lessons where course_id = v_course_id and order_index = 9;
+  insert into public.lessons (course_id, title, description, type, order_index, xp_reward)
+  values (v_course_id, 'Section Test: Literature & Poetry', 'Review test for the Literature & Poetry section. Pass with 7 or more out of 10 to earn 50 XP.', 'unit_test', 9, 50)
+  returning id into v_lesson_id;
+  insert into public.exercises (lesson_id, type, question, correct_answer, wrong_answers, translation, order_index) values
+  (v_lesson_id,'multiple_choice','What is "metaphor"?','la metáfora',array['el verso','el narrador','el trasfondo'],'metaphor',1),
+  (v_lesson_id,'multiple_choice','"Me sorprende que" triggers...','subjunctive',array['preterite','imperfect','indicative'],'subjunctive',2),
+  (v_lesson_id,'multiple_choice','What does "perdurar" mean?','to endure',array['to perish','to publish','to plagiarise'],'to endure',3),
+  (v_lesson_id,'multiple_choice','True/false: "altamente recomendable" = highly recommendable (formal).','True',array['False'],'altamente = formal intensifier',4),
+  (v_lesson_id,'fill_blank','Complete: "Resulta ____ que sea su primer libro." (incredible)','increíble',array['posible','difícil','evidente'],'incredible',5),
+  (v_lesson_id,'fill_blank','Complete: "A primera ____" (glance)','vista',array['mirada','mirando','ojo'],'glance',6),
+  (v_lesson_id,'listening','What did you hear?','Es un libro que deja huella',array['El final está muy bien logrado','La trama se hace pesada','Abandoné a mitad de camino'],'It''s a book that leaves a mark',7),
+  (v_lesson_id,'listening','What did you hear?','Su obra perdurará porque toca lo universal',array['A través de un simbolismo denso','García Lorca contrasta vida y muerte','Resulta imposible separarlo'],'His work will endure because it touches the universal',8),
+  (v_lesson_id,'speaking','Say this aloud: "Qué pena que muriera joven."','Qué pena que muriera joven',array[]::text[],'What a pity he died young.',9),
+  (v_lesson_id,'speaking','Say this aloud: "Aborda temas universales sin caer en clichés."','Aborda temas universales sin caer en clichés',array[]::text[],'It addresses universal themes without falling into clichés.',10);
+
 end $$;
