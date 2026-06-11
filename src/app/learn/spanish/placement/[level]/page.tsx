@@ -8,7 +8,7 @@ import {
   cooldownRemainingMs,
   getLanguageIdBySlug,
   getLastAttempt,
-  getQuestionsForClient,
+  buildExamPayload,
   hasPaid,
 } from "@/lib/placement-exam";
 import ExamClient from "./ExamClient";
@@ -78,7 +78,18 @@ export default async function PlacementExamPage(props: {
 
   // The user explicitly clicked Retake — clear the result view and load the exam.
   if (sp.show_result === "0" && remainingMs === 0) {
-    const questions = await getQuestionsForClient(languageId, LEVEL);
+    const payload = await buildExamPayload(languageId, LEVEL);
+    if (!payload) {
+      return (
+        <>
+          <Navbar />
+          <main className="flex-1 max-w-2xl mx-auto px-4 py-10">
+            <p className="text-navy/70">This exam is not available yet.</p>
+          </main>
+          <Footer />
+        </>
+      );
+    }
     return (
       <>
         <Navbar />
@@ -86,7 +97,8 @@ export default async function PlacementExamPage(props: {
           <ExamClient
             languageSlug={LANGUAGE_SLUG}
             level={LEVEL}
-            questions={questions}
+            passage={payload.passage}
+            questions={payload.questions}
           />
         </main>
         <Footer />
@@ -121,7 +133,18 @@ export default async function PlacementExamPage(props: {
   }
 
   // No prior attempt → load the exam.
-  const questions = await getQuestionsForClient(languageId, LEVEL);
+  const payload = await buildExamPayload(languageId, LEVEL);
+  if (!payload) {
+    return (
+      <>
+        <Navbar />
+        <main className="flex-1 max-w-2xl mx-auto px-4 py-10">
+          <p className="text-navy/70">This exam is not available yet.</p>
+        </main>
+        <Footer />
+      </>
+    );
+  }
   return (
     <>
       <Navbar />
@@ -129,7 +152,8 @@ export default async function PlacementExamPage(props: {
         <ExamClient
           languageSlug={LANGUAGE_SLUG}
           level={LEVEL}
-          questions={questions}
+          passage={payload.passage}
+          questions={payload.questions}
         />
       </main>
       <Footer />

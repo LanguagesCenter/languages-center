@@ -75,7 +75,9 @@ export default function ResultsView({
         <h2 className="text-sm font-semibold text-navy/60 uppercase tracking-wider mb-2">
           By category
         </h2>
+        <CategoryRow label="Reading" pct={attempt.reading_score} />
         <CategoryRow label="Vocabulary" pct={attempt.vocabulary_score} />
+        <CategoryRow label="Dialogue" pct={attempt.dialogue_score} />
         <CategoryRow label="Listening" pct={attempt.listening_score} />
         <CategoryRow label="Speaking" pct={attempt.speaking_score} />
         <CategoryRow label="Writing" pct={attempt.writing_score} />
