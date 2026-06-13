@@ -34,7 +34,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const allowed: GradeType[] = ["writing", "listening", "speaking", "dialogue"];
+  const allowed: GradeType[] = [
+    "writing",
+    "listening",
+    "speaking",
+    "dialogue",
+    "roleplay",
+  ];
   if (!allowed.includes(body.type as GradeType)) {
     return Response.json(
       { error: `Unsupported type "${body.type}"` },

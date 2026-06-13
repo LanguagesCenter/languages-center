@@ -8,15 +8,25 @@ export const EXAM_DURATION_SECONDS = 45 * 60;
 
 // Per-attempt question selection. The bank in the DB is 2-3x larger than this;
 // we randomly pick this many per category each attempt.
+//
+// A1 and A2 use the listening + speaking format. B1/B2/C1 swap those two
+// categories for three roleplay dialogues.
 export const PER_ATTEMPT = {
   reading_passage: 1,
   reading_questions: 3,
   vocabulary: 5,
   dialogue: 5,
-  listening: 10,
-  speaking: 10,
+  listening: 10, // A1/A2 only
+  speaking: 10, // A1/A2 only
+  roleplay: 3, // B1/B2/C1 only
   writing: 10,
 } as const;
+
+export const ROLEPLAY_LEVELS: ReadonlyArray<string> = ["B1", "B2", "C1"];
+
+export function levelUsesRoleplay(level: string): boolean {
+  return ROLEPLAY_LEVELS.includes(level);
+}
 
 export type ExamCategory =
   | "reading"
@@ -24,6 +34,7 @@ export type ExamCategory =
   | "dialogue"
   | "listening"
   | "speaking"
+  | "roleplay"
   | "writing";
 
 export interface DialogueLine {
@@ -73,11 +84,23 @@ export interface PlacementAttempt {
   dialogue_score: number;
   listening_score: number;
   speaking_score: number;
+  roleplay_score: number;
   writing_score: number;
   passed: boolean;
   completed_at: string;
   time_taken_seconds: number;
   last_attempt_at: string;
+}
+
+/** One roleplay scenario from the bank. */
+export interface RoleplayScenario {
+  id: number;
+  topic_label: string;
+  scenario: string;
+  user_role: string;
+  ai_role: string;
+  ai_opener: string;
+  target_exchanges: number;
 }
 
 /** Returns milliseconds until cooldown expires, or 0 if no cooldown. */

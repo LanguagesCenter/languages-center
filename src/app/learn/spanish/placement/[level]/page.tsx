@@ -17,7 +17,7 @@ import CooldownView from "./CooldownView";
 import ResultsView from "./ResultsView";
 
 const LANGUAGE_SLUG = "spanish";
-const SUPPORTED_LEVELS = ["A1", "A2"] as const;
+const SUPPORTED_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
 
 export async function generateMetadata(props: {
   params: Promise<{ level: string }>;
@@ -99,6 +99,7 @@ export default async function PlacementExamPage(props: {
             level={LEVEL}
             passage={payload.passage}
             questions={payload.questions}
+            roleplays={payload.roleplays}
           />
         </main>
         <Footer />
@@ -154,6 +155,7 @@ export default async function PlacementExamPage(props: {
           level={LEVEL}
           passage={payload.passage}
           questions={payload.questions}
+          roleplays={payload.roleplays}
         />
       </main>
       <Footer />

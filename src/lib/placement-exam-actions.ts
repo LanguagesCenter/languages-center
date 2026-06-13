@@ -8,6 +8,7 @@ import {
   getLanguageIdBySlug,
   getQuestionWithAnswer,
   getReadingPassage,
+  getRoleplayScenario,
   hasPaid,
   type ExamCategory,
 } from "@/lib/placement-exam";
@@ -26,6 +27,13 @@ export interface ReadingAnswer {
   answer: string;
 }
 
+/** Full transcript for one of the three roleplay scenarios. */
+export interface RoleplayTranscript {
+  roleplay_id: number;
+  /** Conversation log; AI's opener first, alternating thereafter. */
+  turns: Array<{ role: "user" | "ai"; text: string }>;
+}
+
 export interface SubmitResult {
   ok: boolean;
   attempt_id?: string;
@@ -36,6 +44,7 @@ export interface SubmitResult {
   dialogue_score?: number;
   listening_score?: number;
   speaking_score?: number;
+  roleplay_score?: number;
   writing_score?: number;
   error?: string;
 }
@@ -85,6 +94,7 @@ export async function submitPlacementExam(
   passageId: number,
   readingAnswers: ReadingAnswer[],
   answers: ExamAnswer[],
+  roleplayTranscripts: RoleplayTranscript[],
   timeTakenSeconds: number,
 ): Promise<SubmitResult> {
   const supabase = await createClient();
@@ -201,6 +211,62 @@ export async function submitPlacementExam(
     return { item, ...result };
   });
 
+  // ---- Roleplay grading ----
+  type RoleplayGraded = {
+    roleplay_id: number;
+    score: number;
+    feedback: string;
+    transcript: RoleplayTranscript["turns"];
+  };
+  const roleplayResults: RoleplayGraded[] = [];
+  if (roleplayTranscripts.length > 0) {
+    const scenariosNullable = await Promise.all(
+      roleplayTranscripts.map((t) => getRoleplayScenario(t.roleplay_id)),
+    );
+    const scenarios = scenariosNullable.map((s, i) => ({
+      transcript: roleplayTranscripts[i],
+      scenario: s,
+    }));
+    const graded = await gradeInParallel(scenarios, async ({ transcript, scenario }) => {
+      if (!scenario) {
+        return {
+          roleplay_id: transcript.roleplay_id,
+          score: 0,
+          feedback: "Roleplay scenario could not be found.",
+          transcript: transcript.turns,
+        };
+      }
+      const transcriptStr = transcript.turns
+        .map((t) => `${t.role === "ai" ? "AI" : "User"}: ${t.text}`)
+        .join("\n");
+      const prompt = [
+        `Roleplay topic: ${scenario.topic_label}`,
+        `Scenario: ${scenario.scenario}`,
+        `Candidate role: ${scenario.user_role}`,
+        `AI role: ${scenario.ai_role}`,
+        `Target user turns: ${scenario.target_exchanges}`,
+        "",
+        "Transcript:",
+        transcriptStr,
+      ].join("\n");
+      const result = await gradeResponse({
+        prompt,
+        response: transcriptStr,
+        level,
+        type: "roleplay",
+      });
+      return {
+        roleplay_id: transcript.roleplay_id,
+        score: result.score,
+        feedback: result.feedback,
+        transcript: transcript.turns,
+      };
+    });
+    roleplayResults.push(...graded);
+  }
+  const roleplaySum = roleplayResults.reduce((acc, r) => acc + r.score, 0);
+  const roleplayCount = roleplayResults.length;
+
   type CatTotals = { sum: number; count: number };
   const catTotals: Record<ExamCategory, CatTotals> = {
     reading: { sum: readingRight * 10, count: readingTotal },
@@ -208,6 +274,7 @@ export async function submitPlacementExam(
     dialogue: { sum: 0, count: 0 },
     listening: { sum: 0, count: 0 },
     speaking: { sum: 0, count: 0 },
+    roleplay: { sum: roleplaySum, count: roleplayCount },
     writing: { sum: 0, count: 0 },
   };
   for (const r of aiResults) {
@@ -217,14 +284,13 @@ export async function submitPlacementExam(
   }
 
   // ---- Compose overall score (each question worth 10, percentage across all) ----
-  // Reading: 3 MC. Vocab/dialogue: 5 each. Listening/speaking/writing: 10 each.
-  // We score each question 0..10 and total/percent across the whole exam.
   const totalSum =
     catTotals.reading.sum +
     catTotals.vocabulary.sum +
     catTotals.dialogue.sum +
     catTotals.listening.sum +
     catTotals.speaking.sum +
+    catTotals.roleplay.sum +
     catTotals.writing.sum;
   const totalMax =
     (catTotals.reading.count +
@@ -232,6 +298,7 @@ export async function submitPlacementExam(
       catTotals.dialogue.count +
       catTotals.listening.count +
       catTotals.speaking.count +
+      catTotals.roleplay.count +
       catTotals.writing.count) *
     10;
   const scorePct = totalMax > 0 ? Math.round((totalSum / totalMax) * 100) : 0;
@@ -256,6 +323,7 @@ export async function submitPlacementExam(
       dialogue_score: catPct("dialogue"),
       listening_score: catPct("listening"),
       speaking_score: catPct("speaking"),
+      roleplay_score: catPct("roleplay"),
       writing_score: catPct("writing"),
       passed,
       time_taken_seconds: clampedTime,
@@ -314,6 +382,26 @@ export async function submitPlacementExam(
     }
   }
 
+  if (roleplayResults.length > 0) {
+    const { error: rpErr } = await supabase
+      .from("placement_exam_attempt_roleplays")
+      .insert(
+        roleplayResults.map((r) => ({
+          attempt_id: attemptId,
+          roleplay_id: r.roleplay_id,
+          transcript: r.transcript,
+          score: r.score,
+          feedback: r.feedback,
+        })),
+      );
+    if (rpErr) {
+      console.error(
+        "[placement-exam] roleplay persistence failed:",
+        rpErr.message,
+      );
+    }
+  }
+
   return {
     ok: true,
     attempt_id: attemptId,
@@ -324,6 +412,7 @@ export async function submitPlacementExam(
     dialogue_score: catPct("dialogue"),
     listening_score: catPct("listening"),
     speaking_score: catPct("speaking"),
+    roleplay_score: catPct("roleplay"),
     writing_score: catPct("writing"),
   };
 }

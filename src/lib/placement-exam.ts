@@ -2,12 +2,14 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import {
   PER_ATTEMPT,
+  levelUsesRoleplay,
   type ExamCategory,
   type PlacementQuestion,
   type PlacementAttempt,
   type ReadingPassage,
   type ReadingPassageQuestion,
   type DialogueLine,
+  type RoleplayScenario,
 } from "@/lib/placement-exam-types";
 
 // Re-export shared bits so server-side imports keep working.
@@ -16,6 +18,8 @@ export {
   COOLDOWN_HOURS,
   EXAM_DURATION_SECONDS,
   PER_ATTEMPT,
+  ROLEPLAY_LEVELS,
+  levelUsesRoleplay,
   cooldownRemainingMs,
 } from "@/lib/placement-exam-types";
 export type {
@@ -26,12 +30,15 @@ export type {
   ReadingPassage,
   ReadingPassageQuestion,
   DialogueLine,
+  RoleplayScenario,
 } from "@/lib/placement-exam-types";
 
 /** Full payload returned to the client when starting an exam. */
 export interface ExamPayload {
   passage: ReadingPassage;
   questions: PlacementQuestion[];
+  /** Only populated for B1/B2/C1 — the 3 roleplay scenarios for this attempt. */
+  roleplays: RoleplayScenario[];
 }
 
 // Internal: full row coming back from Supabase. Wider than
@@ -77,6 +84,37 @@ async function fetchAllQuestions(
   return (data ?? []) as QuestionRow[];
 }
 
+/** Fetch all roleplay scenarios for a level (the topic bank). */
+async function fetchRoleplays(
+  languageId: number,
+  level: string,
+): Promise<RoleplayScenario[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("placement_exam_roleplays")
+    .select(
+      "id, topic_label, scenario, user_role, ai_role, ai_opener, target_exchanges",
+    )
+    .eq("language_id", languageId)
+    .eq("level", level);
+  return (data ?? []) as RoleplayScenario[];
+}
+
+/** Look up a single roleplay scenario (for server-side scoring/review). */
+export async function getRoleplayScenario(
+  roleplayId: number,
+): Promise<RoleplayScenario | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("placement_exam_roleplays")
+    .select(
+      "id, topic_label, scenario, user_role, ai_role, ai_opener, target_exchanges",
+    )
+    .eq("id", roleplayId)
+    .maybeSingle();
+  return (data as RoleplayScenario | null) ?? null;
+}
+
 /** Fetch reading passages for a level. */
 async function fetchPassages(
   languageId: number,
@@ -104,34 +142,42 @@ export async function buildExamPayload(
   languageId: number,
   level: string,
 ): Promise<ExamPayload | null> {
-  const [allQuestions, allPassages] = await Promise.all([
+  const useRoleplay = levelUsesRoleplay(level);
+  const [allQuestions, allPassages, allRoleplays] = await Promise.all([
     fetchAllQuestions(languageId, level),
     fetchPassages(languageId, level),
+    useRoleplay
+      ? fetchRoleplays(languageId, level)
+      : Promise.resolve<RoleplayScenario[]>([]),
   ]);
   if (allQuestions.length === 0 || allPassages.length === 0) return null;
+  if (useRoleplay && allRoleplays.length === 0) return null;
 
   const byCat = (cat: ExamCategory) =>
     allQuestions.filter((q) => q.category === cat);
 
   const vocab = sampleN(byCat("vocabulary"), PER_ATTEMPT.vocabulary);
   const dialogue = sampleN(byCat("dialogue"), PER_ATTEMPT.dialogue);
-  const listening = sampleN(byCat("listening"), PER_ATTEMPT.listening);
-  const speaking = sampleN(byCat("speaking"), PER_ATTEMPT.speaking);
   const writing = sampleN(byCat("writing"), PER_ATTEMPT.writing);
 
   const passage = sampleN(allPassages, 1)[0];
 
-  // Order matters for the exam flow:
-  //   1) Reading passage + comprehension (handled in the UI separately)
-  //   2) Vocabulary (5)
-  //   3) Dialogue (5)
-  //   4) Listening (10)
-  //   5) Speaking (10)
-  //   6) Writing (10)
-  const ordered = [...vocab, ...dialogue, ...listening, ...speaking, ...writing];
-  const questions: PlacementQuestion[] = ordered.map((row) => stripAnswer(row));
+  let ordered: typeof allQuestions = [];
+  let roleplays: RoleplayScenario[] = [];
 
-  return { passage, questions };
+  if (useRoleplay) {
+    // B1/B2/C1: reading + vocab + dialogue + 3 roleplays (separate phase) + writing.
+    roleplays = sampleN(allRoleplays, PER_ATTEMPT.roleplay);
+    ordered = [...vocab, ...dialogue, ...writing];
+  } else {
+    // A1/A2: reading + vocab + dialogue + 10 listening + 10 speaking + writing.
+    const listening = sampleN(byCat("listening"), PER_ATTEMPT.listening);
+    const speaking = sampleN(byCat("speaking"), PER_ATTEMPT.speaking);
+    ordered = [...vocab, ...dialogue, ...listening, ...speaking, ...writing];
+  }
+
+  const questions: PlacementQuestion[] = ordered.map((row) => stripAnswer(row));
+  return { passage, questions, roleplays };
 }
 
 function stripAnswer(row: QuestionRow): PlacementQuestion {
@@ -250,6 +296,67 @@ export interface ReviewItem {
   feedback: string | null;
   /** The expected MC answer (vocabulary + reading); null for AI-graded. */
   correct_answer: string | null;
+}
+
+/** Per-attempt roleplay review entry. */
+export interface ReviewRoleplay {
+  id: string;
+  topic_label: string;
+  user_role: string;
+  ai_role: string;
+  transcript: Array<{ role: "user" | "ai"; text: string }>;
+  score: number;
+  feedback: string | null;
+}
+
+/** Load the per-attempt roleplay transcripts (B1/B2/C1 attempts). */
+export async function getAttemptRoleplayReviews(
+  attemptId: string,
+  userId: string,
+): Promise<ReviewRoleplay[]> {
+  const supabase = await createClient();
+  const { data: attempt } = await supabase
+    .from("placement_exam_attempts")
+    .select("id, user_id")
+    .eq("id", attemptId)
+    .maybeSingle();
+  if (!attempt || (attempt as { user_id: string }).user_id !== userId) {
+    return [];
+  }
+
+  const { data: rows } = await supabase
+    .from("placement_exam_attempt_roleplays")
+    .select(
+      "id, roleplay_id, transcript, score, feedback, placement_exam_roleplays(topic_label, user_role, ai_role)",
+    )
+    .eq("attempt_id", attemptId)
+    .order("created_at");
+
+  type Row = {
+    id: number;
+    roleplay_id: number | null;
+    transcript: Array<{ role: "user" | "ai"; text: string }> | null;
+    score: number;
+    feedback: string | null;
+    placement_exam_roleplays:
+      | { topic_label: string; user_role: string; ai_role: string }
+      | Array<{ topic_label: string; user_role: string; ai_role: string }>
+      | null;
+  };
+  return ((rows ?? []) as Row[]).map((r) => {
+    const meta = Array.isArray(r.placement_exam_roleplays)
+      ? r.placement_exam_roleplays[0]
+      : r.placement_exam_roleplays;
+    return {
+      id: String(r.id),
+      topic_label: meta?.topic_label ?? "Roleplay",
+      user_role: meta?.user_role ?? "You",
+      ai_role: meta?.ai_role ?? "AI",
+      transcript: r.transcript ?? [],
+      score: r.score,
+      feedback: r.feedback,
+    };
+  });
 }
 
 /** Load all per-question responses for a single attempt, ordered logically. */

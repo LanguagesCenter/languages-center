@@ -6,11 +6,13 @@ import {
   EXAM_DURATION_SECONDS,
   type PlacementQuestion,
   type ReadingPassage,
+  type RoleplayScenario,
 } from "@/lib/placement-exam-types";
 import {
   submitPlacementExam,
   type ExamAnswer,
   type ReadingAnswer,
+  type RoleplayTranscript,
 } from "@/lib/placement-exam-actions";
 
 function formatTime(seconds: number): string {
@@ -66,36 +68,61 @@ function getSpeechRecognition(): (new () => ISpeechRecognition) | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-// Exam progresses through three high-level phases:
-//   notice -> reading (passage + 3 questions) -> questions (35 numbered)
-// The reading phase counts internally as the first 3 of 40 question screens.
-type Phase = "notice" | "reading" | "questions";
+// Exam progresses through up to four high-level phases:
+//   notice -> reading -> roleplay (B1/B2/C1 only) -> questions (vocab + dialogue + writing)
+// On A1/A2 there is no roleplay phase; questions include listening + speaking.
+type Phase = "notice" | "reading" | "roleplay" | "questions";
 
 export default function ExamClient({
   languageSlug,
   level,
   passage,
   questions,
+  roleplays,
 }: {
   languageSlug: string;
   level: string;
   passage: ReadingPassage;
   questions: PlacementQuestion[];
+  roleplays: RoleplayScenario[];
 }) {
   const router = useRouter();
+  const hasRoleplay = roleplays.length > 0;
   const [phase, setPhase] = useState<Phase>("notice");
   const [readingStep, setReadingStep] = useState(0); // 0..2 within reading
   const [step, setStep] = useState(0); // 0..questions.length-1
+  const [roleplayIdx, setRoleplayIdx] = useState(0); // 0..roleplays.length-1
   const [answers, setAnswers] = useState<Record<number, string>>({});
   // Reading answers indexed by passage question position 0..2.
   const [readingAnswers, setReadingAnswers] = useState<string[]>(
     () => new Array(passage.questions.length).fill(""),
+  );
+  // One transcript array per roleplay, seeded with the AI opener.
+  const [roleplayTranscripts, setRoleplayTranscripts] = useState<
+    RoleplayTranscript[]
+  >(() =>
+    roleplays.map((r) => ({
+      roleplay_id: r.id,
+      turns: [{ role: "ai" as const, text: r.ai_opener }],
+    })),
   );
   const [remaining, setRemaining] = useState(EXAM_DURATION_SECONDS);
   const startedAt = useRef<number>(0);
   const [pending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function appendRoleplayTurn(
+    rpIdx: number,
+    turn: { role: "user" | "ai"; text: string },
+  ) {
+    setRoleplayTranscripts((prev) => {
+      const next = prev.map((t, i) =>
+        i === rpIdx ? { ...t, turns: [...t.turns, turn] } : t,
+      );
+      return next;
+    });
+  }
 
   // Prime TTS voices once they are available.
   useEffect(() => {
@@ -163,6 +190,7 @@ export default function ExamClient({
         passage.id,
         readingPayload,
         payload,
+        hasRoleplay ? roleplayTranscripts : [],
         elapsed,
       );
       if (!res.ok) {
@@ -184,12 +212,18 @@ export default function ExamClient({
     );
   }
 
-  // Common header (timer + progress)
+  // Common header (timer + progress). For B1/B2/C1 the 3 roleplays count as
+  // 3 extra screens between reading and the remaining questions.
   const totalReading = passage.questions.length;
   const totalQuestions = questions.length;
-  const grandTotal = totalReading + totalQuestions;
+  const totalRoleplays = roleplays.length;
+  const grandTotal = totalReading + totalRoleplays + totalQuestions;
   const currentIdx =
-    phase === "reading" ? readingStep : totalReading + step;
+    phase === "reading"
+      ? readingStep
+      : phase === "roleplay"
+        ? totalReading + roleplayIdx
+        : totalReading + totalRoleplays + step;
 
   function handleExit() {
     if (submitted) return;
@@ -250,11 +284,40 @@ export default function ExamClient({
           onNext={() => {
             if (readingStep < totalReading - 1) {
               setReadingStep((s) => s + 1);
+            } else if (hasRoleplay) {
+              setPhase("roleplay");
             } else {
               setPhase("questions");
             }
           }}
           isLast={readingStep === totalReading - 1}
+        />
+      ) : phase === "roleplay" ? (
+        <RoleplayScreen
+          key={roleplays[roleplayIdx].id}
+          level={level}
+          scenario={roleplays[roleplayIdx]}
+          transcript={roleplayTranscripts[roleplayIdx]}
+          onAppendUser={(text) =>
+            appendRoleplayTurn(roleplayIdx, { role: "user", text })
+          }
+          onAppendAI={(text) =>
+            appendRoleplayTurn(roleplayIdx, { role: "ai", text })
+          }
+          stepIdx={roleplayIdx}
+          totalRoleplays={totalRoleplays}
+          onPrev={
+            roleplayIdx === 0
+              ? () => setPhase("reading")
+              : () => setRoleplayIdx((i) => Math.max(0, i - 1))
+          }
+          onNext={() => {
+            if (roleplayIdx < totalRoleplays - 1) {
+              setRoleplayIdx((i) => i + 1);
+            } else {
+              setPhase("questions");
+            }
+          }}
         />
       ) : (
         <QuestionScreen
@@ -263,7 +326,8 @@ export default function ExamClient({
           onChange={(v) => setAnswer(questions[step].id, v)}
           onPrev={
             step === 0
-              ? () => setPhase("reading")
+              ? () =>
+                  hasRoleplay ? setPhase("roleplay") : setPhase("reading")
               : () => setStep((s) => Math.max(0, s - 1))
           }
           onNext={
@@ -801,4 +865,192 @@ function stableShuffle<T>(arr: T[], seed: number): T[] {
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
+}
+
+// ---------- ROLEPLAY (B1/B2/C1 only) ----------
+function RoleplayScreen({
+  level,
+  scenario,
+  transcript,
+  stepIdx,
+  totalRoleplays,
+  onAppendUser,
+  onAppendAI,
+  onPrev,
+  onNext,
+}: {
+  level: string;
+  scenario: RoleplayScenario;
+  transcript: RoleplayTranscript;
+  stepIdx: number;
+  totalRoleplays: number;
+  onAppendUser: (text: string) => void;
+  onAppendAI: (text: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const [input, setInput] = useState("");
+  const [isThinking, setIsThinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const userTurns = transcript.turns.filter((t) => t.role === "user").length;
+  const isFinished =
+    userTurns >= scenario.target_exchanges &&
+    transcript.turns[transcript.turns.length - 1]?.role === "ai";
+
+  // Auto-scroll the transcript when it grows.
+  useEffect(() => {
+    if (scrollerRef.current) {
+      scrollerRef.current.scrollTop = scrollerRef.current.scrollHeight;
+    }
+  }, [transcript.turns.length]);
+
+  async function sendTurn() {
+    if (isThinking || isFinished) return;
+    const trimmed = input.trim();
+    if (trimmed.length === 0) return;
+    // Append the user's turn locally first, then call the AI route.
+    onAppendUser(trimmed);
+    const newHistory = [...transcript.turns, { role: "user" as const, text: trimmed }];
+    setInput("");
+    setIsThinking(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/roleplay-turn", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          level,
+          topic: scenario.topic_label,
+          scenario: scenario.scenario,
+          user_role: scenario.user_role,
+          ai_role: scenario.ai_role,
+          target_exchanges: scenario.target_exchanges,
+          history: newHistory,
+        }),
+      });
+      if (!res.ok) {
+        setError(`Could not get the next AI line (HTTP ${res.status}).`);
+        return;
+      }
+      const data = (await res.json()) as {
+        next_line: string;
+        is_final: boolean;
+      };
+      onAppendAI(data.next_line || "(silencio)");
+    } catch (e) {
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not reach the roleplay engine.",
+      );
+    } finally {
+      setIsThinking(false);
+    }
+  }
+
+  function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      sendTurn();
+    }
+  }
+
+  return (
+    <>
+      <div className="bg-white border border-border rounded-2xl p-6 sm:p-7 mb-4 shadow-sm">
+        <p className="text-xs font-semibold text-navy/40 uppercase tracking-wider mb-2">
+          Roleplay {stepIdx + 1} of {totalRoleplays} — {scenario.topic_label}
+        </p>
+        <p className="text-sm text-navy/80 leading-relaxed mb-3">
+          {scenario.scenario}
+        </p>
+        <p className="text-xs text-navy/60">
+          You play <span className="font-semibold">{scenario.user_role}</span>.
+          The AI plays <span className="font-semibold">{scenario.ai_role}</span>.
+          Each of your replies should be at least two full Spanish sentences
+          (except a greeting or farewell).
+        </p>
+      </div>
+
+      <div
+        ref={scrollerRef}
+        className="bg-navy/5 border border-border rounded-2xl p-4 mb-4 h-[22rem] overflow-y-auto space-y-3"
+      >
+        {transcript.turns.map((t, i) => (
+          <div
+            key={i}
+            className={`flex ${t.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                t.role === "user"
+                  ? "bg-teal text-white"
+                  : "bg-white text-navy border border-border"
+              }`}
+            >
+              <p className="text-[10px] uppercase tracking-wider opacity-60 mb-0.5">
+                {t.role === "user" ? scenario.user_role : scenario.ai_role}
+              </p>
+              {t.text}
+            </div>
+          </div>
+        ))}
+        {isThinking && (
+          <div className="flex justify-start">
+            <div className="bg-white text-navy border border-border rounded-2xl px-4 py-2.5 text-sm italic opacity-70">
+              {scenario.ai_role} está escribiendo…
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mb-4">
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={onKey}
+          placeholder={
+            isFinished
+              ? "This roleplay is complete. Press Next to continue."
+              : "Type your Spanish reply (at least 2 sentences)…"
+          }
+          disabled={isFinished || isThinking}
+          rows={3}
+          className="w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none resize-none disabled:bg-navy/5"
+        />
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs text-navy/50">
+            User turns so far: {userTurns} / {scenario.target_exchanges}
+            {isFinished && " · complete"}
+          </p>
+          <button
+            type="button"
+            onClick={sendTurn}
+            disabled={isFinished || isThinking || input.trim().length === 0}
+            className="px-5 py-2 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Send reply
+          </button>
+        </div>
+        {error && (
+          <p className="mt-2 text-xs text-red-600">{error}</p>
+        )}
+      </div>
+
+      <NavFooter
+        onPrev={onPrev}
+        onNext={isFinished ? onNext : undefined}
+        nextLabel={
+          stepIdx === totalRoleplays - 1 ? "Continue to writing" : "Next roleplay"
+        }
+      />
+      {!isFinished && (
+        <p className="mt-3 text-center text-xs text-navy/50">
+          Finish the roleplay (reach the target turns) before continuing.
+        </p>
+      )}
+    </>
+  );
 }

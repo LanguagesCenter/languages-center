@@ -78,8 +78,15 @@ export default function ResultsView({
         <CategoryRow label="Reading" pct={attempt.reading_score} />
         <CategoryRow label="Vocabulary" pct={attempt.vocabulary_score} />
         <CategoryRow label="Dialogue" pct={attempt.dialogue_score} />
-        <CategoryRow label="Listening" pct={attempt.listening_score} />
-        <CategoryRow label="Speaking" pct={attempt.speaking_score} />
+        {attempt.listening_score > 0 && (
+          <CategoryRow label="Listening" pct={attempt.listening_score} />
+        )}
+        {attempt.speaking_score > 0 && (
+          <CategoryRow label="Speaking" pct={attempt.speaking_score} />
+        )}
+        {attempt.roleplay_score > 0 && (
+          <CategoryRow label="Roleplay" pct={attempt.roleplay_score} />
+        )}
         <CategoryRow label="Writing" pct={attempt.writing_score} />
       </div>
 

@@ -5,14 +5,16 @@ import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/server";
 import {
   getAttemptReview,
+  getAttemptRoleplayReviews,
   getLanguageIdBySlug,
   getLastAttempt,
   type ExamCategory,
   type ReviewItem,
+  type ReviewRoleplay,
 } from "@/lib/placement-exam";
 
 const LANGUAGE_SLUG = "spanish";
-const SUPPORTED_LEVELS = ["A1", "A2"] as const;
+const SUPPORTED_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
 
 const CATEGORY_LABEL: Record<ExamCategory, string> = {
   reading: "Reading",
@@ -20,6 +22,7 @@ const CATEGORY_LABEL: Record<ExamCategory, string> = {
   dialogue: "Dialogue",
   listening: "Listening",
   speaking: "Speaking",
+  roleplay: "Roleplay",
   writing: "Writing",
 };
 
@@ -73,7 +76,10 @@ export default async function ReviewPage(props: {
     );
   }
 
-  const items = await getAttemptReview(attempt.id, user.id);
+  const [items, roleplayReviews] = await Promise.all([
+    getAttemptReview(attempt.id, user.id),
+    getAttemptRoleplayReviews(attempt.id, user.id),
+  ]);
 
   // Group by category for cleaner display.
   const grouped = items.reduce<Record<string, ReviewItem[]>>((acc, item) => {
@@ -81,7 +87,14 @@ export default async function ReviewPage(props: {
     return acc;
   }, {});
   const orderedCats = (
-    ["reading", "vocabulary", "dialogue", "listening", "speaking", "writing"] as ExamCategory[]
+    [
+      "reading",
+      "vocabulary",
+      "dialogue",
+      "listening",
+      "speaking",
+      "writing",
+    ] as ExamCategory[]
   ).filter((c) => grouped[c]?.length);
 
   return (
@@ -113,7 +126,7 @@ export default async function ReviewPage(props: {
             </Link>
           </div>
 
-          {orderedCats.length === 0 ? (
+          {orderedCats.length === 0 && roleplayReviews.length === 0 ? (
             <p className="text-navy/60">
               No per-question detail is available for this attempt.
             </p>
@@ -131,12 +144,75 @@ export default async function ReviewPage(props: {
                   </div>
                 </section>
               ))}
+              {roleplayReviews.length > 0 && (
+                <section>
+                  <h2 className="text-sm font-semibold text-navy/60 uppercase tracking-wider mb-3">
+                    Roleplays
+                  </h2>
+                  <div className="space-y-3">
+                    {roleplayReviews.map((rp, i) => (
+                      <RoleplayCard key={rp.id} rp={rp} index={i + 1} />
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </section>
       </main>
       <Footer />
     </>
+  );
+}
+
+function RoleplayCard({
+  rp,
+  index,
+}: {
+  rp: ReviewRoleplay;
+  index: number;
+}) {
+  const good = rp.score >= 7;
+  const borderClass = good
+    ? "border-teal/40 bg-teal-light/40"
+    : "border-amber-300 bg-amber-50/40";
+  return (
+    <div className={`border-2 rounded-2xl p-5 ${borderClass}`}>
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <p className="text-xs font-semibold text-navy/50 uppercase tracking-wider">
+          Roleplay {index} — {rp.topic_label}
+        </p>
+        <span
+          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+            good ? "bg-teal text-white" : "bg-amber-600 text-white"
+          }`}
+        >
+          {rp.score}/10
+        </span>
+      </div>
+      <p className="text-xs text-navy/60 mb-3">
+        You played <span className="font-semibold">{rp.user_role}</span> ·
+        AI played <span className="font-semibold">{rp.ai_role}</span>
+      </p>
+      <div className="bg-white/70 rounded-lg p-3 border border-navy/10 space-y-2 max-h-80 overflow-y-auto">
+        {rp.transcript.map((turn, i) => (
+          <div key={i} className="text-sm">
+            <span className="text-[10px] uppercase tracking-wider text-navy/40 mr-2">
+              {turn.role === "user" ? rp.user_role : rp.ai_role}:
+            </span>
+            <span className="text-navy whitespace-pre-wrap">{turn.text}</span>
+          </div>
+        ))}
+      </div>
+      {rp.feedback && (
+        <div className="mt-3">
+          <p className="text-xs text-navy/50 uppercase tracking-wider mb-0.5">
+            Feedback
+          </p>
+          <p className="text-sm text-navy/80 italic">{rp.feedback}</p>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -4,7 +4,12 @@ import "server-only";
 // here, and server actions (placement-exam-actions) also call this directly so
 // the request never round-trips through HTTP.
 
-export type GradeType = "writing" | "listening" | "speaking" | "dialogue";
+export type GradeType =
+  | "writing"
+  | "listening"
+  | "speaking"
+  | "dialogue"
+  | "roleplay";
 
 export interface GradeArgs {
   prompt: string;
@@ -25,7 +30,13 @@ function buildSystemPrompt(level: string, type: GradeType): string {
   const levelDesc =
     level === "A1"
       ? "CEFR A1: basic vocabulary, simple present-tense sentences, common nouns and verbs. Very common errors are expected and acceptable."
-      : "CEFR A2: connected sentences, past/future tenses, common connectors (porque, pero, cuando). Some inaccuracy is fine if meaning is clear.";
+      : level === "A2"
+        ? "CEFR A2: connected sentences, past/future tenses, common connectors (porque, pero, cuando). Some inaccuracy is fine if meaning is clear."
+        : level === "B1"
+          ? "CEFR B1: paragraphs on familiar topics, preterite/imperfect contrast, present perfect, basic subjunctive after expressions of wish/emotion. Reasonable accuracy expected."
+          : level === "B2"
+            ? "CEFR B2: clear, detailed text on a wide range of topics, complex sentences, subjunctive in many contexts (concessions, hypotheticals), conditionals types 2 and 3, sophisticated connectors. Few errors that impede meaning."
+            : "CEFR C1: nuanced, idiomatic, register-appropriate Spanish. Advanced subjunctive, complex passive constructions, cleft sentences, discourse markers (cabe destacar, en virtud de), elegant rephrasing. Errors should be rare and not affect clarity.";
 
   const taskDesc: Record<GradeType, string> = {
     writing:
@@ -36,6 +47,8 @@ function buildSystemPrompt(level: string, type: GradeType): string {
       "You are reading a speech-to-text transcript of the candidate's spoken monologue on a topic. Transcription artefacts (punctuation, capitalisation, occasional missing words) are expected — focus on grammar, vocabulary range, fluency indicators (run-ons, hesitations transcribed as filler) and how thoroughly the topic was covered.",
     dialogue:
       "The candidate was shown a short Spanish dialogue with the last line missing, and typed a Spanish line to complete it. Judge whether the response is a plausible, grammatical reply and appropriate for the register.",
+    roleplay:
+      "The candidate carried out a multi-turn Spanish-language roleplay with an AI partner. You are given the full transcript (labelled AI: and User:). Judge ONLY the candidate's turns on grammar, vocabulary range, fluency, appropriateness to the situation and how well they advanced the conversation. Ignore minor typos and length below the level expectation.",
   };
 
   return [
