@@ -250,6 +250,13 @@ export default function Navbar() {
                         >
                           {t("nav.settings")}
                         </Link>
+                        <Link
+                          href="/profile#certifications"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="block w-full px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
+                        >
+                          {t("nav.certificates")}
+                        </Link>
                         <div className="border-t border-border my-1" />
                         <button
                           type="button"

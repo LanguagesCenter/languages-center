@@ -13,6 +13,7 @@ import {
   type CEFRLevelGroup,
   type SectionWithProgress,
 } from "@/lib/learn";
+import { getAllAttemptsForUser } from "@/lib/placement-exam";
 
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { getServerLang, getServerT } from "@/lib/i18n-server";
@@ -164,14 +165,74 @@ function PlacementExamCard({
   languageSlug,
   level,
   isPremium,
+  hasTakenExam,
 }: {
   languageSlug: string;
   level: string;
   isPremium: boolean;
+  hasTakenExam: boolean;
 }) {
+  const href = `/learn/${languageSlug}/placement/${level.toLowerCase()}`;
+
+  // Two visual states: the candidate has either taken the exam (show the
+  // results entry point) or they haven't (the original "Take Exam" card).
+  if (hasTakenExam) {
+    return (
+      <Link
+        href={href}
+        className="block mb-4 bg-white border border-teal/40 rounded-2xl p-4 sm:p-5 hover:border-teal hover:shadow-md transition-all"
+      >
+        <div className="flex items-center gap-4">
+          <div className="shrink-0 w-12 h-12 rounded-2xl bg-teal-light text-teal-dark flex items-center justify-center shadow-sm">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.8}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 7.5h18M3 7.5l1.5 12a2 2 0 002 1.75h11a2 2 0 002-1.75L21 7.5M9 11v6m6-6v6M9 7.5V5a3 3 0 016 0v2.5"
+              />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-0.5">
+              {level} Placement Exam
+            </p>
+            <h3 className="text-base sm:text-lg font-bold text-navy leading-tight">
+              You have already taken this exam
+            </h3>
+            <p className="text-xs text-navy/50 mt-0.5">
+              See your score, pass/fail and date taken
+            </p>
+          </div>
+          <span className="shrink-0 hidden sm:inline-flex px-4 py-2 rounded-full bg-teal text-white text-sm font-semibold">
+            View Exam Results
+          </span>
+          <svg
+            className="shrink-0 w-5 h-5 text-teal"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </div>
+      </Link>
+    );
+  }
+
   return (
     <Link
-      href={`/learn/${languageSlug}/placement/${level.toLowerCase()}`}
+      href={href}
       className="block mb-4 bg-white border border-teal/40 rounded-2xl p-4 sm:p-5 hover:border-teal hover:shadow-md transition-all"
     >
       <div className="flex items-center gap-4">
@@ -225,6 +286,7 @@ function LevelAccordion({
   sectionLabel,
   noSectionsLabel,
   showPlacementExam,
+  hasTakenExam,
   isPremium,
 }: {
   group: CEFRLevelGroup;
@@ -238,6 +300,7 @@ function LevelAccordion({
   sectionLabel: string;
   noSectionsLabel: string;
   showPlacementExam: boolean;
+  hasTakenExam: boolean;
   isPremium: boolean;
 }) {
   const styles = LEVEL_STYLES[group.level] ?? LEVEL_STYLES.A1;
@@ -295,6 +358,7 @@ function LevelAccordion({
             languageSlug={languageSlug}
             level={group.level}
             isPremium={isPremium}
+            hasTakenExam={hasTakenExam}
           />
         )}
         {group.sections.length === 0 ? (
@@ -343,6 +407,15 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
   const flagCode = FLAG_CODES[language.code] ?? language.code;
   const reachedLevel = getHighestReachedLevel(tree);
   const isPremium = await isCurrentUserPremium();
+
+  // Set of CEFR levels the user has already attempted for THIS language.
+  // Used to flip the "Take Exam" card into "View Exam Results".
+  const allAttempts = await getAllAttemptsForUser(user.id);
+  const takenLevels = new Set(
+    allAttempts
+      .filter((a) => a.language.code === language.code)
+      .map((a) => a.level.toUpperCase()),
+  );
 
   const totalLessons = tree.reduce((sum, g) => sum + g.lessonsTotal, 0);
   const completedLessons = tree.reduce((sum, g) => sum + g.lessonsCompleted, 0);
@@ -456,6 +529,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
                 slug === "spanish" &&
                 ["A1", "A2", "B1", "B2", "C1"].includes(group.level)
               }
+              hasTakenExam={takenLevels.has(group.level)}
               isPremium={isPremium}
             />
           ))}

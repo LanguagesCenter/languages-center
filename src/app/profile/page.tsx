@@ -176,7 +176,10 @@ export default async function ProfilePage() {
           </div>
 
           {/* CERTIFICATIONS */}
-          <div className="bg-white border border-border rounded-2xl p-6">
+          <div
+            id="certifications"
+            className="bg-white border border-border rounded-2xl p-6 scroll-mt-24"
+          >
             <h2 className="text-lg font-bold text-navy mb-4">
               {t("profile.certifications")}
             </h2>
