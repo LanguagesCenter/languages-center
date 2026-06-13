@@ -234,6 +234,165 @@ export async function getLanguageIdBySlug(slug: string): Promise<number | null> 
   return (data as { id: number } | null)?.id ?? null;
 }
 
+/** One row in the post-exam review view. */
+export interface ReviewItem {
+  id: string;
+  category: ExamCategory;
+  /** The text shown to the candidate (full sentence stem or topic prompt). */
+  prompt: string;
+  /** Extra context: dialogue lines joined, passage text, or null. */
+  context: string | null;
+  /** User's typed/spoken response. */
+  user_response: string;
+  /** 0-10 grading. */
+  score: number;
+  /** AI feedback (or "Correct."/"Expected: …" for deterministic MC). */
+  feedback: string | null;
+  /** The expected MC answer (vocabulary + reading); null for AI-graded. */
+  correct_answer: string | null;
+}
+
+/** Load all per-question responses for a single attempt, ordered logically. */
+export async function getAttemptReview(
+  attemptId: string,
+  userId: string,
+): Promise<ReviewItem[]> {
+  const supabase = await createClient();
+
+  // RLS guards this already, but double-check ownership server-side.
+  const { data: attempt } = await supabase
+    .from("placement_exam_attempts")
+    .select("id, user_id")
+    .eq("id", attemptId)
+    .maybeSingle();
+  if (!attempt || (attempt as { user_id: string }).user_id !== userId) {
+    return [];
+  }
+
+  const { data: rows } = await supabase
+    .from("placement_exam_attempt_responses")
+    .select(
+      "id, category, question_id, passage_id, passage_question_index, user_response, score, feedback, created_at",
+    )
+    .eq("attempt_id", attemptId)
+    .order("created_at");
+  const responseRows = (rows ?? []) as Array<{
+    id: number;
+    category: ExamCategory;
+    question_id: number | null;
+    passage_id: number | null;
+    passage_question_index: number | null;
+    user_response: string;
+    score: number;
+    feedback: string | null;
+  }>;
+
+  // Pull the question rows in one shot.
+  const questionIds = Array.from(
+    new Set(
+      responseRows
+        .map((r) => r.question_id)
+        .filter((id): id is number => id != null),
+    ),
+  );
+  const passageIds = Array.from(
+    new Set(
+      responseRows
+        .map((r) => r.passage_id)
+        .filter((id): id is number => id != null),
+    ),
+  );
+
+  const [questionsResp, passagesResp] = await Promise.all([
+    questionIds.length === 0
+      ? Promise.resolve({ data: [] })
+      : supabase
+          .from("placement_exam_questions")
+          .select(
+            "id, category, question, correct_answer, topic_prompt, dialogue_lines",
+          )
+          .in("id", questionIds),
+    passageIds.length === 0
+      ? Promise.resolve({ data: [] })
+      : supabase
+          .from("placement_exam_reading_passages")
+          .select("id, passage, comprehension_questions")
+          .in("id", passageIds),
+  ]);
+
+  type Q = {
+    id: number;
+    category: ExamCategory;
+    question: string;
+    correct_answer: string;
+    topic_prompt: string | null;
+    dialogue_lines: Array<{ speaker: string; text: string }> | null;
+  };
+  type P = {
+    id: number;
+    passage: string;
+    comprehension_questions: ReadingPassageQuestion[];
+  };
+  const qById = new Map(
+    ((questionsResp.data ?? []) as Q[]).map((q) => [q.id, q]),
+  );
+  const pById = new Map(
+    ((passagesResp.data ?? []) as P[]).map((p) => [p.id, p]),
+  );
+
+  // Logical display order: reading → vocab → dialogue → listening → speaking → writing.
+  const order: ExamCategory[] = [
+    "reading",
+    "vocabulary",
+    "dialogue",
+    "listening",
+    "speaking",
+    "writing",
+  ];
+
+  const items: ReviewItem[] = responseRows.map((r) => {
+    if (r.category === "reading" && r.passage_id != null) {
+      const p = pById.get(r.passage_id);
+      const idx = r.passage_question_index ?? 0;
+      const cq = p?.comprehension_questions[idx];
+      return {
+        id: String(r.id),
+        category: "reading",
+        prompt: cq?.question ?? "(reading comprehension question)",
+        context: p?.passage ?? null,
+        user_response: r.user_response,
+        score: r.score,
+        feedback: r.feedback,
+        correct_answer: cq?.correct_answer ?? null,
+      };
+    }
+    const q = r.question_id != null ? qById.get(r.question_id) : null;
+    let context: string | null = null;
+    let prompt = q?.question ?? "(question)";
+    if (q?.category === "dialogue" && q.dialogue_lines) {
+      context = q.dialogue_lines
+        .map((l) => `${l.speaker}: ${l.text === "___" ? "________" : l.text}`)
+        .join("\n");
+    } else if (q?.category === "speaking" && q.topic_prompt) {
+      prompt = q.topic_prompt;
+    }
+    return {
+      id: String(r.id),
+      category: r.category,
+      prompt,
+      context,
+      user_response: r.user_response,
+      score: r.score,
+      feedback: r.feedback,
+      correct_answer:
+        r.category === "vocabulary" ? q?.correct_answer ?? null : null,
+    };
+  });
+
+  items.sort((a, b) => order.indexOf(a.category) - order.indexOf(b.category));
+  return items;
+}
+
 export async function getAllAttemptsForUser(userId: string): Promise<
   (PlacementAttempt & { language: { code: string; name: string } })[]
 > {

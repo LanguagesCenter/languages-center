@@ -102,7 +102,7 @@ export default function ResultsView({
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 mb-3">
         {attempt.passed && (
           <Link
             href="/profile"
@@ -123,6 +123,14 @@ export default function ResultsView({
             Retake available in {formatCooldown(cooldownRemainingMs)}
           </div>
         )}
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <Link
+          href={`/learn/${languageSlug}/placement/${level.toLowerCase()}/review`}
+          className="flex-1 py-3 text-sm font-semibold text-teal-dark bg-teal-light rounded-xl text-center hover:bg-teal hover:text-white transition-colors"
+        >
+          Review questions
+        </Link>
         <Link
           href={`/learn/${languageSlug}`}
           className="flex-1 py-3 text-sm font-medium text-navy/60 hover:text-teal text-center"

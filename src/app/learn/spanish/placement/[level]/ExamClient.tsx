@@ -175,7 +175,13 @@ export default function ExamClient({
   }
 
   if (phase === "notice") {
-    return <NoticeScreen level={level} onReady={startExam} />;
+    return (
+      <NoticeScreen
+        level={level}
+        onReady={startExam}
+        onExit={() => router.push(`/learn/${languageSlug}`)}
+      />
+    );
   }
 
   // Common header (timer + progress)
@@ -185,10 +191,19 @@ export default function ExamClient({
   const currentIdx =
     phase === "reading" ? readingStep : totalReading + step;
 
+  function handleExit() {
+    if (submitted) return;
+    const ok = window.confirm(
+      "Exit the exam? Your progress will not be saved and this attempt will not count.",
+    );
+    if (!ok) return;
+    router.push(`/learn/${languageSlug}`);
+  }
+
   return (
     <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-5">
-        <div>
+      <div className="flex items-center justify-between mb-5 gap-3">
+        <div className="min-w-0">
           <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider">
             Spanish {level} Placement Exam
           </p>
@@ -196,12 +211,21 @@ export default function ExamClient({
             Question {currentIdx + 1} of {grandTotal}
           </p>
         </div>
-        <div
-          className={`text-2xl font-bold tabular-nums ${
-            remaining <= 60 ? "text-red-600" : "text-navy"
-          }`}
-        >
-          ⏱ {formatTime(remaining)}
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={handleExit}
+            className="text-xs font-medium text-navy/50 hover:text-red-600 hover:underline"
+          >
+            Exit exam
+          </button>
+          <div
+            className={`text-2xl font-bold tabular-nums ${
+              remaining <= 60 ? "text-red-600" : "text-navy"
+            }`}
+          >
+            ⏱ {formatTime(remaining)}
+          </div>
         </div>
       </div>
 
@@ -266,9 +290,11 @@ export default function ExamClient({
 function NoticeScreen({
   level,
   onReady,
+  onExit,
 }: {
   level: string;
   onReady: () => void;
+  onExit: () => void;
 }) {
   return (
     <section className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -300,13 +326,22 @@ function NoticeScreen({
           for grammar, vocabulary and relevance.
         </p>
       </div>
-      <button
-        type="button"
-        onClick={onReady}
-        className="w-full sm:w-auto px-8 py-3 text-base font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
-      >
-        I am ready
-      </button>
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <button
+          type="button"
+          onClick={onReady}
+          className="px-8 py-3 text-base font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+        >
+          I am ready
+        </button>
+        <button
+          type="button"
+          onClick={onExit}
+          className="px-6 py-3 text-sm font-medium text-navy/60 hover:text-navy"
+        >
+          Not now — back to course
+        </button>
+      </div>
     </section>
   );
 }
