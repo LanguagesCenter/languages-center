@@ -452,7 +452,10 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
               sectionsLabel={t("cefr.sections")}
               sectionLabel={t("cefr.section")}
               noSectionsLabel={t("cefr.noSections")}
-              showPlacementExam={slug === "spanish" && (group.level === "A1" || group.level === "A2")}
+              showPlacementExam={
+                slug === "spanish" &&
+                ["A1", "A2", "B1", "B2", "C1"].includes(group.level)
+              }
               isPremium={isPremium}
             />
           ))}
