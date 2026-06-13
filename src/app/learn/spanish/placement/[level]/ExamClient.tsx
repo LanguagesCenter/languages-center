@@ -1041,14 +1041,14 @@ function RoleplayScreen({
 
       <NavFooter
         onPrev={onPrev}
-        onNext={isFinished ? onNext : undefined}
+        onNext={onNext}
         nextLabel={
           stepIdx === totalRoleplays - 1 ? "Continue to writing" : "Next roleplay"
         }
       />
       {!isFinished && (
         <p className="mt-3 text-center text-xs text-navy/50">
-          Finish the roleplay (reach the target turns) before continuing.
+          You can keep going or click {stepIdx === totalRoleplays - 1 ? "“Continue to writing”" : "“Next roleplay”"} when you have finished this conversation. Incomplete roleplays are graded on what you said.
         </p>
       )}
     </>
