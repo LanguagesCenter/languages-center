@@ -430,10 +430,10 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
     <>
       <Navbar />
       <main className="flex-1">
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-8">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 lg:pt-12 pb-6 sm:pb-8">
           <Link
             href="/learn"
-            className="inline-flex items-center gap-1.5 text-sm text-navy/60 hover:text-teal transition-colors mb-6"
+            className="inline-flex items-center gap-1.5 text-sm text-navy/60 hover:text-teal transition-colors mb-5 sm:mb-6"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -441,17 +441,17 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
             {t("cefr.allLanguages")}
           </Link>
 
-          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-6 md:items-center">
+          <div className="grid grid-cols-[auto_1fr] md:grid-cols-[auto_1fr_auto] gap-4 sm:gap-6 md:items-center">
             <Image
               src={`https://flagcdn.com/w160/${flagCode}.png`}
               alt={`${localizedLanguageName} flag`}
-              width={80}
-              height={60}
-              className="rounded-md object-cover shadow-sm"
+              width={64}
+              height={48}
+              className="rounded-md object-cover shadow-sm ring-1 ring-black/5 sm:w-20 sm:h-15"
             />
-            <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-navy tracking-tight">
                   {localizedLanguageName}
                 </h1>
                 <CefrBadge level={reachedLevel} size="md" />

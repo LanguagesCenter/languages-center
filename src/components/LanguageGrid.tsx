@@ -43,11 +43,11 @@ export default function LanguageGrid({
   }
 
   return (
-    <div className="space-y-6">
-      <p className="text-xs uppercase tracking-wider font-semibold text-teal-dark">
+    <div className="space-y-5 sm:space-y-6">
+      <p className="text-[11px] sm:text-xs uppercase tracking-[0.15em] font-semibold text-teal-dark">
         {t("home.recommended")}
       </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
         {visible.map((entry) => (
           <LanguageCard
             key={entry.slug}

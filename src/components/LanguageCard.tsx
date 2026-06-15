@@ -30,9 +30,9 @@ function FlagImage({ countryCode, name }: { countryCode: string; name: string })
     <Image
       src={`https://flagcdn.com/w80/${countryCode}.png`}
       alt={`${name} flag`}
-      width={40}
-      height={30}
-      className="rounded-sm object-cover shadow-sm"
+      width={48}
+      height={36}
+      className="rounded-md object-cover shadow-sm ring-1 ring-black/5"
     />
   );
 }
@@ -57,7 +57,10 @@ export default function LanguageCard({
     // be nested as <Link> inside <Link>, so the outer wrapper is a div.
     <div
       id={language.slug}
-      className="group flex flex-col bg-white border border-border rounded-2xl p-6 hover:shadow-lg hover:border-teal/40 hover:-translate-y-1 hover:scale-[1.02] focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 transition-all duration-200"
+      // No translate/scale on touch devices: it feels janky when the press
+      // animation overlaps card snap on small viewports. Hover-only motion
+      // is restored for sm+ where a real cursor exists.
+      className="group flex flex-col bg-white border border-border rounded-2xl p-5 sm:p-6 sm:hover:shadow-lg sm:hover:border-teal/40 sm:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 transition-all duration-200"
     >
       <Link
         href={`/languages/${language.slug}`}
@@ -81,7 +84,7 @@ export default function LanguageCard({
             </svg>
           </span>
         </div>
-        <h3 className="text-lg font-semibold text-navy mb-1 group-hover:text-teal transition-colors">
+        <h3 className="text-lg sm:text-xl font-bold text-navy mb-1 group-hover:text-teal transition-colors tracking-tight">
           {localizedName}
         </h3>
         {typeof lessonsTotal === "number" && (
@@ -106,7 +109,7 @@ export default function LanguageCard({
       </Link>
       <Link
         href={`/learn/${language.slug}`}
-        className="mt-5 inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+        className="mt-5 inline-flex items-center justify-center gap-1.5 py-3 sm:py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark active:scale-[0.98] transition-all"
       >
         {t(
           hasProgress ? "card.continueLearning" : "card.startLearning",

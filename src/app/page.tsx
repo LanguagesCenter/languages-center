@@ -6,6 +6,7 @@ import ResetSuccessBanner from "@/components/ResetSuccessBanner";
 import {
   getLanguagesWithLessonCounts,
   getLanguagesUserHasStarted,
+  isCurrentUserPremium,
 } from "@/lib/learn";
 import { FLAG_CODES } from "@/lib/flag-codes";
 
@@ -17,9 +18,10 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   // Source of truth: the `languages` table in Supabase. Every row in the
   // table renders a card — no hardcoded list anywhere.
-  const [dbLangs, started] = await Promise.all([
+  const [dbLangs, started, isPremium] = await Promise.all([
     getLanguagesWithLessonCounts().catch(() => []),
     getLanguagesUserHasStarted().catch(() => new Set<string>()),
+    isCurrentUserPremium().catch(() => false),
   ]);
 
   // Per-card CTA: only the languages the user has actually started flip
@@ -42,8 +44,8 @@ export default async function Home() {
       <ResetSuccessBanner />
       <Navbar />
       <main className="flex-1">
-        <Hero hasProgress={userIsReturning} />
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <Hero hasProgress={userIsReturning} isPremium={isPremium} />
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 lg:pb-20">
           <LanguageGrid languages={langs} />
         </section>
       </main>
