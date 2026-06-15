@@ -7,25 +7,23 @@ export default function Hero({
   hasProgress = false,
   isPremium = false,
 }: {
-  // If the user has any recorded progress in any language, the primary
-  // CTA reads "Continue learning" instead of "Start learning". Resolved
+  // If the user has started ANY language on this account, the primary
+  // CTA flips to "View dashboard" pointing at /dashboard. Resolved
   // server-side on the homepage and passed in as a prop.
   hasProgress?: boolean;
-  // Premium subscribers see "View dashboard" as the primary CTA and the
-  // pricing link is hidden — they've already paid.
+  // Premium subscribers don't need the pricing link — they've paid.
   isPremium?: boolean;
 }) {
   const { t } = useI18n();
 
-  // CTA logic: premium subscribers jump straight to /dashboard.
-  // Free returning learners continue from /learn. New visitors see the
-  // "Start learning" funnel into /learn.
-  const primaryHref = isPremium ? "/dashboard" : "/learn";
-  const primaryLabelKey = isPremium
+  // CTA logic:
+  //   - Returning learners (any language started anywhere) → /dashboard
+  //   - First-time visitors → /learn ("Start learning")
+  // Premium only affects the secondary pricing link below.
+  const primaryHref = hasProgress ? "/dashboard" : "/learn";
+  const primaryLabelKey = hasProgress
     ? "hero.viewDashboard"
-    : hasProgress
-      ? "hero.continueLearning"
-      : "hero.startLearning";
+    : "hero.startLearning";
 
   return (
     <section className="relative pt-12 sm:pt-20 lg:pt-24 pb-12 sm:pb-16 lg:pb-20 px-4 sm:px-6 text-center overflow-hidden">
