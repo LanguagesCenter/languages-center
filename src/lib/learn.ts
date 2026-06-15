@@ -113,6 +113,30 @@ export interface DbUserProfile {
   last_activity_date: string | null;
 }
 
+/**
+ * Returns the live current streak. The stored value only updates when the
+ * user completes a lesson; if they skip days the column doesn't catch up
+ * until the next completion. For display we decay it: if the last activity
+ * was older than yesterday (UTC), the streak is broken and we show 0.
+ *
+ * `today` and `yesterday` are computed in UTC to match the write-side logic
+ * in `learn-actions.ts` (which uses `Date.toISOString().slice(0, 10)`).
+ */
+export function liveCurrentStreak(
+  storedStreak: number,
+  lastActivityDate: string | null,
+): number {
+  if (!lastActivityDate) return 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  if (lastActivityDate === today || lastActivityDate === yesterday) {
+    return storedStreak;
+  }
+  return 0;
+}
+
 export interface DbArticle {
   id: number;
   language_id: number;
@@ -246,7 +270,16 @@ export async function getLanguagesWithProgress(): Promise<LanguageProgress[]> {
       .select("language_id, total_xp, current_streak, longest_streak, last_activity_date")
       .eq("user_id", user.id);
     statsByLang = new Map(
-      (statsRows ?? []).map((s: DbUserStats) => [s.language_id, s]),
+      (statsRows ?? []).map((s: DbUserStats) => [
+        s.language_id,
+        {
+          ...s,
+          current_streak: liveCurrentStreak(
+            s.current_streak,
+            s.last_activity_date,
+          ),
+        },
+      ]),
     );
   }
 
@@ -275,7 +308,16 @@ export async function getUserProfile(): Promise<DbUserProfile | null> {
     .select("*")
     .eq("user_id", user.id)
     .maybeSingle();
-  return (data as DbUserProfile) ?? null;
+  const profile = (data as DbUserProfile) ?? null;
+  if (!profile) return null;
+  // Decay streak on read — see liveCurrentStreak doc above.
+  return {
+    ...profile,
+    current_streak: liveCurrentStreak(
+      profile.current_streak,
+      profile.last_activity_date,
+    ),
+  };
 }
 
 export async function getLanguageBySlug(slug: string): Promise<DbLanguage | null> {
