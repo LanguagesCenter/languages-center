@@ -96,3 +96,67 @@ export function sortByPopularity<T extends { slug?: string; code?: string }>(
     (a, b) => indexOf(a.slug ?? a.code) - indexOf(b.slug ?? b.code),
   );
 }
+
+// Inverse mapping: target-language slug → UI lang code, so we can look up
+// the PROXIMITY row for any started target language. Keep in sync with the
+// `slug` field in UI_LANG_NAMES (i18n.ts). Target languages that lack a UI
+// code (faroese, corsican) won't contribute related recommendations and
+// will simply fall back to popularity ordering.
+const SLUG_TO_UI: Record<string, UiLang> = {
+  english: "en",
+  spanish: "es",
+  french: "fr",
+  german: "de",
+  greek: "el",
+  swedish: "sv",
+  danish: "da",
+  finnish: "fi",
+  albanian: "sq",
+  icelandic: "is",
+  chinese: "zh",
+  hindi: "hi",
+  portuguese: "pt",
+  bengali: "bn",
+  urdu: "ur",
+  russian: "ru",
+  japanese: "ja",
+  turkish: "tr",
+  vietnamese: "vi",
+  arabic: "ar",
+  korean: "ko",
+  italian: "it",
+  malay: "ms",
+  indonesian: "id",
+};
+
+/**
+ * Given the slugs of languages the user has started, return up to `max`
+ * related target slugs ordered by combined proximity rank across the set.
+ * Started languages are excluded from the result so they don't repeat in
+ * the "Recommended for you" section.
+ */
+export function relatedToStarted(
+  startedSlugs: string[],
+  max: number = 4,
+): string[] {
+  if (startedSlugs.length === 0) return [];
+  const started = new Set(startedSlugs);
+
+  // Score each candidate slug by the SUM of its rank position across the
+  // proximity lists of every started language. Lower total = more related.
+  const score = new Map<string, number>();
+  for (const seed of startedSlugs) {
+    const uiCode = SLUG_TO_UI[seed];
+    if (!uiCode) continue;
+    const order = PROXIMITY[uiCode] ?? [];
+    for (let i = 0; i < order.length; i++) {
+      const slug = order[i];
+      if (started.has(slug)) continue;
+      score.set(slug, (score.get(slug) ?? 0) + i);
+    }
+  }
+  return Array.from(score.entries())
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, max)
+    .map(([slug]) => slug);
+}

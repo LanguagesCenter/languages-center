@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import ResetSuccessBanner from "@/components/ResetSuccessBanner";
 import {
   getLanguagesWithLessonCounts,
-  getLanguagesUserHasStarted,
+  getStartedLanguageOrder,
   isCurrentUserPremium,
 } from "@/lib/learn";
 import { FLAG_CODES } from "@/lib/flag-codes";
@@ -18,16 +18,17 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   // Source of truth: the `languages` table in Supabase. Every row in the
   // table renders a card — no hardcoded list anywhere.
-  const [dbLangs, started, isPremium] = await Promise.all([
+  const [dbLangs, startedOrder, isPremium] = await Promise.all([
     getLanguagesWithLessonCounts().catch(() => []),
-    getLanguagesUserHasStarted().catch(() => new Set<string>()),
+    getStartedLanguageOrder().catch(
+      () => [] as Array<{ code: string; firstActivity: string }>,
+    ),
     isCurrentUserPremium().catch(() => false),
   ]);
 
-  // Per-card CTA: only the languages the user has actually started flip
-  // to "Continue learning X". Everything else stays as "Start learning X".
-  // The hero CTA still flips once the user has touched anything at all.
-  const userIsReturning = started.size > 0;
+  const startedSlugsInOrder = startedOrder.map((s) => s.code);
+  const startedSet = new Set(startedSlugsInOrder);
+  const userIsReturning = startedSet.size > 0;
 
   const langs: LanguageGridItem[] = dbLangs.map((db) => ({
     name: db.name,
@@ -36,7 +37,7 @@ export default async function Home() {
     grammar: db.difficulty_grammar,
     pronunciation: db.difficulty_pronunciation,
     lessonsTotal: db.lessonsTotal,
-    hasProgress: started.has(db.code),
+    hasProgress: startedSet.has(db.code),
   }));
 
   return (
@@ -46,7 +47,10 @@ export default async function Home() {
       <main className="flex-1">
         <Hero hasProgress={userIsReturning} isPremium={isPremium} />
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 sm:pb-16 lg:pb-20">
-          <LanguageGrid languages={langs} />
+          <LanguageGrid
+            languages={langs}
+            startedSlugsInOrder={startedSlugsInOrder}
+          />
         </section>
       </main>
       <Footer />

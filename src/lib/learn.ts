@@ -373,6 +373,92 @@ export async function getAllLanguages(): Promise<DbLanguage[]> {
  * and "Continue learning X". Returns an empty set for unauthenticated
  * visitors so they always see "Start learning".
  */
+/**
+ * Languages the user has started, ordered by FIRST activity ascending.
+ * `firstActivity` is the earliest `completed_at` on any lesson in that
+ * language's curriculum, so the very first language they ever started is
+ * first in the list and the most recently begun one is last. Used by the
+ * homepage to render the "Continue" section in that order.
+ */
+export async function getStartedLanguageOrder(): Promise<
+  Array<{ code: string; firstActivity: string }>
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: progress } = await supabase
+    .from("user_progress")
+    .select("lesson_id, completed_at")
+    .eq("user_id", user.id)
+    .eq("completed", true);
+  const rows = (progress ?? []) as Array<{
+    lesson_id: number;
+    completed_at: string | null;
+  }>;
+  if (rows.length === 0) return [];
+
+  const lessonIds = Array.from(new Set(rows.map((r) => r.lesson_id)));
+  const { data: lessons } = await supabase
+    .from("lessons")
+    .select("id, course_id")
+    .in("id", lessonIds);
+  const lessonToCourse = new Map<number, number>();
+  for (const l of (lessons ?? []) as Array<{ id: number; course_id: number }>) {
+    lessonToCourse.set(l.id, l.course_id);
+  }
+
+  const courseIds = Array.from(new Set(lessonToCourse.values()));
+  if (courseIds.length === 0) return [];
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("id, language_id")
+    .in("id", courseIds);
+  const courseToLanguage = new Map<number, number>();
+  for (const c of (courses ?? []) as Array<{
+    id: number;
+    language_id: number;
+  }>) {
+    courseToLanguage.set(c.id, c.language_id);
+  }
+
+  // Earliest completed_at per language id.
+  const earliestByLang = new Map<number, string>();
+  for (const row of rows) {
+    if (!row.completed_at) continue;
+    const courseId = lessonToCourse.get(row.lesson_id);
+    if (courseId == null) continue;
+    const langId = courseToLanguage.get(courseId);
+    if (langId == null) continue;
+    const prev = earliestByLang.get(langId);
+    if (!prev || row.completed_at < prev) {
+      earliestByLang.set(langId, row.completed_at);
+    }
+  }
+  if (earliestByLang.size === 0) return [];
+
+  const { data: languages } = await supabase
+    .from("languages")
+    .select("id, code")
+    .in("id", Array.from(earliestByLang.keys()));
+  const codeById = new Map(
+    ((languages ?? []) as Array<{ id: number; code: string }>).map((r) => [
+      r.id,
+      r.code,
+    ]),
+  );
+
+  return Array.from(earliestByLang.entries())
+    .map(([langId, firstActivity]) => ({
+      code: codeById.get(langId) ?? "",
+      firstActivity,
+    }))
+    .filter((x) => x.code)
+    .sort((a, b) => a.firstActivity.localeCompare(b.firstActivity));
+}
+
 export async function getLanguagesUserHasStarted(): Promise<Set<string>> {
   const supabase = await createClient();
   const {
