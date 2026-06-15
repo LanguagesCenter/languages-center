@@ -57,9 +57,11 @@ export default function LanguageSwitcher() {
         onClick={() => setOpen((o) => !o)}
         aria-label={t("switcher.label")}
         title={t("switcher.label")}
-        className="flex items-center gap-2 px-2.5 py-1.5 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
+        // h-10 matches the signed-in user pill (py-1 + w-8 h-8 avatar) so
+        // both controls sit on the same baseline in the navbar.
+        className="flex items-center gap-2 h-10 pl-2 pr-3 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
       >
-        <FlagImg countryCode={current.countryCode} alt="" size={20} />
+        <FlagImg countryCode={current.countryCode} alt="" size={28} />
         <span className="hidden sm:inline">{current.native}</span>
         <svg
           className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}

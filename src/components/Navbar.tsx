@@ -208,7 +208,10 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center gap-2 pl-1 pr-3 py-1 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
+                      // Explicit h-10 so the language switcher pill, the
+                      // user pill, and the Sign-in button all share the
+                      // exact same height in the navbar.
+                      className="flex items-center gap-2 h-10 pl-1 pr-3 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
                     >
                       <span className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center text-sm font-semibold">
                         {avatarChar}
@@ -273,7 +276,7 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="px-5 py-2 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark hover:shadow-md transition-all duration-200"
+                className="inline-flex items-center h-10 px-5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark hover:shadow-md transition-all duration-200"
               >
                 {t("nav.signIn")}
               </Link>
