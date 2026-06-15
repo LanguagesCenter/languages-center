@@ -22,11 +22,9 @@ export default async function Home() {
     getLanguagesUserHasStarted().catch(() => new Set<string>()),
   ]);
 
-  // Global "returning learner" flag: once the user has any completed
-  // lesson anywhere, every homepage card flips its CTA to
-  // "Continue learning X" — even for languages they haven't tried yet.
-  // The user knows the site; "Start learning" only makes sense for
-  // first-time visitors with zero progress.
+  // Per-card CTA: only the languages the user has actually started flip
+  // to "Continue learning X". Everything else stays as "Start learning X".
+  // The hero CTA still flips once the user has touched anything at all.
   const userIsReturning = started.size > 0;
 
   const langs: LanguageGridItem[] = dbLangs.map((db) => ({
@@ -36,7 +34,7 @@ export default async function Home() {
     grammar: db.difficulty_grammar,
     pronunciation: db.difficulty_pronunciation,
     lessonsTotal: db.lessonsTotal,
-    hasProgress: userIsReturning,
+    hasProgress: started.has(db.code),
   }));
 
   return (
