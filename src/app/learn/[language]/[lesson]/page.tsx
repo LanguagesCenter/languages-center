@@ -38,6 +38,8 @@ export default async function LessonPage(
       lesson={{ ...data.lesson, title: localizedLessonTitle }}
       exercises={data.exercises}
       sectionId={data.course.id}
+      level={data.course.cefr_level}
+      sectionTitle={data.course.title}
     />
   );
 }

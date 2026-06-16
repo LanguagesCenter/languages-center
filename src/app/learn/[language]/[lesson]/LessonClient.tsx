@@ -14,6 +14,18 @@ interface Props {
   lesson: DbLesson;
   exercises: DbExercise[];
   sectionId: number;
+  /** CEFR level of the course (used for AI lesson grading). */
+  level: string;
+  /** Section / course title (used for AI lesson grading context). */
+  sectionTitle: string;
+}
+
+interface GradedLessonResponse {
+  score: number;
+  feedback: string;
+  passed: boolean;
+  correctedVersion: string;
+  encouragement: string;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -866,6 +878,8 @@ export default function LessonClient({
   lesson,
   exercises,
   sectionId,
+  level,
+  sectionTitle,
 }: Props) {
   const router = useRouter();
   const { t } = useI18n();
@@ -877,6 +891,12 @@ export default function LessonClient({
   const [showFeedback, setShowFeedback] = useState(false);
   const [wasCorrect, setWasCorrect] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
+  // AI-graded responses (writing & speaking) populate these. The rich
+  // feedback panel below replaces the simple correct/incorrect footer
+  // whenever we have a graded response in hand.
+  const [grading, setGrading] = useState(false);
+  const [gradedResponse, setGradedResponse] =
+    useState<GradedLessonResponse | null>(null);
   // Indexes (into the `exercises` array) of questions the user got wrong on
   // their first pass through the lesson. They'll be re-shown in a review
   // phase before the user can finish.
@@ -977,17 +997,15 @@ export default function LessonClient({
     : ((step + (showFeedback ? 1 : 0)) / exercises.length) * 100;
 
   function handleAnswer(answer: string) {
-    if (showFeedback) return;
+    if (showFeedback || grading) return;
+    // Writing & speaking go through the AI grader instead of local matching.
+    if (exercise.type === "speaking" || (exercise.type as string) === "writing") {
+      gradeViaAI(answer);
+      return;
+    }
     let correct = false;
     if (exercise.type === "matching") {
       correct = true; // matching only fires when fully matched
-    } else if (exercise.type === "speaking") {
-      // Fuzzy match: normalize both sides and check if any one is contained in the other
-      const target = normalize(exercise.correct_answer);
-      const heard = normalize(answer);
-      correct =
-        target.length > 0 &&
-        (heard === target || heard.includes(target) || target.includes(heard));
     } else {
       correct =
         normalize(answer) === normalize(exercise.correct_answer);
@@ -995,12 +1013,69 @@ export default function LessonClient({
     setPickedAnswer(answer);
     setWasCorrect(correct);
     if (correct && !inReview) setCorrectCount((c) => c + 1);
-    // First-pass wrong answers go into the review queue. We don't re-add
-    // when the user is already in the review pass.
     if (!correct && !inReview) {
       setWrongIndexes((arr) => (arr.includes(step) ? arr : [...arr, step]));
     }
     setShowFeedback(true);
+  }
+
+  async function gradeViaAI(answer: string) {
+    setPickedAnswer(answer);
+    setGrading(true);
+    setGradedResponse(null);
+    try {
+      const res = await fetch("/api/grade-lesson-response", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type:
+            (exercise.type as string) === "writing" ? "writing" : "speaking",
+          prompt: stripPhonetic(exercise.question),
+          response: answer,
+          level,
+          section: sectionTitle,
+          lessonNumber: lesson.order_index,
+          language: languageSlug,
+          lessonId: lesson.id,
+          exerciseId: exercise.id,
+        }),
+      });
+      let result: GradedLessonResponse;
+      if (!res.ok) {
+        result = {
+          score: 5,
+          feedback:
+            "We couldn't auto-grade this response — a neutral score was recorded.",
+          passed: false,
+          correctedVersion: "",
+          encouragement: "Keep practising!",
+        };
+      } else {
+        result = (await res.json()) as GradedLessonResponse;
+      }
+      setGradedResponse(result);
+      setWasCorrect(result.passed);
+      if (result.passed && !inReview) setCorrectCount((c) => c + 1);
+      if (!result.passed && !inReview) {
+        setWrongIndexes((arr) =>
+          arr.includes(step) ? arr : [...arr, step],
+        );
+      }
+      setShowFeedback(true);
+    } catch (err) {
+      console.error("[lesson] grading failed", err);
+      setGradedResponse({
+        score: 5,
+        feedback: "We couldn't reach the grader. A neutral score was recorded.",
+        passed: false,
+        correctedVersion: "",
+        encouragement: "Keep practising!",
+      });
+      setWasCorrect(false);
+      setShowFeedback(true);
+    } finally {
+      setGrading(false);
+    }
   }
 
   function handleRetake() {
@@ -1009,7 +1084,7 @@ export default function LessonClient({
     }
     setStep(0);
     setPickedAnswer(null);
-    setShowFeedback(false);
+    setShowFeedback(false); setGradedResponse(null);
     setWasCorrect(false);
     setCorrectCount(0);
     setWrongIndexes([]);
@@ -1058,7 +1133,7 @@ export default function LessonClient({
       // Wrong on a review item: stay on this question, let them retry.
       if (!wasCorrect) {
         setPickedAnswer(null);
-        setShowFeedback(false);
+        setShowFeedback(false); setGradedResponse(null);
         setWasCorrect(false);
         setAttemptKey((k) => k + 1);
         return;
@@ -1070,7 +1145,7 @@ export default function LessonClient({
       }
       setReviewIdx((i) => i + 1);
       setPickedAnswer(null);
-      setShowFeedback(false);
+      setShowFeedback(false); setGradedResponse(null);
       setWasCorrect(false);
       return;
     }
@@ -1079,7 +1154,7 @@ export default function LessonClient({
     if (!isLastMain) {
       setStep((s) => s + 1);
       setPickedAnswer(null);
-      setShowFeedback(false);
+      setShowFeedback(false); setGradedResponse(null);
       setWasCorrect(false);
       return;
     }
@@ -1089,7 +1164,7 @@ export default function LessonClient({
       setInReview(true);
       setReviewIdx(0);
       setPickedAnswer(null);
-      setShowFeedback(false);
+      setShowFeedback(false); setGradedResponse(null);
       setWasCorrect(false);
       return;
     }
@@ -1408,7 +1483,48 @@ export default function LessonClient({
         </div>
       </section>
 
-      {showFeedback && (
+      {/* Grading-in-progress band shown while we wait for the AI grader. */}
+      {grading && (
+        <footer className="border-t-2 px-4 sm:px-6 py-6 bg-peach-light border-peach-dark/30">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <span className="w-3 h-3 rounded-full bg-teal animate-pulse" />
+            <p className="text-sm font-semibold text-navy/80">
+              Grading your response…
+            </p>
+          </div>
+        </footer>
+      )}
+
+      {/* Rich AI feedback panel for writing & speaking submissions. */}
+      {showFeedback && gradedResponse && (
+        <footer className="border-t-2 border-border bg-white px-4 sm:px-6 py-6">
+          <div className="max-w-2xl mx-auto">
+            <FeedbackPanel
+              graded={gradedResponse}
+              continueLabel={
+                pending
+                  ? t("lesson.footer.saving")
+                  : inReview
+                    ? gradedResponse.passed
+                      ? isLastReview
+                        ? t("lesson.footer.finish")
+                        : `${t("lesson.review.next")} →`
+                      : t("lesson.review.tryAgain")
+                    : isLastMain
+                      ? wrongIndexes.length > 0
+                        ? `${t("lesson.footer.reviewMistakes")} →`
+                        : t("lesson.footer.finish")
+                      : t("lesson.footer.continue")
+              }
+              onContinue={handleContinue}
+              continueDisabled={pending}
+            />
+          </div>
+        </footer>
+      )}
+
+      {/* Original simple footer for non-AI-graded exercise types. */}
+      {showFeedback && !gradedResponse && (
         <footer
           className={`border-t-2 px-4 sm:px-6 py-6 ${
             wasCorrect ? "bg-teal-light border-teal/30" : "bg-red-50 border-red-200"
@@ -1455,5 +1571,90 @@ export default function LessonClient({
         </footer>
       )}
     </main>
+  );
+}
+
+// ---------- Instant-feedback panel for AI-graded responses ----------
+function FeedbackPanel({
+  graded,
+  continueLabel,
+  onContinue,
+  continueDisabled,
+}: {
+  graded: GradedLessonResponse;
+  continueLabel: string;
+  onContinue: () => void;
+  continueDisabled: boolean;
+}) {
+  const score = Math.max(0, Math.min(10, graded.score));
+  const pct = (score / 10) * 100;
+  // Color thresholds: <6 red, 6-7 yellow, 8-10 green.
+  const tone =
+    score >= 8 ? "green" : score >= 6 ? "yellow" : "red";
+  const barClass =
+    tone === "green"
+      ? "bg-emerald-500"
+      : tone === "yellow"
+        ? "bg-amber-400"
+        : "bg-red-500";
+  const labelClass =
+    tone === "green"
+      ? "text-emerald-700"
+      : tone === "yellow"
+        ? "text-amber-700"
+        : "text-red-700";
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-navy/50">
+            Score
+          </p>
+          <p className={`text-xl font-bold tabular-nums ${labelClass}`}>
+            {score}/10
+          </p>
+        </div>
+        <div className="h-3 w-full rounded-full bg-navy/10 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${barClass}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-navy/50 mb-1.5">
+          Feedback
+        </p>
+        <p className="text-sm text-navy leading-relaxed">{graded.feedback}</p>
+      </div>
+
+      {graded.correctedVersion && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-navy/50 mb-1.5">
+            What a native would say
+          </p>
+          <p className="text-sm text-navy bg-teal-light border border-teal/30 rounded-xl px-4 py-3 leading-relaxed">
+            {graded.correctedVersion}
+          </p>
+        </div>
+      )}
+
+      <p className={`text-base font-semibold ${labelClass}`}>
+        {graded.encouragement}
+      </p>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={continueDisabled}
+          className="px-8 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {continueLabel}
+        </button>
+      </div>
+    </div>
   );
 }
