@@ -998,6 +998,18 @@ export default function LessonClient({
     (lesson.dialogue?.length ?? 0) > 0 ||
     !!lesson.grammar_note?.trim();
 
+  // Randomise exercise order per attempt so each retake feels fresh and
+  // the old-format (MC / fill_blank / matching) and new-format (writing /
+  // speaking / listening AI) rows interleave instead of always appearing in
+  // their stored order_index. Memoised on attemptKey so it doesn't change
+  // mid-attempt; handleRetake bumps attemptKey to reshuffle. Declared up
+  // here (before any early return) to satisfy React's rules of hooks.
+  const orderedExercises = useMemo(
+    () => shuffle(exercises),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [exercises, attemptKey],
+  );
+
   if (phase !== "exercises" && hasTeaching) {
     return (
       <TeachingCard
@@ -1033,12 +1045,15 @@ export default function LessonClient({
 
   // Which exercise is currently on screen: during the main pass it's
   // `step`; during the review pass we look up the next index that the user
-  // got wrong.
+  // got wrong (the indexes refer to positions in orderedExercises).
   const reviewExerciseIdx = inReview ? wrongIndexes[reviewIdx] ?? 0 : step;
-  const exercise = exercises[reviewExerciseIdx];
-  const isLastMain = step === exercises.length - 1;
+  const exercise = orderedExercises[reviewExerciseIdx];
+  const isLastMain = step === orderedExercises.length - 1;
   const isLastReview = inReview && reviewIdx === wrongIndexes.length - 1;
-  const xpPerExercise = Math.max(1, Math.floor(lesson.xp_reward / exercises.length));
+  const xpPerExercise = Math.max(
+    1,
+    Math.floor(lesson.xp_reward / orderedExercises.length),
+  );
   // Progress: main pass fills the bar to 100% by the last exercise; the
   // review pass holds it at 100% (we're past "doing the lesson" now).
   const progressPct = inReview
@@ -1154,6 +1169,9 @@ export default function LessonClient({
     setReviewIdx(0);
     setCompletion(null);
     setPhase("exercises");
+    // Bump the attempt key so the exercise shuffle (memoised on attemptKey)
+    // recomputes — each retake feels fresh because the order is different.
+    setAttemptKey((k) => k + 1);
   }
 
   function finishLesson() {
@@ -1542,6 +1560,13 @@ export default function LessonClient({
               speechLang={speechLang}
             />
           )}
+          {(exercise.type as string) === "writing" && (
+            <WritingExercise
+              exercise={exercise}
+              onAnswer={handleAnswer}
+              disabled={showFeedback || grading}
+            />
+          )}
         </div>
       </section>
 
@@ -1859,6 +1884,76 @@ function SpeakingTopicExercise({
             I am done speaking
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ---------- WritingExercise (AI-graded typed Spanish response) ----------
+function WritingExercise({
+  exercise,
+  onAnswer,
+  disabled,
+}: {
+  exercise: DbExercise;
+  onAnswer: (answer: string) => void;
+  disabled: boolean;
+}) {
+  // The prompt is exercise.question (English instruction). The candidate
+  // types a Spanish response; submit fires onAnswer(text) which routes to
+  // the AI grader via the parent's handleAnswer.
+  const [value, setValue] = useState("");
+
+  // Reset typed value when the active exercise changes — without this, a
+  // previous answer can leak into the next writing question.
+  useEffect(() => {
+    setValue("");
+  }, [exercise.id]);
+
+  function submit() {
+    if (disabled) return;
+    const trimmed = value.trim();
+    if (trimmed.length === 0) return;
+    onAnswer(trimmed);
+  }
+
+  function onKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      submit();
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <label
+        htmlFor="writing-response"
+        className="block text-xs font-semibold uppercase tracking-wider text-navy/50"
+      >
+        Your Spanish response
+      </label>
+      <textarea
+        id="writing-response"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={onKey}
+        disabled={disabled}
+        rows={5}
+        placeholder="Write your Spanish answer here…"
+        className="w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none resize-y disabled:bg-navy/5 disabled:cursor-not-allowed"
+      />
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-navy/40">
+          Tip: press ⌘ Enter (or Ctrl + Enter) to submit.
+        </p>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={disabled || value.trim().length === 0}
+          className="px-6 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Submit answer
+        </button>
       </div>
     </div>
   );
