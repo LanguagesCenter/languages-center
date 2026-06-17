@@ -380,7 +380,32 @@ function Matching({
   );
 }
 
-function ListeningExercise({
+function ListeningExercise(props: {
+  exercise: DbExercise;
+  onAnswer: (answer: string) => void;
+  disabled: boolean;
+  pickedAnswer: string | null;
+  speechLang: string;
+}) {
+  // New A1 (migration 039) format: when there are no MC distractors we
+  // render a typed-response listening flow; the AI grader scores the
+  // candidate's typed Spanish reply to the audio.
+  const isTypedMode =
+    !props.exercise.wrong_answers || props.exercise.wrong_answers.length === 0;
+  if (isTypedMode) {
+    return (
+      <ListeningTypedExercise
+        exercise={props.exercise}
+        onAnswer={props.onAnswer}
+        disabled={props.disabled}
+        speechLang={props.speechLang}
+      />
+    );
+  }
+  return <ListeningMcExercise {...props} />;
+}
+
+function ListeningMcExercise({
   exercise,
   onAnswer,
   disabled,
@@ -478,7 +503,31 @@ function ListeningExercise({
   );
 }
 
-function SpeakingExercise({
+function SpeakingExercise(props: {
+  exercise: DbExercise;
+  onAnswer: (answer: string) => void;
+  disabled: boolean;
+  speechLang: string;
+}) {
+  // New A1 (migration 039) format: when there's no target phrase to repeat
+  // (correct_answer empty), render the topic-prompt monologue flow.
+  const isTopicMode =
+    !props.exercise.correct_answer ||
+    props.exercise.correct_answer.trim() === "";
+  if (isTopicMode) {
+    return (
+      <SpeakingTopicExercise
+        exercise={props.exercise}
+        onAnswer={props.onAnswer}
+        disabled={props.disabled}
+        speechLang={props.speechLang}
+      />
+    );
+  }
+  return <SpeakingRepeatExercise {...props} />;
+}
+
+function SpeakingRepeatExercise({
   exercise,
   onAnswer,
   disabled,
@@ -998,8 +1047,17 @@ export default function LessonClient({
 
   function handleAnswer(answer: string) {
     if (showFeedback || grading) return;
-    // Writing & speaking go through the AI grader instead of local matching.
-    if (exercise.type === "speaking" || (exercise.type as string) === "writing") {
+    // Writing, speaking and typed-listening (no MC options) go through the
+    // AI grader. Old-format listening with MC options falls through to the
+    // existing local comparison below.
+    const isTypedListening =
+      exercise.type === "listening" &&
+      (!exercise.wrong_answers || exercise.wrong_answers.length === 0);
+    if (
+      exercise.type === "speaking" ||
+      (exercise.type as string) === "writing" ||
+      isTypedListening
+    ) {
       gradeViaAI(answer);
       return;
     }
@@ -1029,7 +1087,11 @@ export default function LessonClient({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           type:
-            (exercise.type as string) === "writing" ? "writing" : "speaking",
+            exercise.type === "listening"
+              ? "listening"
+              : (exercise.type as string) === "writing"
+                ? "writing"
+                : "speaking",
           prompt: stripPhonetic(exercise.question),
           response: answer,
           level,
@@ -1571,6 +1633,234 @@ export default function LessonClient({
         </footer>
       )}
     </main>
+  );
+}
+
+// ---------- New typed-response Listening exercise (A1+ AI-graded) ----------
+function ListeningTypedExercise({
+  exercise,
+  onAnswer,
+  disabled,
+  speechLang,
+}: {
+  exercise: DbExercise;
+  onAnswer: (answer: string) => void;
+  disabled: boolean;
+  speechLang: string;
+}) {
+  // The TTS reads exercise.question (the Spanish audio prompt). The user
+  // types a Spanish reply that the AI grader scores.
+  const [typed, setTyped] = useState("");
+  const { isPlaying, play, stop, supported: hasTts } = useTts(
+    stripPhonetic(exercise.question),
+    speechLang,
+  );
+
+  // Auto-play once on mount when supported.
+  useEffect(() => {
+    if (hasTts) play();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function submit() {
+    if (disabled || !typed.trim()) return;
+    onAnswer(typed.trim());
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border-2 border-teal/30 bg-teal-light/50 p-6 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => (isPlaying ? stop() : play())}
+          disabled={!hasTts}
+          className="flex-shrink-0 w-14 h-14 rounded-full bg-teal text-white flex items-center justify-center shadow-md shadow-teal/30 hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label={isPlaying ? "Pause audio" : "Play audio"}
+        >
+          {isPlaying ? (
+            <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
+            </svg>
+          ) : (
+            <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wider text-teal-dark mb-1">
+            Listening
+          </p>
+          <p className="text-sm text-navy/70">
+            {hasTts
+              ? "Press play to hear the question. You can replay as many times as you like."
+              : "Audio is not available in this browser. Type your best guess."}
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label
+          htmlFor="listening-typed"
+          className="text-xs font-semibold uppercase tracking-wider text-navy/50 mb-2 block"
+        >
+          Your Spanish reply
+        </label>
+        <textarea
+          id="listening-typed"
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          disabled={disabled}
+          placeholder="Write a Spanish reply to what you heard…"
+          rows={3}
+          className="w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none resize-none disabled:bg-navy/5"
+        />
+      </div>
+
+      <button
+        type="button"
+        onClick={submit}
+        disabled={disabled || !typed.trim()}
+        className="w-full py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Submit answer
+      </button>
+    </div>
+  );
+}
+
+// ---------- New topic-prompt Speaking exercise (A1+ AI-graded) ----------
+function SpeakingTopicExercise({
+  exercise,
+  onAnswer,
+  disabled,
+  speechLang,
+}: {
+  exercise: DbExercise;
+  onAnswer: (answer: string) => void;
+  disabled: boolean;
+  speechLang: string;
+}) {
+  const { t } = useI18n();
+  const [transcript, setTranscript] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const recRef = useRef<ISpeechRecognition | null>(null);
+
+  const SpeechRec = getSpeechRecognition();
+  const supported = SpeechRec !== null;
+
+  function start() {
+    if (!SpeechRec || disabled) return;
+    setError(null);
+    setTranscript("");
+    const rec = new SpeechRec();
+    rec.lang = speechLang;
+    rec.interimResults = true;
+    rec.continuous = true;
+    rec.onresult = (ev) => {
+      let text = "";
+      for (let i = 0; i < ev.results.length; i++) {
+        text += ev.results[i][0].transcript + " ";
+      }
+      setTranscript(text.trim());
+    };
+    rec.onerror = (ev) => {
+      setError(
+        ev.error === "not-allowed"
+          ? t("lesson.speak.micBlocked")
+          : t("lesson.speak.error", { detail: ev.error }),
+      );
+      setRecording(false);
+    };
+    rec.onend = () => setRecording(false);
+    recRef.current = rec;
+    setRecording(true);
+    rec.start();
+  }
+
+  function done() {
+    recRef.current?.stop();
+    setRecording(false);
+    if (transcript.trim() && !disabled) {
+      onAnswer(transcript.trim());
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-2xl border-2 border-peach-dark/40 bg-peach-light p-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 mb-2">
+          Topic
+        </p>
+        <p className="text-base sm:text-lg font-semibold text-navy leading-snug">
+          {stripPhonetic(exercise.question)}
+        </p>
+      </div>
+
+      <div className="rounded-2xl border-2 border-border bg-white p-5 min-h-[120px]">
+        <p className="text-xs font-semibold uppercase tracking-wider text-navy/50 mb-2">
+          Transcript
+        </p>
+        <p className="text-base text-navy whitespace-pre-wrap min-h-[1.5rem]">
+          {transcript ||
+            (recording ? (
+              <span className="text-navy/40 italic">Listening…</span>
+            ) : (
+              <span className="text-navy/30">
+                Press “Start recording”, speak in Spanish, then press “I am
+                done speaking”.
+              </span>
+            ))}
+        </p>
+      </div>
+
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3.5 py-2.5">
+          {error}
+        </div>
+      )}
+
+      {!supported && (
+        <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5">
+          {t("lesson.speak.unsupported")}
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch">
+        {!recording ? (
+          <button
+            type="button"
+            onClick={start}
+            disabled={disabled || !supported}
+            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className="w-2.5 h-2.5 rounded-full bg-white/90" />
+            {transcript ? "Record again" : "Start recording"}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={done}
+            disabled={disabled}
+            className="flex-1 inline-flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50"
+          >
+            {/* Pulsing red mic indicator while recording */}
+            <span className="relative inline-flex items-center justify-center w-5 h-5">
+              <span className="absolute inline-flex w-full h-full rounded-full bg-white/70 opacity-75 animate-ping" />
+              <svg
+                className="relative w-4 h-4"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z" />
+              </svg>
+            </span>
+            I am done speaking
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
