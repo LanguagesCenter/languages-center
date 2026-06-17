@@ -53,13 +53,22 @@ declare
   v_course_id bigint;
   v_lesson_id bigint;
   v_level     text;
-  v_section   text;
+  -- v_section holds the FRENCH section name and is used inside teaching
+  -- content (intros, dialogue prompts, vocab examples) which is supposed
+  -- to be in French. v_section_en holds the English canonical name and
+  -- is used for course/lesson title + description rows so the i18n layer
+  -- can translate them to the active UI language (see
+  -- src/lib/i18n.ts:translateSectionTitle).
+  v_section     text;
+  v_section_en  text;
   v_xp        int;
   v_idx       int;
-  v_sections  text[];
+  v_sections     text[];
+  v_sections_en  text[];
   v_podcast_desc text;
   i int;
 
+  -- French section labels (used inside teaching content).
   a1_sections text[] := array[
     'Salutations','Nombres','Couleurs','Famille','Nourriture',
     'Heure','Météo','Courses','Animaux','Parties du corps',
@@ -86,6 +95,36 @@ declare
     'Langue académique','Communication professionnelle','Nuances culturelles','Rhétorique et persuasion',
     'Littérature avancée','Structures grammaticales complexes','Dialectes régionaux','Argot et langue informelle',
     'Compétences de traduction','Enseignement des langues'
+  ];
+
+  -- English canonical section labels (used for course/lesson titles +
+  -- descriptions; matches 015_spanish_restructure_15x8.sql 1:1 so both
+  -- courses share the same i18n translation slug).
+  a1_sections_en text[] := array[
+    'Greetings','Numbers','Colors','Family','Food','Time','Weather','Shopping',
+    'Animals','Body Parts','Clothes','House & Home','Transport','Days & Months','Basic Verbs'
+  ];
+  a2_sections_en text[] := array[
+    'Daily Routines','Health & Body','Hobbies','Work & Jobs','Directions',
+    'Feelings & Emotions','Celebrations','Nature','Sports','Music',
+    'Travel Planning','Restaurants','School','Technology Basics','Social Media'
+  ];
+  b1_sections_en text[] := array[
+    'Travel & Tourism','News & Media','Environment','Relationships','Culture & Traditions',
+    'Money & Banking','Education','Politics Basics','Food & Cooking','Art & Literature',
+    'Health & Medicine','Business Basics','Sports & Fitness','Music & Entertainment','Science Basics'
+  ];
+  b2_sections_en text[] := array[
+    'Politics & Society','Technology & Innovation','Philosophy & Ethics','Literature & Poetry',
+    'Business & Economics','Science & Research','Arts & Culture','Media & Journalism',
+    'Law & Justice','History','Psychology','Architecture','Fashion & Design',
+    'Sports Analysis','Environmental Issues'
+  ];
+  c1_sections_en text[] := array[
+    'Idioms & Expressions','Advanced Grammar','Formal Writing','Debate & Discussion','Native Content',
+    'Academic Language','Professional Communication','Cultural Nuance','Rhetoric & Persuasion',
+    'Advanced Literature','Complex Grammar Structures','Regional Dialects','Slang & Informal Language',
+    'Translation Skills','Language Teaching'
   ];
 
   -- Per-A1-section vocabulary (8 items: word, phonetic, english, example_fr, example_en).
@@ -268,40 +307,45 @@ begin
 
   for v_idx in 1..5 loop
     case v_idx
-      when 1 then v_level := 'A1'; v_sections := a1_sections; v_xp := 10;
-      when 2 then v_level := 'A2'; v_sections := a2_sections; v_xp := 15;
-      when 3 then v_level := 'B1'; v_sections := b1_sections; v_xp := 20;
-      when 4 then v_level := 'B2'; v_sections := b2_sections; v_xp := 25;
-      when 5 then v_level := 'C1'; v_sections := c1_sections; v_xp := 30;
+      when 1 then v_level := 'A1'; v_sections := a1_sections; v_sections_en := a1_sections_en; v_xp := 10;
+      when 2 then v_level := 'A2'; v_sections := a2_sections; v_sections_en := a2_sections_en; v_xp := 15;
+      when 3 then v_level := 'B1'; v_sections := b1_sections; v_sections_en := b1_sections_en; v_xp := 20;
+      when 4 then v_level := 'B2'; v_sections := b2_sections; v_sections_en := b2_sections_en; v_xp := 25;
+      when 5 then v_level := 'C1'; v_sections := c1_sections; v_sections_en := c1_sections_en; v_xp := 30;
     end case;
 
     for i in 1..15 loop
-      v_section := v_sections[i];
+      v_section    := v_sections[i];
+      v_section_en := v_sections_en[i];
       -- Alternating podcast / video description for lesson 8.
       v_podcast_desc := case when i % 2 = 1
-        then 'Listen to a short French podcast about ' || v_section || '.'
-        else 'Watch a short French video about ' || v_section || '.'
+        then 'Listen to a short French podcast about ' || v_section_en || '.'
+        else 'Watch a short French video about ' || v_section_en || '.'
       end;
 
+      -- Course title + description use the English canonical section name
+      -- so translateSectionTitle / translateSectionDescription in i18n.ts
+      -- can swap them into the active UI language.
       insert into public.courses (language_id, title, description, cefr_level, order_index)
       values (
-        v_lang_id, v_section,
-        'Build your ' || v_level || ' French skills in ' || v_section || '.',
+        v_lang_id, v_section_en,
+        'Build your ' || v_level || ' French skills in ' || v_section_en || '.',
         v_level, i
       )
       returning id into v_course_id;
 
       -- 8 teaching lessons + 1 unit_test (order_index 9).
+      -- Lesson titles use English ('Greetings — Vocabulary') to match Spanish.
       insert into public.lessons (course_id, title, description, type, order_index, xp_reward) values
-        (v_course_id, v_section || ' — Vocabulaire',              'Learn key French vocabulary for ' || v_section || '.',         'vocabulary', 1, v_xp),
-        (v_course_id, v_section || ' — Grammaire',                'Practise the grammar patterns used in ' || v_section || '.',    'grammar',    2, v_xp),
-        (v_course_id, v_section || ' — Expressions',              'Common French phrases for ' || v_section || '.',                'phrases',    3, v_xp),
-        (v_course_id, v_section || ' — Compréhension orale',      'Listen and respond in French about ' || v_section || '.',       'listening',  4, v_xp),
-        (v_course_id, v_section || ' — Expression orale',         'Speak in French about ' || v_section || '.',                    'speaking',   5, v_xp),
-        (v_course_id, v_section || ' — Lecture',                  'Read a short French text on ' || v_section || '.',              'reading',    6, v_xp),
-        (v_course_id, v_section || ' — Écriture',                 'Write a short French text about ' || v_section || '.',          'writing',    7, v_xp),
-        (v_course_id, v_section || ' — Podcast / Vidéo',          v_podcast_desc,                                                   'podcast',    8, v_xp),
-        (v_course_id, 'Section Test: ' || v_section,              'Review test for ' || v_section || '. Pass with 7/10 to earn 50 XP.', 'unit_test', 9, 50);
+        (v_course_id, v_section_en || ' — Vocabulary',              'Learn key French vocabulary for ' || v_section_en || '.',         'vocabulary', 1, v_xp),
+        (v_course_id, v_section_en || ' — Grammar',                 'Practise the grammar patterns used in ' || v_section_en || '.',    'grammar',    2, v_xp),
+        (v_course_id, v_section_en || ' — Phrases & Conversation',  'Common French phrases for ' || v_section_en || '.',                'phrases',    3, v_xp),
+        (v_course_id, v_section_en || ' — Listening',               'Listen and respond in French about ' || v_section_en || '.',       'listening',  4, v_xp),
+        (v_course_id, v_section_en || ' — Speaking',                'Speak in French about ' || v_section_en || '.',                    'speaking',   5, v_xp),
+        (v_course_id, v_section_en || ' — Reading & Comprehension', 'Read a short French text on ' || v_section_en || '.',              'reading',    6, v_xp),
+        (v_course_id, v_section_en || ' — Writing',                 'Write a short French text about ' || v_section_en || '.',          'writing',    7, v_xp),
+        (v_course_id, v_section_en || ' — Podcast / Video',         v_podcast_desc,                                                      'podcast',    8, v_xp),
+        (v_course_id, 'Section Test: ' || v_section_en,             'Review test for ' || v_section_en || '. Pass with 7/10 to earn 50 XP.', 'unit_test', 9, 50);
 
       ----------------------------------------------------------------
       -- TEACHING CONTENT — set intro / vocab_items / dialogue / grammar
