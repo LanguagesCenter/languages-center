@@ -163,11 +163,13 @@ function SectionCard({
 
 function PlacementExamCard({
   languageSlug,
+  languageName,
   level,
   isPremium,
   hasTakenExam,
 }: {
   languageSlug: string;
+  languageName: string;
   level: string;
   isPremium: boolean;
   hasTakenExam: boolean;
@@ -246,7 +248,7 @@ function PlacementExamCard({
             {level} Placement Exam
           </p>
           <h3 className="text-base sm:text-lg font-bold text-navy leading-tight">
-            Test your current Spanish level and earn your {level} certificate
+            Test your current {languageName} level and earn your {level} certificate
           </h3>
           <p className="text-xs text-navy/50 mt-0.5">
             45 min · vocabulary, listening, speaking, writing
@@ -356,6 +358,7 @@ function LevelAccordion({
         {showPlacementExam && (
           <PlacementExamCard
             languageSlug={languageSlug}
+            languageName={localizedLanguageName}
             level={group.level}
             isPremium={isPremium}
             hasTakenExam={hasTakenExam}
@@ -526,7 +529,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
               sectionLabel={t("cefr.section")}
               noSectionsLabel={t("cefr.noSections")}
               showPlacementExam={
-                slug === "spanish" &&
+                (slug === "spanish" || slug === "french") &&
                 ["A1", "A2", "B1", "B2", "C1"].includes(group.level)
               }
               hasTakenExam={takenLevels.has(group.level)}

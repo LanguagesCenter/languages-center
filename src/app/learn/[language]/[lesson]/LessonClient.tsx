@@ -386,10 +386,11 @@ function ListeningExercise(props: {
   disabled: boolean;
   pickedAnswer: string | null;
   speechLang: string;
+  languageName: string;
 }) {
   // New A1 (migration 039) format: when there are no MC distractors we
   // render a typed-response listening flow; the AI grader scores the
-  // candidate's typed Spanish reply to the audio.
+  // candidate's typed target-language reply to the audio.
   const isTypedMode =
     !props.exercise.wrong_answers || props.exercise.wrong_answers.length === 0;
   if (isTypedMode) {
@@ -399,6 +400,7 @@ function ListeningExercise(props: {
         onAnswer={props.onAnswer}
         disabled={props.disabled}
         speechLang={props.speechLang}
+        languageName={props.languageName}
       />
     );
   }
@@ -508,6 +510,7 @@ function SpeakingExercise(props: {
   onAnswer: (answer: string) => void;
   disabled: boolean;
   speechLang: string;
+  languageName: string;
 }) {
   // New A1 (migration 039) format: when there's no target phrase to repeat
   // (correct_answer empty), render the topic-prompt monologue flow.
@@ -521,6 +524,7 @@ function SpeakingExercise(props: {
         onAnswer={props.onAnswer}
         disabled={props.disabled}
         speechLang={props.speechLang}
+        languageName={props.languageName}
       />
     );
   }
@@ -1550,6 +1554,7 @@ export default function LessonClient({
               disabled={showFeedback}
               pickedAnswer={pickedAnswer}
               speechLang={speechLang}
+              languageName={languageName}
             />
           )}
           {exercise.type === "speaking" && (
@@ -1558,6 +1563,7 @@ export default function LessonClient({
               onAnswer={handleAnswer}
               disabled={showFeedback}
               speechLang={speechLang}
+              languageName={languageName}
             />
           )}
           {(exercise.type as string) === "writing" && (
@@ -1565,6 +1571,7 @@ export default function LessonClient({
               exercise={exercise}
               onAnswer={handleAnswer}
               disabled={showFeedback || grading}
+              languageName={languageName}
             />
           )}
         </div>
@@ -1667,14 +1674,16 @@ function ListeningTypedExercise({
   onAnswer,
   disabled,
   speechLang,
+  languageName,
 }: {
   exercise: DbExercise;
   onAnswer: (answer: string) => void;
   disabled: boolean;
   speechLang: string;
+  languageName: string;
 }) {
-  // The TTS reads exercise.question (the Spanish audio prompt). The user
-  // types a Spanish reply that the AI grader scores.
+  // The TTS reads exercise.question (the target-language audio prompt).
+  // The user types a target-language reply that the AI grader scores.
   const [typed, setTyped] = useState("");
   const { isPlaying, play, stop, supported: hasTts } = useTts(
     stripPhonetic(exercise.question),
@@ -1729,14 +1738,14 @@ function ListeningTypedExercise({
           htmlFor="listening-typed"
           className="text-xs font-semibold uppercase tracking-wider text-navy/50 mb-2 block"
         >
-          Your Spanish reply
+          Your {languageName} reply
         </label>
         <textarea
           id="listening-typed"
           value={typed}
           onChange={(e) => setTyped(e.target.value)}
           disabled={disabled}
-          placeholder="Write a Spanish reply to what you heard…"
+          placeholder={`Write a ${languageName} reply to what you heard…`}
           rows={3}
           className="w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none resize-none disabled:bg-navy/5"
         />
@@ -1760,11 +1769,13 @@ function SpeakingTopicExercise({
   onAnswer,
   disabled,
   speechLang,
+  languageName,
 }: {
   exercise: DbExercise;
   onAnswer: (answer: string) => void;
   disabled: boolean;
   speechLang: string;
+  languageName: string;
 }) {
   const { t } = useI18n();
   const [transcript, setTranscript] = useState("");
@@ -1833,8 +1844,8 @@ function SpeakingTopicExercise({
               <span className="text-navy/40 italic">Listening…</span>
             ) : (
               <span className="text-navy/30">
-                Press “Start recording”, speak in Spanish, then press “I am
-                done speaking”.
+                Press “Start recording”, speak in {languageName}, then press
+                “I am done speaking”.
               </span>
             ))}
         </p>
@@ -1889,19 +1900,21 @@ function SpeakingTopicExercise({
   );
 }
 
-// ---------- WritingExercise (AI-graded typed Spanish response) ----------
+// ---------- WritingExercise (AI-graded typed target-language response) ----------
 function WritingExercise({
   exercise,
   onAnswer,
   disabled,
+  languageName,
 }: {
   exercise: DbExercise;
   onAnswer: (answer: string) => void;
   disabled: boolean;
+  languageName: string;
 }) {
   // The prompt is exercise.question (English instruction). The candidate
-  // types a Spanish response; submit fires onAnswer(text) which routes to
-  // the AI grader via the parent's handleAnswer.
+  // types a target-language response; submit fires onAnswer(text) which
+  // routes to the AI grader via the parent's handleAnswer.
   const [value, setValue] = useState("");
 
   // Reset typed value when the active exercise changes — without this, a
@@ -1930,7 +1943,7 @@ function WritingExercise({
         htmlFor="writing-response"
         className="block text-xs font-semibold uppercase tracking-wider text-navy/50"
       >
-        Your Spanish response
+        Your {languageName} response
       </label>
       <textarea
         id="writing-response"
@@ -1939,7 +1952,7 @@ function WritingExercise({
         onKeyDown={onKey}
         disabled={disabled}
         rows={5}
-        placeholder="Write your Spanish answer here…"
+        placeholder={`Write your ${languageName} answer here…`}
         className="w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none resize-y disabled:bg-navy/5 disabled:cursor-not-allowed"
       />
       <div className="flex items-center justify-between">
