@@ -15,6 +15,7 @@ export async function POST(request: NextRequest) {
     response?: unknown;
     level?: unknown;
     type?: unknown;
+    language?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     response: body.response,
     level: body.level,
     type: body.type as GradeType,
+    language: typeof body.language === "string" ? body.language : undefined,
   });
   return Response.json(result);
 }

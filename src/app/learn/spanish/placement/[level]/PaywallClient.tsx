@@ -81,18 +81,18 @@ export default function PaywallClient({
         {languageName} {level} Placement Exam
       </h1>
       <p className="text-sm text-navy/60 mb-6">
-        45-minute timed test. 40 questions across vocabulary, listening, speaking and writing. Pass
-        with 50% or higher.
+        45-minute timed test. Reading, vocabulary, dialogue, listening,
+        speaking, roleplay and writing sections. Pass with 75% or higher.
       </p>
 
       {/* Locked preview */}
       <div className="relative bg-white border border-border rounded-2xl p-6 overflow-hidden">
         <div className="space-y-3 pointer-events-none select-none blur-sm opacity-60">
           {[
-            "How do you say \"Hello\" in Spanish?",
-            "Listen: \"Buenos días\"",
-            "Say aloud: \"Tengo hambre.\"",
-            "Translate to Spanish: \"I am hungry.\"",
+            `Read the passage and answer the question.`,
+            `Listen and reply in ${languageName}.`,
+            `Say aloud: a short ${languageName} monologue.`,
+            `Write a short ${languageName} response.`,
           ].map((q, i) => (
             <div key={i} className="rounded-xl border border-border p-4 text-navy/80">
               <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-1">

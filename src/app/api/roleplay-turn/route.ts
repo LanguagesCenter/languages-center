@@ -63,6 +63,8 @@ export async function POST(request: NextRequest) {
     history.push({ role, text: (raw as { text: string }).text });
   }
 
+  const language = asString(body.language) ?? undefined;
+
   const result = await generateRoleplayTurn({
     level,
     topic,
@@ -71,6 +73,7 @@ export async function POST(request: NextRequest) {
     ai_role,
     history,
     target_exchanges: Math.max(3, Math.min(8, target_exchanges)),
+    language,
   });
   return Response.json(result);
 }

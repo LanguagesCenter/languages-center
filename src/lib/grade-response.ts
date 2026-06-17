@@ -16,6 +16,11 @@ export interface GradeArgs {
   response: string;
   level: string;
   type: GradeType;
+  /**
+   * Target language slug ("spanish" | "french" | ...). When omitted we
+   * default to Spanish for backwards compatibility with older callers.
+   */
+  language?: string;
 }
 
 export interface GradeResult {
@@ -26,33 +31,46 @@ export interface GradeResult {
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-haiku-4-5-20251001";
 
-function buildSystemPrompt(level: string, type: GradeType): string {
+function buildSystemPrompt(
+  level: string,
+  type: GradeType,
+  language: string,
+): string {
+  // Title-case the slug so the prompt reads naturally ("French" not "french").
+  const langName = language.charAt(0).toUpperCase() + language.slice(1);
+
+  // Level-specific cues. Connector examples adapt to the target language so
+  // graders know which connectors are level-appropriate to look for.
+  const connectorHint =
+    language === "french"
+      ? "et, mais, parce que, quand, cependant, néanmoins, par conséquent"
+      : "porque, pero, cuando, sin embargo, no obstante, por consiguiente, cabe destacar";
+  const c1Markers =
+    language === "french"
+      ? "il convient de souligner, nonobstant, de même, à la lumière de"
+      : "cabe destacar, en virtud de, lejos de ser, no obstante";
+
   const levelDesc =
     level === "A1"
-      ? "CEFR A1: basic vocabulary, simple present-tense sentences, common nouns and verbs. Very common errors are expected and acceptable."
+      ? `CEFR A1: basic vocabulary, simple present-tense sentences, common nouns and verbs. Very common errors are expected and acceptable.`
       : level === "A2"
-        ? "CEFR A2: connected sentences, past/future tenses, common connectors (porque, pero, cuando). Some inaccuracy is fine if meaning is clear."
+        ? `CEFR A2: connected sentences, past/future tenses, common connectors (${connectorHint}). Some inaccuracy is fine if meaning is clear.`
         : level === "B1"
-          ? "CEFR B1: paragraphs on familiar topics, preterite/imperfect contrast, present perfect, basic subjunctive after expressions of wish/emotion. Reasonable accuracy expected."
+          ? `CEFR B1: paragraphs on familiar topics, narrative tenses (past/imperfect), present perfect, basic subjunctive after expressions of wish/emotion. Reasonable accuracy expected.`
           : level === "B2"
-            ? "CEFR B2: clear, detailed text on a wide range of topics, complex sentences, subjunctive in many contexts (concessions, hypotheticals), conditionals types 2 and 3, sophisticated connectors. Few errors that impede meaning."
-            : "CEFR C1: nuanced, idiomatic, register-appropriate Spanish. Advanced subjunctive, complex passive constructions, cleft sentences, discourse markers (cabe destacar, en virtud de), elegant rephrasing. Errors should be rare and not affect clarity.";
+            ? `CEFR B2: clear, detailed text on a wide range of topics, complex sentences, subjunctive in many contexts (concessions, hypotheticals), conditional sentences, sophisticated connectors. Few errors that impede meaning.`
+            : `CEFR C1: nuanced, idiomatic, register-appropriate ${langName}. Advanced subjunctive, complex passive constructions, cleft sentences, discourse markers (${c1Markers}), elegant rephrasing. Errors should be rare and not affect clarity.`;
 
   const taskDesc: Record<GradeType, string> = {
-    writing:
-      "The candidate wrote a short Spanish text in response to an English prompt. Judge relevance to the prompt, grammatical accuracy, vocabulary range and clarity. Reward attempts that address the prompt even with minor errors.",
-    listening:
-      "The candidate heard a Spanish audio prompt and typed a Spanish response. Judge how well the response answers/reacts to the heard sentence, including grammatical accuracy and vocabulary appropriate to the level.",
-    speaking:
-      "You are reading a speech-to-text transcript of the candidate's spoken monologue on a topic. Transcription artefacts (punctuation, capitalisation, occasional missing words) are expected — focus on grammar, vocabulary range, fluency indicators (run-ons, hesitations transcribed as filler) and how thoroughly the topic was covered.",
-    dialogue:
-      "The candidate was shown a short Spanish dialogue with the last line missing, and typed a Spanish line to complete it. Judge whether the response is a plausible, grammatical reply and appropriate for the register.",
-    roleplay:
-      "The candidate carried out a multi-turn Spanish-language roleplay with an AI partner. You are given the full transcript (labelled AI: and User:). Judge ONLY the candidate's turns on grammar, vocabulary range, fluency, appropriateness to the situation and how well they advanced the conversation. Ignore minor typos and length below the level expectation.",
+    writing: `The candidate wrote a short ${langName} text in response to an English prompt. Judge relevance to the prompt, grammatical accuracy, vocabulary range and clarity. Reward attempts that address the prompt even with minor errors.`,
+    listening: `The candidate heard a ${langName} audio prompt and typed a ${langName} response. Judge how well the response answers/reacts to the heard sentence, including grammatical accuracy and vocabulary appropriate to the level.`,
+    speaking: `You are reading a speech-to-text transcript of the candidate's spoken monologue on a topic. The candidate is speaking in ${langName}. Transcription artefacts (punctuation, capitalisation, occasional missing words) are expected — focus on grammar, vocabulary range, fluency indicators (run-ons, hesitations transcribed as filler) and how thoroughly the topic was covered.`,
+    dialogue: `The candidate was shown a short ${langName} dialogue with the last line missing, and typed a ${langName} line to complete it. Judge whether the response is a plausible, grammatical reply and appropriate for the register.`,
+    roleplay: `The candidate carried out a multi-turn ${langName}-language roleplay with an AI partner. You are given the full transcript (labelled AI: and User:). Judge ONLY the candidate's turns on grammar, vocabulary range, fluency, appropriateness to the situation and how well they advanced the conversation. Ignore minor typos and length below the level expectation.`,
   };
 
   return [
-    "You grade Spanish-language placement-exam responses.",
+    `You grade ${langName}-language placement-exam responses.`,
     `Target level: ${levelDesc}`,
     `Task type: ${taskDesc[type]}`,
     "",
@@ -60,8 +78,8 @@ function buildSystemPrompt(level: string, type: GradeType): string {
     '{"score": <integer 0..10>, "feedback": "<one short sentence in English, max 25 words>"}',
     "",
     "Score guidance:",
-    "  0  — empty, off-topic, or in another language",
-    "  1-3 — attempted but mostly incomprehensible or non-Spanish",
+    `  0  — empty, off-topic, or in another language`,
+    `  1-3 — attempted but mostly incomprehensible or non-${langName}`,
     "  4-5 — partly on-topic with major errors that obscure meaning",
     "  6-7 — on-topic, meaning is clear, level-appropriate errors",
     "  8-9 — fully on-topic, accurate grammar, level-appropriate range",
@@ -124,7 +142,7 @@ export async function gradeResponse(args: GradeArgs): Promise<GradeResult> {
     body: JSON.stringify({
       model: MODEL,
       max_tokens: 200,
-      system: buildSystemPrompt(args.level, args.type),
+      system: buildSystemPrompt(args.level, args.type, args.language ?? "spanish"),
       messages: [
         { role: "user", content: buildUserPrompt(args.prompt, args.response) },
       ],

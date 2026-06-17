@@ -11,14 +11,14 @@ import {
   buildExamPayload,
   hasPaid,
 } from "@/lib/placement-exam";
-import ExamClient from "./ExamClient";
-import PaywallClient from "./PaywallClient";
-import CooldownView from "./CooldownView";
-import ResultsView from "./ResultsView";
+import ExamClient from "../../../spanish/placement/[level]/ExamClient";
+import PaywallClient from "../../../spanish/placement/[level]/PaywallClient";
+import CooldownView from "../../../spanish/placement/[level]/CooldownView";
+import ResultsView from "../../../spanish/placement/[level]/ResultsView";
 
-const LANGUAGE_SLUG = "spanish";
-const LANGUAGE_NAME = "Spanish";
-const LOCALE_CODE = "es-ES";
+const LANGUAGE_SLUG = "french";
+const LANGUAGE_NAME = "French";
+const LOCALE_CODE = "fr-FR";
 const SUPPORTED_LEVELS = ["A1", "A2", "B1", "B2", "C1"] as const;
 
 export async function generateMetadata(props: {
@@ -27,7 +27,7 @@ export async function generateMetadata(props: {
   const { level } = await props.params;
   const upper = level.toUpperCase();
   return {
-    title: `Spanish ${upper} Placement Exam — Languages Center`,
+    title: `French ${upper} Placement Exam — Languages Center`,
   };
 }
 
@@ -59,7 +59,6 @@ export default async function PlacementExamPage(props: {
   const lastAttempt = await getLastAttempt(user.id, languageId, LEVEL);
   const remainingMs = cooldownRemainingMs(lastAttempt);
 
-  // Paywall: not premium and not paid.
   if (!paid) {
     return (
       <>
@@ -78,7 +77,6 @@ export default async function PlacementExamPage(props: {
     );
   }
 
-  // The user explicitly clicked Retake — clear the result view and load the exam.
   if (sp.show_result === "0" && remainingMs === 0) {
     const payload = await buildExamPayload(languageId, LEVEL);
     if (!payload) {
@@ -111,7 +109,6 @@ export default async function PlacementExamPage(props: {
     );
   }
 
-  // Has a recent attempt → show results (with cooldown if failed).
   if (lastAttempt) {
     return (
       <>
@@ -137,7 +134,6 @@ export default async function PlacementExamPage(props: {
     );
   }
 
-  // No prior attempt → load the exam.
   const payload = await buildExamPayload(languageId, LEVEL);
   if (!payload) {
     return (

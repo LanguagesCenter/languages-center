@@ -21,24 +21,25 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-function pickSpanishVoice(): SpeechSynthesisVoice | null {
+function pickVoice(locale: string): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
   const voices = window.speechSynthesis.getVoices();
+  const target = locale.toLowerCase();
+  const prefix = target.split("-")[0];
   return (
-    voices.find((v) => v.lang.toLowerCase() === "es-es") ??
-    voices.find((v) => v.lang.toLowerCase() === "es-mx") ??
-    voices.find((v) => v.lang.toLowerCase().startsWith("es-")) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith("es")) ??
+    voices.find((v) => v.lang.toLowerCase() === target) ??
+    voices.find((v) => v.lang.toLowerCase().startsWith(`${prefix}-`)) ??
+    voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ??
     null
   );
 }
 
-function speak(text: string) {
+function speak(text: string, locale: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "es-ES";
-  const voice = pickSpanishVoice();
+  u.lang = locale;
+  const voice = pickVoice(locale);
   if (voice) u.voice = voice;
   u.rate = 0.9;
   window.speechSynthesis.speak(u);
@@ -75,12 +76,16 @@ type Phase = "notice" | "reading" | "roleplay" | "questions";
 
 export default function ExamClient({
   languageSlug,
+  languageName,
+  localeCode,
   level,
   passage,
   questions,
   roleplays,
 }: {
   languageSlug: string;
+  languageName: string;
+  localeCode: string;
   level: string;
   passage: ReadingPassage;
   questions: PlacementQuestion[];
@@ -206,6 +211,7 @@ export default function ExamClient({
     return (
       <NoticeScreen
         level={level}
+        languageName={languageName}
         onReady={startExam}
         onExit={() => router.push(`/learn/${languageSlug}`)}
       />
@@ -239,7 +245,7 @@ export default function ExamClient({
       <div className="flex items-center justify-between mb-5 gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider">
-            Spanish {level} Placement Exam
+            {languageName} {level} Placement Exam
           </p>
           <p className="text-sm text-navy/60">
             Question {currentIdx + 1} of {grandTotal}
@@ -296,6 +302,8 @@ export default function ExamClient({
         <RoleplayScreen
           key={roleplays[roleplayIdx].id}
           level={level}
+          languageSlug={languageSlug}
+          languageName={languageName}
           scenario={roleplays[roleplayIdx]}
           transcript={roleplayTranscripts[roleplayIdx]}
           onAppendUser={(text) =>
@@ -322,6 +330,8 @@ export default function ExamClient({
       ) : (
         <QuestionScreen
           q={questions[step]}
+          languageName={languageName}
+          localeCode={localeCode}
           value={answers[questions[step].id] ?? ""}
           onChange={(v) => setAnswer(questions[step].id, v)}
           onPrev={
@@ -353,17 +363,19 @@ export default function ExamClient({
 // ---------- Phase: NOTICE ----------
 function NoticeScreen({
   level,
+  languageName,
   onReady,
   onExit,
 }: {
   level: string;
+  languageName: string;
   onReady: () => void;
   onExit: () => void;
 }) {
   return (
     <section className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-2">
-        Spanish {level} Placement Exam
+        {languageName} {level} Placement Exam
       </p>
       <h1 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight mb-6">
         Before you begin
@@ -482,6 +494,8 @@ function ReadingScreen({
 // ---------- Phase: QUESTIONS ----------
 function QuestionScreen({
   q,
+  languageName,
+  localeCode,
   value,
   onChange,
   onPrev,
@@ -491,6 +505,8 @@ function QuestionScreen({
   isLast,
 }: {
   q: PlacementQuestion;
+  languageName: string;
+  localeCode: string;
   value: string;
   onChange: (v: string) => void;
   onPrev: () => void;
@@ -515,25 +531,31 @@ function QuestionScreen({
         ) : q.category === "dialogue" ? (
           <DialogueQuestion
             prompt={q.question}
+            languageName={languageName}
             lines={q.dialogue_lines ?? []}
             value={value}
             onChange={onChange}
           />
         ) : q.category === "listening" ? (
           <ListeningQuestion
-            spanishPrompt={q.question}
+            audioPrompt={q.question}
+            languageName={languageName}
+            localeCode={localeCode}
             value={value}
             onChange={onChange}
           />
         ) : q.category === "speaking" ? (
           <SpeakingQuestion
             prompt={q.topic_prompt ?? q.question}
+            languageName={languageName}
+            localeCode={localeCode}
             value={value}
             onChange={onChange}
           />
         ) : (
           <WritingQuestion
             prompt={q.question}
+            languageName={languageName}
             value={value}
             onChange={onChange}
           />
@@ -632,11 +654,13 @@ function VocabularyQuestion({
 // ---------- DIALOGUE COMPLETION ----------
 function DialogueQuestion({
   prompt,
+  languageName,
   lines,
   value,
   onChange,
 }: {
   prompt: string;
+  languageName: string;
   lines: Array<{ speaker: string; text: string }>;
   value: string;
   onChange: (v: string) => void;
@@ -645,7 +669,7 @@ function DialogueQuestion({
     <>
       <h2 className="text-lg sm:text-xl font-bold text-navy mb-2">{prompt}</h2>
       <p className="text-xs text-navy/50 mb-4">
-        Type one Spanish sentence to complete the dialogue.
+        Type one {languageName} sentence to complete the dialogue.
       </p>
       <div className="space-y-2 mb-4">
         {lines.map((line, i) => {
@@ -671,27 +695,31 @@ function DialogueQuestion({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Type your Spanish response…"
+        placeholder={`Type your ${languageName} response…`}
         className="w-full px-4 py-3.5 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none"
       />
     </>
   );
 }
 
-// ---------- LISTENING (audio → typed Spanish response) ----------
+// ---------- LISTENING (audio → typed target-language response) ----------
 function ListeningQuestion({
-  spanishPrompt,
+  audioPrompt,
+  languageName,
+  localeCode,
   value,
   onChange,
 }: {
-  spanishPrompt: string;
+  audioPrompt: string;
+  languageName: string;
+  localeCode: string;
   value: string;
   onChange: (v: string) => void;
 }) {
   return (
     <>
       <h2 className="text-lg sm:text-xl font-bold text-navy mb-2">
-        Listen, then type your response in Spanish.
+        Listen, then type your response in {languageName}.
       </h2>
       <p className="text-xs text-navy/50 mb-3">
         Press play to hear the question. You can replay as many times as you
@@ -699,7 +727,7 @@ function ListeningQuestion({
       </p>
       <button
         type="button"
-        onClick={() => speak(spanishPrompt)}
+        onClick={() => speak(audioPrompt, localeCode)}
         className="inline-flex items-center gap-2 px-4 py-2 mb-4 text-sm font-semibold rounded-full bg-teal-light text-teal-dark hover:bg-teal hover:text-white transition-colors"
       >
         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -710,7 +738,7 @@ function ListeningQuestion({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Write a Spanish reply to what you heard…"
+        placeholder={`Write a ${languageName} reply to what you heard…`}
         rows={3}
         className="w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none resize-none"
       />
@@ -721,10 +749,14 @@ function ListeningQuestion({
 // ---------- SPEAKING (free monologue, transcript stored as answer) ----------
 function SpeakingQuestion({
   prompt,
+  languageName,
+  localeCode,
   value,
   onChange,
 }: {
   prompt: string;
+  languageName: string;
+  localeCode: string;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -749,7 +781,7 @@ function SpeakingQuestion({
       return;
     }
     const rec = new Ctor();
-    rec.lang = "es-ES";
+    rec.lang = localeCode;
     rec.interimResults = true;
     rec.continuous = true;
     rec.onresult = (e) => {
@@ -793,8 +825,8 @@ function SpeakingQuestion({
     <>
       <h2 className="text-lg sm:text-xl font-bold text-navy mb-3">{prompt}</h2>
       <p className="text-xs text-navy/50 mb-4">
-        Press <strong>Start recording</strong>, speak freely in Spanish, then
-        press <strong>Stop</strong> when you have finished. Use the
+        Press <strong>Start recording</strong>, speak freely in {languageName},
+        then press <strong>Stop</strong> when you have finished. Use the
         Next button below to move on to the next prompt.
       </p>
       <div className="flex flex-col gap-3">
@@ -832,13 +864,15 @@ function SpeakingQuestion({
   );
 }
 
-// ---------- WRITING (English prompt → Spanish prose) ----------
+// ---------- WRITING (English prompt → target-language prose) ----------
 function WritingQuestion({
   prompt,
+  languageName,
   value,
   onChange,
 }: {
   prompt: string;
+  languageName: string;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -848,7 +882,7 @@ function WritingQuestion({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Write your Spanish response…"
+        placeholder={`Write your ${languageName} response…`}
         rows={5}
         className="w-full px-4 py-3 rounded-xl border-2 border-border bg-white text-navy text-base focus:border-teal focus:outline-none resize-none"
       />
@@ -870,6 +904,8 @@ function stableShuffle<T>(arr: T[], seed: number): T[] {
 // ---------- ROLEPLAY (B1/B2/C1 only) ----------
 function RoleplayScreen({
   level,
+  languageSlug,
+  languageName,
   scenario,
   transcript,
   stepIdx,
@@ -880,6 +916,8 @@ function RoleplayScreen({
   onNext,
 }: {
   level: string;
+  languageSlug: string;
+  languageName: string;
   scenario: RoleplayScenario;
   transcript: RoleplayTranscript;
   stepIdx: number;
@@ -922,6 +960,7 @@ function RoleplayScreen({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           level,
+          language: languageSlug,
           topic: scenario.topic_label,
           scenario: scenario.scenario,
           user_role: scenario.user_role,
@@ -938,7 +977,7 @@ function RoleplayScreen({
         next_line: string;
         is_final: boolean;
       };
-      onAppendAI(data.next_line || "(silencio)");
+      onAppendAI(data.next_line || "…");
     } catch (e) {
       setError(
         e instanceof Error
@@ -969,8 +1008,8 @@ function RoleplayScreen({
         <p className="text-xs text-navy/60">
           You play <span className="font-semibold">{scenario.user_role}</span>.
           The AI plays <span className="font-semibold">{scenario.ai_role}</span>.
-          Each of your replies should be at least two full Spanish sentences
-          (except a greeting or farewell).
+          Each of your replies should be at least two full {languageName}{" "}
+          sentences (except a greeting or farewell).
         </p>
       </div>
 
@@ -1000,7 +1039,7 @@ function RoleplayScreen({
         {isThinking && (
           <div className="flex justify-start">
             <div className="bg-white text-navy border border-border rounded-2xl px-4 py-2.5 text-sm italic opacity-70">
-              {scenario.ai_role} está escribiendo…
+              {scenario.ai_role} is typing…
             </div>
           </div>
         )}
@@ -1014,7 +1053,7 @@ function RoleplayScreen({
           placeholder={
             isFinished
               ? "This roleplay is complete. Press Next to continue."
-              : "Type your Spanish reply (at least 2 sentences)…"
+              : `Type your ${languageName} reply (at least 2 sentences)…`
           }
           disabled={isFinished || isThinking}
           rows={3}

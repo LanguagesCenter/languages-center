@@ -39,7 +39,15 @@ const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 const MODEL = "claude-sonnet-4-6";
 const PASS_MARK = 6;
 
-function levelGuidance(level: string): string {
+function levelGuidance(level: string, language: string): string {
+  const a2Connectors =
+    language === "french"
+      ? "et, mais, parce que, quand"
+      : "porque, pero, cuando";
+  const c1Markers =
+    language === "french"
+      ? "il convient de souligner, nonobstant, par ailleurs, de surcroît"
+      : "cabe destacar, en virtud de, lejos de";
   switch (level.toUpperCase()) {
     case "A1":
       return [
@@ -51,12 +59,12 @@ function levelGuidance(level: string): string {
       return [
         "Target level CEFR A2.",
         "Slightly stricter than A1. Expect connected sentences, basic past/future tenses, and a richer everyday vocabulary.",
-        "Reward learners who use common connectors (porque, pero, cuando) and attempt full sentences.",
+        `Reward learners who use common connectors (${a2Connectors}) and attempt full sentences.`,
       ].join(" ");
     case "B1":
       return [
         "Target level CEFR B1.",
-        "Intermediate. Expect paragraphs on familiar topics, the preterite/imperfect contrast, the present perfect, and basic subjunctive after expressions of wish or emotion.",
+        "Intermediate. Expect paragraphs on familiar topics, past/imperfect contrasts, the present perfect, and basic subjunctive after expressions of wish or emotion.",
         "Expect the learner to express opinions with simple justifications. Score down if responses are A2-level for a B1 task.",
       ].join(" ");
     case "B2":
@@ -68,7 +76,7 @@ function levelGuidance(level: string): string {
     case "C1":
       return [
         "Target level CEFR C1.",
-        "Advanced. Expect nuanced, idiomatic, register-appropriate language with advanced subjunctive, complex passive constructions, cleft sentences, discourse markers (cabe destacar, en virtud de, lejos de...), and elegant rephrasing.",
+        `Advanced. Expect nuanced, idiomatic, register-appropriate language with advanced subjunctive, complex passive constructions, cleft sentences, discourse markers (${c1Markers}...), and elegant rephrasing.`,
         "Grade strictly: errors should be rare and not affect clarity. Reward rhetorical sophistication and natural register.",
       ].join(" ");
     default:
@@ -102,7 +110,7 @@ function buildSystemPrompt(args: GradeLessonArgs): string {
   return [
     `You grade ${args.language.toLowerCase()} lesson responses.`,
     `Course context: section "${args.section}", lesson ${args.lessonNumber}.`,
-    levelGuidance(args.level),
+    levelGuidance(args.level, args.language.toLowerCase()),
     typeGuidance(args.type),
     `Pass mark is ${PASS_MARK}/10.`,
     "",

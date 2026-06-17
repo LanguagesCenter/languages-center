@@ -190,7 +190,9 @@ export async function submitPlacementExam(
         promptForGrader = `Complete this dialogue. The candidate types the last line.\n\n${dialogueText}\n\nReference response: ${q.correct_answer}`;
       } else if (q.category === "listening") {
         type = "listening";
-        promptForGrader = `Audio prompt (Spanish): ${q.question}\nReference response: ${q.correct_answer}`;
+        const langTitle =
+          languageSlug.charAt(0).toUpperCase() + languageSlug.slice(1);
+        promptForGrader = `Audio prompt (${langTitle}): ${q.question}\nReference response: ${q.correct_answer}`;
       } else if (q.category === "speaking") {
         type = "speaking";
         promptForGrader = q.topic_prompt ?? q.question;
@@ -207,6 +209,7 @@ export async function submitPlacementExam(
       response: item.a.answer,
       level,
       type: item.type,
+      language: languageSlug,
     });
     return { item, ...result };
   });
@@ -254,6 +257,7 @@ export async function submitPlacementExam(
         response: transcriptStr,
         level,
         type: "roleplay",
+        language: languageSlug,
       });
       return {
         roleplay_id: transcript.roleplay_id,
