@@ -21,27 +21,63 @@ function formatTime(seconds: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+// Strictly prefer the requested locale (e.g. es-ES for Castilian Spanish,
+// fr-FR for European French). Browsers often list es-MX, es-419 or fr-CA
+// alongside the European variants; we always pick the exact locale first
+// and fall back deterministically — Spain over Latin America for Spanish,
+// France over Canada for French. Catalan ("ca") is never accepted as a
+// Spanish fallback (it has its own ISO 639 code, not the "es" prefix).
 function pickVoice(locale: string): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
   const voices = window.speechSynthesis.getVoices();
-  const target = locale.toLowerCase();
+  if (voices.length === 0) return null;
+  const target = locale.toLowerCase().replace("_", "-");
   const prefix = target.split("-")[0];
-  return (
-    voices.find((v) => v.lang.toLowerCase() === target) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith(`${prefix}-`)) ??
-    voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ??
-    null
-  );
+  const country = target.split("-")[1] ?? "";
+
+  const norm = (l: string) => l.toLowerCase().replace("_", "-");
+
+  // 1. Exact locale match.
+  const exact = voices.find((v) => norm(v.lang) === target);
+  if (exact) return exact;
+
+  // 2. Any voice whose lang exactly matches the requested country variant
+  //    even if formatted differently ("es-ES", "es_ES", "es-es-x-...").
+  const exactCountry = voices.find((v) => {
+    const l = norm(v.lang);
+    return l === target || l.startsWith(`${prefix}-${country}`);
+  });
+  if (exactCountry) return exactCountry;
+
+  // 3. Bare-language match (e.g. "es" without country) — typically the
+  //    browser's default for that language, often Castilian / European.
+  const bare = voices.find((v) => norm(v.lang) === prefix);
+  if (bare) return bare;
+
+  // 4. Same-language voices, preferring the European country (Spain for
+  //    Spanish, France for French) over Latin American / Canadian variants.
+  const sameLang = voices.filter((v) => norm(v.lang).startsWith(`${prefix}-`));
+  if (sameLang.length === 0) return null;
+  const preferredCountries: Record<string, string[]> = {
+    es: ["es"], // Spain
+    fr: ["fr"], // France
+  };
+  const preferred = preferredCountries[prefix] ?? [];
+  for (const c of preferred) {
+    const hit = sameLang.find((v) => norm(v.lang) === `${prefix}-${c}`);
+    if (hit) return hit;
+  }
+  return sameLang[0];
 }
 
-function speak(text: string, locale: string) {
+function speak(text: string, locale: string, rate: number = 1.0) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = locale;
   const voice = pickVoice(locale);
   if (voice) u.voice = voice;
-  u.rate = 0.9;
+  u.rate = rate;
   window.speechSynthesis.speak(u);
 }
 
@@ -372,6 +408,7 @@ function NoticeScreen({
   onReady: () => void;
   onExit: () => void;
 }) {
+  const usesRoleplay = ["B1", "B2", "C1"].includes(level);
   return (
     <section className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       <p className="text-xs font-semibold text-teal-dark uppercase tracking-wider mb-2">
@@ -382,14 +419,17 @@ function NoticeScreen({
       </h1>
       <div className="space-y-4 text-navy/80 leading-relaxed mb-8">
         <p>
-          Find a quiet spot. This exam includes listening and speaking
+          Find a quiet spot. This exam includes{" "}
+          {usesRoleplay ? "roleplay and writing" : "listening and speaking"}{" "}
           sections — make sure your microphone and speakers are working.
         </p>
         <p>
           You will have <span className="font-semibold">45 minutes</span> to
-          complete one reading passage, 5 vocabulary questions, 5 dialogue
-          completions, 10 listening responses, 10 spoken topics and 10
-          writing tasks.
+          complete{" "}
+          {usesRoleplay
+            ? "one reading passage, 5 vocabulary questions, 5 dialogue completions, 3 roleplay dialogues and 5 writing tasks"
+            : "one reading passage, 5 vocabulary questions, 5 dialogue completions, 10 listening responses, 4 spoken topics and 4 writing tasks"}
+          .
         </p>
         <p>
           The pass mark is <span className="font-semibold">75%</span>. You
@@ -397,9 +437,9 @@ function NoticeScreen({
           refresh — closing this page will end your attempt.
         </p>
         <p>
-          Speaking responses are recorded in your browser and transcribed
-          for grading; writing and listening typed answers are graded by AI
-          for grammar, vocabulary and relevance.
+          {usesRoleplay
+            ? "Roleplay turns and writing answers are graded by AI for grammar, vocabulary, register and relevance."
+            : "Speaking responses are recorded in your browser and transcribed for grading; writing and listening typed answers are graded by AI for grammar, vocabulary and relevance."}
         </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
@@ -485,7 +525,7 @@ function ReadingScreen({
       <NavFooter
         onPrev={onPrev}
         onNext={onNext}
-        nextLabel={isLast ? "Start questions" : "Next"}
+        nextLabel="Next question"
       />
     </>
   );
@@ -721,20 +761,11 @@ function ListeningQuestion({
       <h2 className="text-lg sm:text-xl font-bold text-navy mb-2">
         Listen, then type your response in {languageName}.
       </h2>
-      <p className="text-xs text-navy/50 mb-3">
+      <p className="text-xs text-navy/50 mb-4">
         Press play to hear the question. You can replay as many times as you
         like.
       </p>
-      <button
-        type="button"
-        onClick={() => speak(audioPrompt, localeCode)}
-        className="inline-flex items-center gap-2 px-4 py-2 mb-4 text-sm font-semibold rounded-full bg-teal-light text-teal-dark hover:bg-teal hover:text-white transition-colors"
-      >
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z" />
-        </svg>
-        Play audio
-      </button>
+      <ListeningAudioPlayer text={audioPrompt} locale={localeCode} />
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -744,6 +775,275 @@ function ListeningQuestion({
       />
     </>
   );
+}
+
+// ---------- AUDIO PLAYER (used by ListeningQuestion) ----------
+// Drives `window.speechSynthesis` while exposing a real audio-player UX:
+// play / pause, scrubbable progress bar, animated waveform, speed cycle,
+// elapsed / total time. The Web Speech API has no native seek, so we
+// implement scrubbing by cancelling the current utterance and starting a
+// new one from substring(text * ratio). Duration is estimated from text
+// length / playback rate (≈14 chars/sec at rate 1.0 — close enough for a
+// progress display).
+function ListeningAudioPlayer({
+  text,
+  locale,
+}: {
+  text: string;
+  locale: string;
+}) {
+  const RATE_OPTIONS = [0.75, 1.0, 1.25, 1.5];
+  const BAR_COUNT = 48;
+
+  // Position is a 0..1 fraction of the source text we've spoken so far.
+  // currentTime / duration derive from it; this keeps the UI consistent
+  // when the rate changes (which would otherwise warp the clock).
+  const [position, setPosition] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [rate, setRate] = useState(1.0);
+  const [supported, setSupported] = useState(true);
+
+  const startPosRef = useRef(0); // position when current utterance started
+  const startTimeRef = useRef(0); // wall-clock ms when current utterance started
+  const tickRef = useRef<number | null>(null);
+  const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  // Bar heights are deterministic from text so re-renders don't shuffle.
+  const heights = useRef<number[]>(
+    Array.from({ length: BAR_COUNT }, (_, i) => {
+      const seed = (text.charCodeAt(i % Math.max(1, text.length)) ?? 7) + i * 31;
+      // 0.25 .. 0.95 range
+      return 0.25 + ((seed * 9301 + 49297) % 233280) / 233280 * 0.7;
+    }),
+  ).current;
+
+  // Estimated total duration in seconds at the active rate.
+  const duration = Math.max(1, text.length / (14 * rate));
+  const currentTime = Math.min(position * duration, duration);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      setSupported(false);
+    }
+    return () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+      }
+      if (tickRef.current !== null) cancelAnimationFrame(tickRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function startTicking() {
+    if (tickRef.current !== null) cancelAnimationFrame(tickRef.current);
+    const loop = () => {
+      const elapsed = (Date.now() - startTimeRef.current) / 1000;
+      const advance = elapsed / duration;
+      const next = Math.min(1, startPosRef.current + advance);
+      setPosition(next);
+      if (next < 1) {
+        tickRef.current = requestAnimationFrame(loop);
+      }
+    };
+    tickRef.current = requestAnimationFrame(loop);
+  }
+
+  function stopTicking() {
+    if (tickRef.current !== null) {
+      cancelAnimationFrame(tickRef.current);
+      tickRef.current = null;
+    }
+  }
+
+  function playFrom(fraction: number) {
+    if (!supported) return;
+    window.speechSynthesis.cancel();
+    const startFrac = Math.max(0, Math.min(0.999, fraction));
+    const startIdx = Math.floor(text.length * startFrac);
+    const remaining = text.substring(startIdx);
+    const u = new SpeechSynthesisUtterance(remaining);
+    u.lang = locale;
+    u.rate = rate;
+    const voice = pickVoice(locale);
+    if (voice) u.voice = voice;
+    u.onstart = () => {
+      startPosRef.current = startFrac;
+      startTimeRef.current = Date.now();
+      setIsPlaying(true);
+      startTicking();
+    };
+    u.onend = () => {
+      stopTicking();
+      setIsPlaying(false);
+      setPosition(0);
+      startPosRef.current = 0;
+    };
+    u.onerror = () => {
+      stopTicking();
+      setIsPlaying(false);
+    };
+    utterRef.current = u;
+    window.speechSynthesis.speak(u);
+  }
+
+  function pause() {
+    if (!supported) return;
+    window.speechSynthesis.cancel();
+    stopTicking();
+    setIsPlaying(false);
+    // Freeze position where the user paused so resume picks up there.
+    startPosRef.current = position;
+  }
+
+  function toggle() {
+    if (isPlaying) pause();
+    else playFrom(position >= 1 ? 0 : position);
+  }
+
+  function seek(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const wasPlaying = isPlaying;
+    pause();
+    setPosition(ratio);
+    startPosRef.current = ratio;
+    if (wasPlaying) playFrom(ratio);
+  }
+
+  function cycleRate() {
+    const idx = RATE_OPTIONS.indexOf(rate);
+    const nextRate = RATE_OPTIONS[(idx + 1) % RATE_OPTIONS.length];
+    setRate(nextRate);
+    if (isPlaying) {
+      // Replay from current position at the new rate.
+      const pos = position;
+      window.speechSynthesis.cancel();
+      stopTicking();
+      // Defer to next tick so the rate update is in effect.
+      setTimeout(() => playFrom(pos), 0);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border-2 border-border bg-white p-3 sm:p-4 mb-4">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={!supported}
+          aria-label={isPlaying ? "Pause" : "Play"}
+          className="flex-shrink-0 w-11 h-11 rounded-full bg-teal text-white flex items-center justify-center shadow-sm shadow-teal/30 hover:bg-teal-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isPlaying ? (
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </button>
+        <div
+          onClick={seek}
+          role="slider"
+          aria-label="Audio progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(position * 100)}
+          tabIndex={0}
+          className="flex-1 h-11 flex items-center cursor-pointer relative select-none"
+        >
+          {/* Waveform bars layer */}
+          <div className="absolute inset-0 flex items-center gap-[2px] px-1">
+            {heights.map((h, i) => {
+              const barFrac = (i + 0.5) / BAR_COUNT;
+              const filled = barFrac <= position;
+              const isCursor =
+                isPlaying && Math.abs(barFrac - position) < 1 / BAR_COUNT;
+              return (
+                <span
+                  key={i}
+                  className={`flex-1 rounded-full ${
+                    filled ? "bg-navy" : "bg-navy/15"
+                  } ${isCursor ? "animate-pulse bg-teal-dark" : ""}`}
+                  style={{ height: `${h * 100}%` }}
+                />
+              );
+            })}
+          </div>
+          {/* Progress fill stripe at the bottom (subtle, beneath bars) */}
+          <div
+            className="absolute bottom-0 left-0 h-[3px] rounded-full bg-teal pointer-events-none"
+            style={{ width: `${position * 100}%` }}
+          />
+        </div>
+        <div className="flex-shrink-0 text-[11px] tabular-nums text-navy/60 font-medium min-w-[60px] text-right">
+          {fmtClock(currentTime)} / {fmtClock(duration)}
+        </div>
+        <button
+          type="button"
+          onClick={cycleRate}
+          disabled={!supported}
+          aria-label="Playback speed"
+          className="flex-shrink-0 text-xs font-bold px-2.5 py-1.5 rounded-md bg-navy/5 hover:bg-navy/10 text-navy w-[52px] disabled:opacity-40"
+        >
+          {rate === 1 ? "1x" : `${rate}x`}
+        </button>
+      </div>
+      {!supported && (
+        <p className="mt-2 text-[11px] text-amber-700">
+          Audio playback isn&apos;t available in this browser. Try Chrome.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function fmtClock(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+// Collapse runs of repeated tokens that Web Speech sometimes produces
+// when continuous mode re-fires final results ("hello hello hello world"
+// → "hello world"). Operates on tokens and on 2-, 3-, 4-word phrases.
+function dedupeTranscript(text: string): string {
+  if (!text) return text;
+  let tokens = text.split(/\s+/).filter(Boolean);
+  // Pass 1: collapse identical consecutive single words (case-insensitive).
+  const out: string[] = [];
+  for (const w of tokens) {
+    if (out.length === 0 || out[out.length - 1].toLowerCase() !== w.toLowerCase()) {
+      out.push(w);
+    }
+  }
+  tokens = out;
+  // Pass 2: collapse identical consecutive n-grams (n = 2..4).
+  for (let n = 4; n >= 2; n--) {
+    const compacted: string[] = [];
+    let i = 0;
+    while (i < tokens.length) {
+      if (i + 2 * n <= tokens.length) {
+        const left = tokens.slice(i, i + n).join(" ").toLowerCase();
+        const right = tokens.slice(i + n, i + 2 * n).join(" ").toLowerCase();
+        if (left === right) {
+          compacted.push(...tokens.slice(i, i + n));
+          i += 2 * n;
+          continue;
+        }
+      }
+      compacted.push(tokens[i]);
+      i += 1;
+    }
+    tokens = compacted;
+  }
+  return tokens.join(" ");
+}
+
+function countWords(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).length : 0;
 }
 
 // ---------- SPEAKING (free monologue, transcript stored as answer) ----------
@@ -761,9 +1061,15 @@ function SpeakingQuestion({
   onChange: (v: string) => void;
 }) {
   const [recording, setRecording] = useState(false);
-  const [interim, setInterim] = useState("");
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const recRef = useRef<ISpeechRecognition | null>(null);
+  // finalRef holds the cleaned final transcript across `onresult` calls.
+  // The previous implementation reset finalStr from finalRef on every event
+  // AND iterated all results from index 0, which appended every already-final
+  // result a second time — hence the heavy duplication. We now use
+  // e.resultIndex (the index of the first result that changed in this batch)
+  // so each final result is consumed exactly once.
   const finalRef = useRef<string>("");
 
   // Reset captured text when the prompt changes (i.e. user navigated).
@@ -782,30 +1088,39 @@ function SpeakingQuestion({
     }
     const rec = new Ctor();
     rec.lang = localeCode;
+    // Interim results are NOT shown in the UI — they were the source of the
+    // duplication bug. We still set the flag to true so onresult fires often
+    // enough to feel responsive; only the final segments are appended.
     rec.interimResults = true;
     rec.continuous = true;
     rec.onresult = (e) => {
-      let interimStr = "";
-      let finalStr = finalRef.current;
-      for (let i = 0; i < e.results.length; i++) {
-        const r = e.results[i];
+      const evt = e as unknown as {
+        resultIndex?: number;
+        results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>;
+      };
+      const startIdx =
+        typeof evt.resultIndex === "number" ? evt.resultIndex : 0;
+      let appended = "";
+      for (let i = startIdx; i < evt.results.length; i++) {
+        const r = evt.results[i];
         if (r.isFinal) {
-          finalStr = (finalStr + " " + r[0].transcript).trim();
-        } else {
-          interimStr += r[0].transcript;
+          const t = r[0].transcript.trim();
+          if (t) appended += " " + t;
         }
       }
-      finalRef.current = finalStr;
-      onChange(finalStr);
-      setInterim(interimStr);
+      if (appended) {
+        const merged = (finalRef.current + appended).trim();
+        finalRef.current = merged;
+        onChange(merged);
+      }
     };
     rec.onerror = (e) => {
       setError(`Microphone error: ${e.error}`);
       setRecording(false);
     };
     rec.onend = () => {
+      // Triggered when the user stops, or when the recogniser ends naturally.
       setRecording(false);
-      setInterim("");
     };
     recRef.current = rec;
     try {
@@ -817,9 +1132,23 @@ function SpeakingQuestion({
   }
 
   function stop() {
+    if (!recording) return;
     recRef.current?.stop();
     setRecording(false);
+    // Brief "processing" state before showing the cleaned transcript so the
+    // user gets visible feedback that the recording was captured. Final
+    // dedupe runs as a safety net for any consecutive-repeat artefacts the
+    // recogniser may still emit at the very end of a session.
+    setProcessing(true);
+    setTimeout(() => {
+      const cleaned = dedupeTranscript(finalRef.current);
+      finalRef.current = cleaned;
+      onChange(cleaned);
+      setProcessing(false);
+    }, 600);
   }
+
+  const wordCount = countWords(value);
 
   return (
     <>
@@ -834,7 +1163,8 @@ function SpeakingQuestion({
           <button
             type="button"
             onClick={start}
-            className="px-6 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+            disabled={processing}
+            className="px-6 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50"
           >
             🎤 Start recording
           </button>
@@ -842,21 +1172,40 @@ function SpeakingQuestion({
           <button
             type="button"
             onClick={stop}
-            className="px-6 py-3 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors"
+            className="px-6 py-3 text-sm font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 transition-colors inline-flex items-center justify-center gap-2"
           >
-            ■ Stop recording
+            {/* Pulsing red mic indicator so the user always sees they are live */}
+            <span className="relative inline-flex items-center justify-center w-5 h-5">
+              <span className="absolute inline-flex w-full h-full rounded-full bg-white/70 opacity-75 animate-ping" />
+              <svg
+                className="relative w-4 h-4"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11z" />
+              </svg>
+            </span>
+            Stop recording
           </button>
         )}
         <div className="rounded-xl border border-border bg-navy/5 p-3 min-h-[6rem]">
-          <p className="text-xs text-navy/50 uppercase tracking-wider mb-1">
-            Transcript
-          </p>
-          <p className="text-navy text-sm whitespace-pre-wrap">
-            {value || (recording ? "Listening…" : "(nothing recorded yet)")}
-            {interim && (
-              <span className="text-navy/40 italic"> {interim}</span>
-            )}
-          </p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-navy/50 uppercase tracking-wider">
+              Transcript
+            </p>
+            <p className="text-[11px] text-navy/50 tabular-nums">
+              {wordCount} {wordCount === 1 ? "word" : "words"}
+            </p>
+          </div>
+          {processing ? (
+            <p className="text-navy/60 text-sm italic">
+              Processing your response…
+            </p>
+          ) : (
+            <p className="text-navy text-sm whitespace-pre-wrap">
+              {value || (recording ? "Listening…" : "(nothing recorded yet)")}
+            </p>
+          )}
         </div>
       </div>
       {error && <p className="mt-3 text-xs text-red-600">{error}</p>}

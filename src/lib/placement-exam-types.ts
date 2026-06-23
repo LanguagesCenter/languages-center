@@ -17,10 +17,20 @@ export const PER_ATTEMPT = {
   vocabulary: 5,
   dialogue: 5,
   listening: 10, // A1/A2 only
-  speaking: 10, // A1/A2 only
+  speaking: 4, // A1/A2 only — was 10, reduced so 45 min is comfortable
   roleplay: 3, // B1/B2/C1 only
-  writing: 10,
+  writing: 4, // overridden per level by writingCountForLevel below
 } as const;
+
+/** Speaking question count (A1/A2 only; B1/B2/C1 use roleplays instead). */
+export function speakingCountForLevel(_level: string): number {
+  return 4;
+}
+
+/** Writing question count: 4 for A1/A2, 5 for B1/B2/C1. */
+export function writingCountForLevel(level: string): number {
+  return levelUsesRoleplay(level) ? 5 : 4;
+}
 
 export const ROLEPLAY_LEVELS: ReadonlyArray<string> = ["B1", "B2", "C1"];
 

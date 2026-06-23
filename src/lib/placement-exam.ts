@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import {
   PER_ATTEMPT,
   levelUsesRoleplay,
+  speakingCountForLevel,
+  writingCountForLevel,
   type ExamCategory,
   type PlacementQuestion,
   type PlacementAttempt,
@@ -158,7 +160,7 @@ export async function buildExamPayload(
 
   const vocab = sampleN(byCat("vocabulary"), PER_ATTEMPT.vocabulary);
   const dialogue = sampleN(byCat("dialogue"), PER_ATTEMPT.dialogue);
-  const writing = sampleN(byCat("writing"), PER_ATTEMPT.writing);
+  const writing = sampleN(byCat("writing"), writingCountForLevel(level));
 
   const passage = sampleN(allPassages, 1)[0];
 
@@ -166,13 +168,13 @@ export async function buildExamPayload(
   let roleplays: RoleplayScenario[] = [];
 
   if (useRoleplay) {
-    // B1/B2/C1: reading + vocab + dialogue + 3 roleplays (separate phase) + writing.
+    // B1/B2/C1: reading + vocab + dialogue + 3 roleplays (separate phase) + 5 writing.
     roleplays = sampleN(allRoleplays, PER_ATTEMPT.roleplay);
     ordered = [...vocab, ...dialogue, ...writing];
   } else {
-    // A1/A2: reading + vocab + dialogue + 10 listening + 10 speaking + writing.
+    // A1/A2: reading + vocab + dialogue + 10 listening + 4 speaking + 4 writing.
     const listening = sampleN(byCat("listening"), PER_ATTEMPT.listening);
-    const speaking = sampleN(byCat("speaking"), PER_ATTEMPT.speaking);
+    const speaking = sampleN(byCat("speaking"), speakingCountForLevel(level));
     ordered = [...vocab, ...dialogue, ...listening, ...speaking, ...writing];
   }
 
