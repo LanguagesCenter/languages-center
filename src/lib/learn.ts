@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isLanguageVisible } from "@/lib/languages";
 
 export type LessonType =
   | "vocabulary"
@@ -212,7 +213,7 @@ export async function getLanguagesWithProgress(): Promise<LanguageProgress[]> {
   // Join explicitly: languages <- courses <- lessons. Each child table is
   // pulled with pagination because Supabase's server-side row cap (default
   // 1000 via db.max_rows) overrides client-side .limit().
-  const [languages, courses, lessons] = await Promise.all([
+  const [allLanguages, courses, lessons] = await Promise.all([
     fetchAllPaginated<DbLanguage>(supabase, "languages", "*"),
     fetchAllPaginated<{ id: number; language_id: number }>(
       supabase,
@@ -226,8 +227,11 @@ export async function getLanguagesWithProgress(): Promise<LanguageProgress[]> {
     ),
   ]);
 
+  const languages = allLanguages.filter((l) => isLanguageVisible(l.code));
+
   console.log(
-    "[getLanguagesWithProgress] fetched %d languages, %d courses, %d lessons",
+    "[getLanguagesWithProgress] fetched %d languages (%d visible), %d courses, %d lessons",
+    allLanguages.length,
     languages.length,
     courses.length,
     lessons.length,
@@ -364,7 +368,8 @@ export async function getAllLanguages(): Promise<DbLanguage[]> {
     .from("languages")
     .select("*")
     .order("id");
-  return (data as DbLanguage[]) ?? [];
+  const rows = (data as DbLanguage[]) ?? [];
+  return rows.filter((l) => isLanguageVisible(l.code));
 }
 
 /**
@@ -517,7 +522,7 @@ export interface LanguageWithLessonCount extends DbLanguage {
 // 3000+ lessons across 26 languages).
 export async function getLanguagesWithLessonCounts(): Promise<LanguageWithLessonCount[]> {
   const supabase = await createClient();
-  const [langs, courses, lessons] = await Promise.all([
+  const [allLangs, courses, lessons] = await Promise.all([
     fetchAllPaginated<DbLanguage>(supabase, "languages", "*"),
     fetchAllPaginated<{ id: number; language_id: number }>(
       supabase,
@@ -531,8 +536,11 @@ export async function getLanguagesWithLessonCounts(): Promise<LanguageWithLesson
     ),
   ]);
 
+  const langs = allLangs.filter((l) => isLanguageVisible(l.code));
+
   console.log(
-    "[getLanguagesWithLessonCounts] fetched %d languages, %d courses, %d lessons",
+    "[getLanguagesWithLessonCounts] fetched %d languages (%d visible), %d courses, %d lessons",
+    allLangs.length,
     langs.length,
     courses.length,
     lessons.length,

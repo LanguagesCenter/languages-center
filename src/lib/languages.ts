@@ -36,3 +36,18 @@ export const languages: Language[] = [
   { name: "Malay", slug: "malay", countryCode: "my", grammar: "Easy", pronunciation: "Easy" },
   { name: "Indonesian", slug: "indonesian", countryCode: "id", grammar: "Easy", pronunciation: "Easy" },
 ];
+
+// Temporary visibility gate. UI surfaces (homepage grid, /learn page,
+// dashboard, navbar dropdown) filter their language lists through
+// `isLanguageVisible`, so anything not in this allowlist is hidden without
+// touching DB rows or curriculum content. Set to `null` to show every
+// language again.
+export const VISIBLE_LANGUAGE_SLUGS: readonly string[] | null = [
+  "spanish",
+  "french",
+];
+
+export function isLanguageVisible(slug: string): boolean {
+  if (VISIBLE_LANGUAGE_SLUGS === null) return true;
+  return VISIBLE_LANGUAGE_SLUGS.includes(slug);
+}

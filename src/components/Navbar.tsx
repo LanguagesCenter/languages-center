@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { FLAG_CODES } from "@/lib/flag-codes";
+import { isLanguageVisible } from "@/lib/languages";
 import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName, UI_LANG_NAMES } from "@/lib/i18n";
 import { sortByPopularity } from "@/lib/language-proximity";
@@ -50,11 +51,13 @@ export default function Navbar() {
       .order("id")
       .then(({ data }) => {
         if (!data) return;
-        const mapped = (data as { name: string; code: string }[]).map((row) => ({
-          name: row.name,
-          slug: row.code,
-          countryCode: FLAG_CODES[row.code] ?? row.code,
-        }));
+        const mapped = (data as { name: string; code: string }[])
+          .filter((row) => isLanguageVisible(row.code))
+          .map((row) => ({
+            name: row.name,
+            slug: row.code,
+            countryCode: FLAG_CODES[row.code] ?? row.code,
+          }));
         // Site-wide popularity order so the dropdown matches the
         // homepage and /learn page lists.
         setLanguages(sortByPopularity(mapped));
