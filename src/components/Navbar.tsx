@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { isLanguageVisible } from "@/lib/languages";
+import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName, UI_LANG_NAMES } from "@/lib/i18n";
 import { sortByPopularity } from "@/lib/language-proximity";
@@ -153,24 +154,40 @@ export default function Navbar() {
                       (l) => l.slug !== (UI_LANG_NAMES[uiLang]?.slug ?? null),
                     )
                     .map((lang) => (
-                    <Link
-                      key={lang.slug}
-                      href={`/languages/${lang.slug}`}
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
-                    >
-                      <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
-                        <Image
-                          src={`https://flagcdn.com/w40/${lang.countryCode}.png`}
-                          alt={`${lang.name} flag`}
-                          fill
-                          sizes="24px"
-                          className="object-cover"
-                          unoptimized
-                        />
-                      </span>
-                      {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
-                    </Link>
+                    <div key={lang.slug}>
+                      <Link
+                        href={`/languages/${lang.slug}`}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
+                      >
+                        <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                          <Image
+                            src={`https://flagcdn.com/w40/${lang.countryCode}.png`}
+                            alt={`${lang.name} flag`}
+                            fill
+                            sizes="24px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </span>
+                        {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
+                      </Link>
+                      {/* Sub-link to the travel phrasebook for languages
+                          that have one. Sits under the parent row with a
+                          small indent so it reads as a child action. */}
+                      {hasTravelPhrasebook(lang.slug) && (
+                        <Link
+                          href={`/languages/${lang.slug}/travel-guide`}
+                          onClick={() => setOpen(false)}
+                          className="flex items-center gap-2 pl-14 pr-4 pb-2 -mt-1 text-xs font-medium text-teal-dark/80 hover:text-teal-dark transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                          Travel phrases
+                        </Link>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}

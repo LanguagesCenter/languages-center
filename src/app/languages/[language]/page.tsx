@@ -24,6 +24,7 @@ import {
   type DbVideo,
 } from "@/lib/learn";
 import { getServerT } from "@/lib/i18n-server";
+import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 
 export function generateStaticParams() {
   return getAllOverviewSlugs().map((language) => ({ language }));
@@ -390,6 +391,37 @@ export default async function LanguageOverviewPage(
             <StartLearningCTA overview={overview} isLoggedIn={!!user} />
           </div>
         </section>
+
+        {/* Travel phrases quick reference — only shown for languages that
+            have a phrasebook available (currently Spanish and French). */}
+        {hasTravelPhrasebook(slug) && (
+          <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+            <div className="rounded-3xl border border-teal/30 bg-gradient-to-br from-teal-light to-white p-6 sm:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 shadow-sm">
+              <div className="max-w-xl">
+                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-white text-teal-dark ring-1 ring-teal/30 mb-3">
+                  Quick reference
+                </span>
+                <h2 className="text-2xl font-bold text-navy mb-2">
+                  {overview.name} travel phrases
+                </h2>
+                <p className="text-navy/70 leading-relaxed text-sm sm:text-base">
+                  65 essential phrases for greetings, directions, food and
+                  emergencies — with pronunciation, native-accent audio and a
+                  built-in flashcard trainer.
+                </p>
+              </div>
+              <Link
+                href={`/languages/${slug}/travel-guide`}
+                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors self-start md:self-center whitespace-nowrap shadow"
+              >
+                Open travel guide
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          </section>
+        )}
 
         {/* Articles teaser */}
         <section className="bg-white border-y border-border">
