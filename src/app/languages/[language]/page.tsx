@@ -310,6 +310,58 @@ export default async function LanguageOverviewPage(
           </div>
         </section>
 
+        {/* Travel Phrase Guide — sits directly under the hero so it can't be
+            missed. Warm amber travel-themed palette makes it visually
+            distinct from the teal/white lesson-card system below. Only
+            rendered for languages that have a phrasebook (Spanish/French
+            today). */}
+        {hasTravelPhrasebook(slug) && (
+          <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
+            <Link
+              href={`/languages/${slug}/travel-guide`}
+              className="group relative block overflow-hidden rounded-3xl border-2 border-amber-300/70 bg-gradient-to-br from-amber-100 via-orange-50 to-amber-50 p-6 sm:p-8 shadow-md hover:shadow-xl hover:border-amber-400 transition-all"
+            >
+              {/* Decorative pattern: soft repeating stamps in the background
+                  to reinforce the travel motif without overwhelming text. */}
+              <div className="pointer-events-none absolute -top-8 -right-8 opacity-10">
+                <svg className="w-56 h-56 text-amber-700" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
+                </svg>
+              </div>
+              <div className="relative flex flex-col md:flex-row md:items-center gap-6">
+                {/* Suitcase icon in a filled circle — the primary visual
+                    signal that this section is a travel tool, not a lesson. */}
+                <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-lg ring-4 ring-white/60">
+                  <svg className="w-9 h-9 sm:w-11 sm:h-11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+                    <rect x="3" y="7" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 11v6M16 11v6M12 11v6" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] bg-amber-600 text-white shadow-sm mb-2">
+                    <span aria-hidden>✈</span>
+                    Bonus tool
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-amber-950 tracking-tight">
+                    Travel Phrase Guide
+                  </h2>
+                  <p className="text-sm sm:text-base text-amber-900/80 mt-1.5 leading-relaxed">
+                    65 essential phrases for your next trip — with
+                    pronunciation and flashcards.
+                  </p>
+                </div>
+                <span className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm sm:text-base font-bold text-white bg-amber-600 rounded-full shadow-md group-hover:bg-amber-700 group-hover:shadow-lg transition-all self-start md:self-center whitespace-nowrap">
+                  Open Guide
+                  <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </div>
+            </Link>
+          </section>
+        )}
+
         {/* About */}
         <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
@@ -391,37 +443,6 @@ export default async function LanguageOverviewPage(
             <StartLearningCTA overview={overview} isLoggedIn={!!user} />
           </div>
         </section>
-
-        {/* Travel phrases quick reference — only shown for languages that
-            have a phrasebook available (currently Spanish and French). */}
-        {hasTravelPhrasebook(slug) && (
-          <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-            <div className="rounded-3xl border border-teal/30 bg-gradient-to-br from-teal-light to-white p-6 sm:p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6 shadow-sm">
-              <div className="max-w-xl">
-                <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-white text-teal-dark ring-1 ring-teal/30 mb-3">
-                  Quick reference
-                </span>
-                <h2 className="text-2xl font-bold text-navy mb-2">
-                  {overview.name} travel phrases
-                </h2>
-                <p className="text-navy/70 leading-relaxed text-sm sm:text-base">
-                  65 essential phrases for greetings, directions, food and
-                  emergencies — with pronunciation, native-accent audio and a
-                  built-in flashcard trainer.
-                </p>
-              </div>
-              <Link
-                href={`/languages/${slug}/travel-guide`}
-                className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors self-start md:self-center whitespace-nowrap shadow"
-              >
-                Open travel guide
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          </section>
-        )}
 
         {/* Articles teaser */}
         <section className="bg-white border-y border-border">

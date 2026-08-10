@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName } from "@/lib/i18n";
 import type { Language, Difficulty } from "@/lib/languages";
+import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 
 function DifficultyBadge({ level }: { level: Difficulty }) {
   const { t } = useI18n();
@@ -55,13 +56,29 @@ export default function LanguageCard({
     // Card body links to the overview page. The Start/Continue CTA below
     // is its own link that goes straight to the learning route. Both can't
     // be nested as <Link> inside <Link>, so the outer wrapper is a div.
+    // `relative` is set so the optional Travel Guide corner tag can be
+    // positioned inside the card.
     <div
       id={language.slug}
       // No translate/scale on touch devices: it feels janky when the press
       // animation overlaps card snap on small viewports. Hover-only motion
       // is restored for sm+ where a real cursor exists.
-      className="group flex flex-col bg-white border border-border rounded-2xl p-5 sm:p-6 sm:hover:shadow-lg sm:hover:border-teal/40 sm:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 transition-all duration-200"
+      className="group relative flex flex-col bg-white border border-border rounded-2xl p-5 sm:p-6 sm:hover:shadow-lg sm:hover:border-teal/40 sm:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 transition-all duration-200"
     >
+      {hasTravelPhrasebook(language.slug) && (
+        // Small corner tag that jumps directly to the travel phrasebook.
+        // Sits above the outer card link with z-10 so its click target is
+        // isolated from the card's Overview / Start-learning links.
+        <Link
+          href={`/languages/${language.slug}/travel-guide`}
+          onClick={(e) => e.stopPropagation()}
+          className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-900 text-[10px] sm:text-xs font-bold px-2.5 py-1 border border-amber-300 shadow-sm hover:bg-amber-200 hover:border-amber-400 active:scale-95 transition-colors"
+          aria-label={`Open ${localizedName} travel phrase guide`}
+        >
+          <span aria-hidden>✈</span>
+          Travel Guide
+        </Link>
+      )}
       <Link
         href={`/languages/${language.slug}`}
         aria-label={`Learn more about ${localizedName}`}

@@ -172,19 +172,18 @@ export default function Navbar() {
                         </span>
                         {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
                       </Link>
-                      {/* Sub-link to the travel phrasebook for languages
-                          that have one. Sits under the parent row with a
-                          small indent so it reads as a child action. */}
+                      {/* Bonus sub-link to the travel phrasebook. Indented
+                          under the parent language row and rendered in an
+                          italic, muted amber tone so it reads as a
+                          companion tool, not another language entry. */}
                       {hasTravelPhrasebook(lang.slug) && (
                         <Link
                           href={`/languages/${lang.slug}/travel-guide`}
                           onClick={() => setOpen(false)}
-                          className="flex items-center gap-2 pl-14 pr-4 pb-2 -mt-1 text-xs font-medium text-teal-dark/80 hover:text-teal-dark transition-colors"
+                          className="flex items-center gap-2 pl-14 pr-4 pb-2 -mt-1 text-xs italic font-medium text-amber-700/90 hover:text-amber-800 hover:bg-amber-50/60 transition-colors"
                         >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
-                          Travel phrases
+                          <span aria-hidden className="text-sm not-italic">✈</span>
+                          Travel Phrases
                         </Link>
                       )}
                     </div>

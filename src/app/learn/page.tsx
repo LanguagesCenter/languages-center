@@ -14,6 +14,7 @@ import { FLAG_CODES } from "@/lib/flag-codes";
 import { getServerLang, getServerT } from "@/lib/i18n-server";
 import { getLocalizedLanguageName } from "@/lib/i18n";
 import { sortByPopularity } from "@/lib/language-proximity";
+import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 
 export const metadata = {
   title: "Learn — Languages Center",
@@ -175,8 +176,58 @@ export default async function LearnPage() {
               );
             }
 
+            // Banner shown when at least one of the user's started
+            // languages has a travel phrasebook (currently Spanish/French).
+            // Sits above the course-card grid so it's obvious this is a
+            // bonus tool alongside the course, not part of the lesson flow.
+            const travelLanguages = started
+              .map((e) => ({
+                slug: e.language.code,
+                name: getLocalizedLanguageName(
+                  e.language.code,
+                  uiLang,
+                  e.language.name,
+                ),
+              }))
+              .filter((l) => hasTravelPhrasebook(l.slug));
+
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              <>
+                {travelLanguages.length > 0 && (
+                  <div className="mb-6 rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
+                    <div className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow ring-2 ring-white">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+                        <rect x="3" y="7" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 11v6M16 11v6M12 11v6" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base font-semibold text-amber-950">
+                        Planning a trip? Check out our travel phrase guide
+                      </p>
+                      <p className="text-xs sm:text-sm text-amber-900/70 mt-0.5">
+                        65 essential phrases with pronunciation and flashcards — a bonus tool alongside your course.
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      {travelLanguages.map((l) => (
+                        <Link
+                          key={l.slug}
+                          href={`/languages/${l.slug}/travel-guide`}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-amber-600 rounded-full shadow hover:bg-amber-700 transition-colors whitespace-nowrap"
+                        >
+                          <span aria-hidden>✈</span>
+                          {l.name} Guide
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                          </svg>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {sortByPopularity(
                   started.map((entry) => ({
                     ...entry,
@@ -204,7 +255,8 @@ export default async function LearnPage() {
                     />
                   );
                 })}
-              </div>
+                </div>
+              </>
             );
           })()}
         </section>
