@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getLanguagesWithProgress,
   getUserProfile,
+  getLessonsCompletedThisWeek,
   type LanguageProgress,
 } from "@/lib/learn";
 import { FLAG_CODES } from "@/lib/flag-codes";
@@ -102,20 +103,36 @@ export default async function LearnPage() {
 
   const t = await getServerT();
   const uiLang = await getServerLang();
-  const [progress, profile] = await Promise.all([
+  const [progress, profile, weeklyCount] = await Promise.all([
     getLanguagesWithProgress(),
     getUserProfile(),
+    getLessonsCompletedThisWeek(),
   ]);
 
   const totalXp = profile?.total_xp ?? 0;
   const currentStreak = profile?.current_streak ?? 0;
+  const longestStreak = profile?.longest_streak ?? 0;
+
+  // Split the visible catalogue into "already started" and "explore".
+  // Started = at least one completed lesson OR earned XP; anything else
+  // sits in the discovery row below.
+  const started = progress.filter(
+    (entry) =>
+      entry.completedLessons > 0 ||
+      (entry.stats?.total_xp ?? 0) > 0,
+  );
+  const startedCodes = new Set(started.map((e) => e.language.code));
+  const explore = progress.filter(
+    (entry) =>
+      !startedCodes.has(entry.language.code) && entry.totalLessons > 0,
+  );
 
   return (
     <>
       <Navbar />
       <main className="flex-1">
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 lg:pt-12 pb-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 lg:pt-12 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div>
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-navy tracking-tight">
                 {t("learn.keepLearning")}
@@ -124,62 +141,81 @@ export default async function LearnPage() {
                 {t("learn.pickLang")}
               </p>
             </div>
-            <div className="flex items-stretch sm:items-center gap-3 flex-wrap">
-              <Link
-                href="/profile"
-                className="inline-flex items-center justify-center gap-2 flex-1 sm:flex-none px-4 py-2.5 text-sm font-semibold text-teal-dark bg-teal-light rounded-full border border-teal/30 hover:bg-teal hover:text-white hover:border-teal transition-colors"
-              >
-                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-                <span className="hidden sm:inline">View Profile &amp; Certifications</span>
-                <span className="sm:hidden">Profile</span>
-              </Link>
-              <div className="flex items-center gap-4 sm:gap-6 bg-white border border-border rounded-2xl px-4 sm:px-5 py-3 sm:py-4 shadow-sm flex-1 sm:flex-none justify-center">
+            <Link
+              href="/profile"
+              className="inline-flex items-center justify-center gap-2 self-start px-4 py-2.5 text-sm font-semibold text-teal-dark bg-teal-light rounded-full border border-teal/30 hover:bg-teal hover:text-white hover:border-teal transition-colors"
+            >
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+              <span className="hidden sm:inline">View Profile &amp; Certifications</span>
+              <span className="sm:hidden">Profile</span>
+            </Link>
+          </div>
+
+          {/* Progress summary — three at-a-glance stats above the language
+              grid. Grid layout stays consistent from mobile up so the
+              summary reads the same on every device. */}
+          <div className="grid grid-cols-3 gap-3 sm:gap-4">
+            <div className="bg-white border border-border rounded-2xl px-3 sm:px-5 py-4 sm:py-5 shadow-sm">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <StreakFlame streak={currentStreak} size="md" />
-                <div className="h-10 w-px bg-border" />
-                <div className="flex flex-col leading-tight">
-                  <span className="text-lg sm:text-2xl font-bold text-navy">
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-2xl font-bold text-navy leading-tight">
+                    {currentStreak}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-navy/50 uppercase tracking-wider truncate">
+                    Day streak
+                  </p>
+                </div>
+              </div>
+              {longestStreak > currentStreak && (
+                <p className="hidden sm:block text-[11px] text-navy/40 mt-2">
+                  Longest: {longestStreak}
+                </p>
+              )}
+            </div>
+            <div className="bg-white border border-border rounded-2xl px-3 sm:px-5 py-4 sm:py-5 shadow-sm">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-teal-light text-teal-dark flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.9 5.8 21.3l2.4-7.4L2 9.4h7.6z" />
+                  </svg>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-2xl font-bold text-navy leading-tight tabular-nums">
                     {totalXp.toLocaleString()}
-                  </span>
-                  <span className="text-[11px] sm:text-xs text-navy/50">{t("learn.totalXp")}</span>
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-navy/50 uppercase tracking-wider truncate">
+                    Total XP
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-white border border-border rounded-2xl px-3 sm:px-5 py-4 sm:py-5 shadow-sm">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-peach-light text-amber-700 flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </span>
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-2xl font-bold text-navy leading-tight tabular-nums">
+                    {weeklyCount}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-navy/50 uppercase tracking-wider truncate">
+                    This week
+                  </p>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          {/* Only show languages the user has actually started. Anything
-              else lives on the homepage where the user can pick one to
-              begin. */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+          {/* Travel-guide banner sits above the started grid whenever at
+              least one Spanish/French course is active. */}
           {(() => {
-            const started = progress.filter(
-              (entry) =>
-                entry.completedLessons > 0 ||
-                (entry.stats?.total_xp ?? 0) > 0,
-            );
-
-            if (started.length === 0) {
-              return (
-                <div className="text-center py-16 border border-dashed border-border rounded-2xl bg-white">
-                  <p className="text-sm text-navy/60 mb-4">
-                    {t("learn.noStartedYet")}
-                  </p>
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors"
-                  >
-                    {t("learn.browseLanguages")}
-                  </Link>
-                </div>
-              );
-            }
-
-            // Banner shown when at least one of the user's started
-            // languages has a travel phrasebook (currently Spanish/French).
-            // Sits above the course-card grid so it's obvious this is a
-            // bonus tool alongside the course, not part of the lesson flow.
             const travelLanguages = started
               .map((e) => ({
                 slug: e.language.code,
@@ -190,76 +226,148 @@ export default async function LearnPage() {
                 ),
               }))
               .filter((l) => hasTravelPhrasebook(l.slug));
-
+            if (travelLanguages.length === 0) return null;
             return (
-              <>
-                {travelLanguages.length > 0 && (
-                  <div className="mb-6 rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
-                    <div className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow ring-2 ring-white">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
-                        <rect x="3" y="7" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 11v6M16 11v6M12 11v6" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm sm:text-base font-semibold text-amber-950">
-                        Planning a trip? Check out our travel phrase guide
-                      </p>
-                      <p className="text-xs sm:text-sm text-amber-900/70 mt-0.5">
-                        65 essential phrases with pronunciation and flashcards — a bonus tool alongside your course.
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 sm:justify-end">
-                      {travelLanguages.map((l) => (
-                        <Link
-                          key={l.slug}
-                          href={`/languages/${l.slug}/travel-guide`}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-amber-600 rounded-full shadow hover:bg-amber-700 transition-colors whitespace-nowrap"
-                        >
-                          <span aria-hidden>✈</span>
-                          {l.name} Guide
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {sortByPopularity(
-                  started.map((entry) => ({
-                    ...entry,
-                    slug: entry.language.code,
-                  })),
-                ).map((entry) => {
-                  const localizedName = getLocalizedLanguageName(
-                    entry.language.code,
-                    uiLang,
-                    entry.language.name,
-                  );
-                  return (
-                    <LanguageProgressCard
-                      key={entry.language.id}
-                      entry={entry}
-                      localizedName={localizedName}
-                      notStartedLabel={t("learn.notStarted")}
-                      lessonsLabel={t("learn.lessons")}
-                      startLabel={t("card.startLearning", {
-                        language: localizedName,
-                      })}
-                      continueLabel={t("card.continueLearning", {
-                        language: localizedName,
-                      })}
-                    />
-                  );
-                })}
+              <div className="mb-6 rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
+                <div className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow ring-2 ring-white">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+                    <rect x="3" y="7" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 11v6M16 11v6M12 11v6" />
+                  </svg>
                 </div>
-              </>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm sm:text-base font-semibold text-amber-950">
+                    Planning a trip? Check out our travel phrase guide
+                  </p>
+                  <p className="text-xs sm:text-sm text-amber-900/70 mt-0.5">
+                    65 essential phrases with pronunciation and flashcards — a bonus tool alongside your course.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 sm:justify-end">
+                  {travelLanguages.map((l) => (
+                    <Link
+                      key={l.slug}
+                      href={`/languages/${l.slug}/travel-guide`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-amber-600 rounded-full shadow hover:bg-amber-700 transition-colors whitespace-nowrap"
+                    >
+                      <span aria-hidden>✈</span>
+                      {l.name} Guide
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  ))}
+                </div>
+              </div>
             );
           })()}
+
+          {/* Active language grid. Empty state pushes users to the homepage
+              to pick their first language. */}
+          {started.length === 0 ? (
+            <div className="text-center py-16 border border-dashed border-border rounded-2xl bg-white">
+              <p className="text-sm text-navy/60 mb-4">
+                {t("learn.noStartedYet")}
+              </p>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors"
+              >
+                {t("learn.browseLanguages")}
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {sortByPopularity(
+                started.map((entry) => ({
+                  ...entry,
+                  slug: entry.language.code,
+                })),
+              ).map((entry) => {
+                const localizedName = getLocalizedLanguageName(
+                  entry.language.code,
+                  uiLang,
+                  entry.language.name,
+                );
+                return (
+                  <LanguageProgressCard
+                    key={entry.language.id}
+                    entry={entry}
+                    localizedName={localizedName}
+                    notStartedLabel={t("learn.notStarted")}
+                    lessonsLabel={t("learn.lessons")}
+                    startLabel={t("card.startLearning", {
+                      language: localizedName,
+                    })}
+                    continueLabel={t("card.continueLearning", {
+                      language: localizedName,
+                    })}
+                  />
+                );
+              })}
+            </div>
+          )}
         </section>
+
+        {/* Explore more languages — smaller cards for languages the user
+            hasn't started yet. Skipped entirely once the user has already
+            begun everything on offer. */}
+        {explore.length > 0 && (
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+            <div className="flex items-baseline justify-between mb-4">
+              <h2 className="text-lg sm:text-xl font-bold text-navy tracking-tight">
+                Explore more languages
+              </h2>
+              <span className="text-xs text-navy/40 tabular-nums">
+                {explore.length} available
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+              {sortByPopularity(
+                explore.map((entry) => ({
+                  ...entry,
+                  slug: entry.language.code,
+                })),
+              ).map((entry) => {
+                const localizedName = getLocalizedLanguageName(
+                  entry.language.code,
+                  uiLang,
+                  entry.language.name,
+                );
+                const flag = FLAG_CODES[entry.language.code] ?? entry.language.code;
+                return (
+                  <Link
+                    key={entry.language.id}
+                    href={`/learn/${entry.language.code}`}
+                    className="group flex items-center gap-3 bg-white border border-border rounded-xl p-3 sm:p-4 hover:border-teal/40 hover:shadow-md transition-all"
+                  >
+                    <Image
+                      src={`https://flagcdn.com/w80/${flag}.png`}
+                      alt={`${localizedName} flag`}
+                      width={36}
+                      height={27}
+                      className="rounded-sm object-cover shadow-sm ring-1 ring-black/5 shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm sm:text-base font-semibold text-navy truncate group-hover:text-teal transition-colors">
+                        {localizedName}
+                      </p>
+                      <p className="text-[11px] sm:text-xs text-navy/40">
+                        {entry.totalLessons} {t("learn.lessons")}
+                      </p>
+                    </div>
+                    <span className="text-teal opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </main>
       <Footer />
     </>

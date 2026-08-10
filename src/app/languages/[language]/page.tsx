@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PremiumLockedOverlay from "@/components/PremiumLockedOverlay";
@@ -17,6 +17,7 @@ import {
   getPodcastsForLanguage,
   getVideosForLanguage,
   isCurrentUserPremium,
+  userHasProgressInLanguage,
   CEFR_LABEL,
   CEFR_LEVELS,
   type CEFRLevel,
@@ -247,6 +248,15 @@ export default async function LanguageOverviewPage(
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Smart routing: a signed-in learner who has completed anything in this
+  // language should land directly on the course view — the marketing
+  // overview is only useful for discovery. Anonymous visitors and users
+  // with zero completed lessons still see this page. Check runs before any
+  // heavier DB work so redirects are cheap.
+  if (user && (await userHasProgressInLanguage(slug))) {
+    redirect(`/learn/${slug}`);
+  }
 
   // Fetch DB-backed content (returns empty arrays if not yet seeded)
   const dbLanguage = await getLanguageBySlug(slug);

@@ -464,6 +464,51 @@ export async function getStartedLanguageOrder(): Promise<
     .sort((a, b) => a.firstActivity.localeCompare(b.firstActivity));
 }
 
+/**
+ * Fast targeted check for "has this user completed at least one lesson in
+ * the given language?" Used by the language overview route to decide
+ * whether to skip straight to the course. Returns false for anonymous
+ * visitors or unknown/empty-curriculum slugs.
+ */
+export async function userHasProgressInLanguage(
+  languageSlug: string,
+): Promise<boolean> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: lang } = await supabase
+    .from("languages")
+    .select("id")
+    .eq("code", languageSlug)
+    .maybeSingle();
+  if (!lang) return false;
+
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("id")
+    .eq("language_id", lang.id);
+  const courseIds = (courses ?? []).map((c: { id: number }) => c.id);
+  if (courseIds.length === 0) return false;
+
+  const { data: lessons } = await supabase
+    .from("lessons")
+    .select("id")
+    .in("course_id", courseIds);
+  const lessonIds = (lessons ?? []).map((l: { id: number }) => l.id);
+  if (lessonIds.length === 0) return false;
+
+  const { count } = await supabase
+    .from("user_progress")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("completed", true)
+    .in("lesson_id", lessonIds);
+  return (count ?? 0) > 0;
+}
+
 export async function getLanguagesUserHasStarted(): Promise<Set<string>> {
   const supabase = await createClient();
   const {
