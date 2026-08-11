@@ -879,6 +879,55 @@ export async function getFirstIncompleteLessonId(
   return null;
 }
 
+/**
+ * Most recently completed lesson row for the given language (or null if
+ * the user hasn't finished anything yet). Used by the personalized
+ * homepage to show "Last lesson: <title>" on each active-language card.
+ */
+export async function getLastCompletedLessonInLanguage(
+  languageId: number,
+): Promise<DbLesson | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: courses } = await supabase
+    .from("courses")
+    .select("id")
+    .eq("language_id", languageId);
+  const courseIds = (courses ?? []).map((c: { id: number }) => c.id);
+  if (courseIds.length === 0) return null;
+
+  const { data: lessons } = await supabase
+    .from("lessons")
+    .select("id")
+    .in("course_id", courseIds);
+  const lessonIds = (lessons ?? []).map((l: { id: number }) => l.id);
+  if (lessonIds.length === 0) return null;
+
+  const { data: progress } = await supabase
+    .from("user_progress")
+    .select("lesson_id, completed_at")
+    .eq("user_id", user.id)
+    .eq("completed", true)
+    .in("lesson_id", lessonIds)
+    .order("completed_at", { ascending: false })
+    .limit(1);
+  const top = (progress ?? [])[0] as
+    | { lesson_id: number; completed_at: string | null }
+    | undefined;
+  if (!top) return null;
+
+  const { data: lesson } = await supabase
+    .from("lessons")
+    .select("*")
+    .eq("id", top.lesson_id)
+    .maybeSingle();
+  return (lesson as DbLesson) ?? null;
+}
+
 export function getHighestReachedLevel(tree: CEFRLevelGroup[]): CEFRLevel {
   let highest: CEFRLevel = "A1";
   for (const group of tree) {
