@@ -127,10 +127,15 @@ export default async function Home() {
       return av - bv;
     });
 
+    // Derive the "already started" set from the same criterion used for
+    // `active` (completed lessons OR earned XP). Using getStartedLanguageOrder
+    // — which is completions-only — would let a language with XP but no
+    // completions leak into Explore, which is exactly the bug the user hit.
+    const activeCodes = new Set(active.map((a) => a.slug));
     const explore: ExploreLanguageEntry[] = progress
       .filter(
         (p) =>
-          !startedSet.has(p.language.code) && p.totalLessons > 0,
+          !activeCodes.has(p.language.code) && p.totalLessons > 0,
       )
       .map((p) => ({
         slug: p.language.code,

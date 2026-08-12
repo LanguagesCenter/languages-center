@@ -204,7 +204,7 @@ export default async function LearnPage() {
                     {weeklyCount}
                   </p>
                   <p className="text-[10px] sm:text-xs text-navy/50 uppercase tracking-wider truncate">
-                    This week
+                    Lessons this week
                   </p>
                 </div>
               </div>
@@ -311,61 +311,76 @@ export default async function LearnPage() {
         </section>
 
         {/* Explore more languages — smaller cards for languages the user
-            hasn't started yet. Skipped entirely once the user has already
-            begun everything on offer. */}
-        {explore.length > 0 && (
+            hasn't started. Only rendered once the learner has started
+            something; the "studying everything" fallback replaces the
+            grid when the visible catalogue is exhausted. */}
+        {started.length > 0 && (
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
             <div className="flex items-baseline justify-between mb-4">
               <h2 className="text-lg sm:text-xl font-bold text-navy tracking-tight">
                 Explore more languages
               </h2>
-              <span className="text-xs text-navy/40 tabular-nums">
-                {explore.length} available
-              </span>
+              {explore.length > 0 && (
+                <span className="text-xs text-navy/40 tabular-nums">
+                  {explore.length} available
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
-              {sortByPopularity(
-                explore.map((entry) => ({
-                  ...entry,
-                  slug: entry.language.code,
-                })),
-              ).map((entry) => {
-                const localizedName = getLocalizedLanguageName(
-                  entry.language.code,
-                  uiLang,
-                  entry.language.name,
-                );
-                const flag = FLAG_CODES[entry.language.code] ?? entry.language.code;
-                return (
-                  <Link
-                    key={entry.language.id}
-                    href={`/learn/${entry.language.code}`}
-                    className="group flex items-center gap-3 bg-white border border-border rounded-xl p-3 sm:p-4 hover:border-teal/40 hover:shadow-md transition-all"
-                  >
-                    <Image
-                      src={`https://flagcdn.com/w80/${flag}.png`}
-                      alt={`${localizedName} flag`}
-                      width={36}
-                      height={27}
-                      className="rounded-sm object-cover shadow-sm ring-1 ring-black/5 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm sm:text-base font-semibold text-navy truncate group-hover:text-teal transition-colors">
-                        {localizedName}
-                      </p>
-                      <p className="text-[11px] sm:text-xs text-navy/40">
-                        {entry.totalLessons} {t("learn.lessons")}
-                      </p>
-                    </div>
-                    <span className="text-teal opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
+            {explore.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border bg-white/60 p-6 sm:p-8 text-center">
+                <p className="text-2xl sm:text-3xl mb-2" aria-hidden>🌍</p>
+                <p className="text-sm sm:text-base font-semibold text-navy">
+                  You&rsquo;re studying every available language.
+                </p>
+                <p className="text-xs sm:text-sm text-navy/60 mt-1">
+                  More coming soon — check back for new courses.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+                {sortByPopularity(
+                  explore.map((entry) => ({
+                    ...entry,
+                    slug: entry.language.code,
+                  })),
+                ).map((entry) => {
+                  const localizedName = getLocalizedLanguageName(
+                    entry.language.code,
+                    uiLang,
+                    entry.language.name,
+                  );
+                  const flag = FLAG_CODES[entry.language.code] ?? entry.language.code;
+                  return (
+                    <Link
+                      key={entry.language.id}
+                      href={`/learn/${entry.language.code}`}
+                      className="group flex items-center gap-3 bg-white border border-border rounded-xl p-3 sm:p-4 hover:border-teal/40 hover:shadow-md transition-all"
+                    >
+                      <Image
+                        src={`https://flagcdn.com/w80/${flag}.png`}
+                        alt={`${localizedName} flag`}
+                        width={36}
+                        height={27}
+                        className="rounded-sm object-cover shadow-sm ring-1 ring-black/5 shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm sm:text-base font-semibold text-navy truncate group-hover:text-teal transition-colors">
+                          {localizedName}
+                        </p>
+                        <p className="text-[11px] sm:text-xs text-navy/40">
+                          {entry.totalLessons} {t("learn.lessons")}
+                        </p>
+                      </div>
+                      <span className="text-teal opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
       </main>

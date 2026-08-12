@@ -150,7 +150,7 @@ export default function HomePersonalized({
                   {weeklyCount}
                 </p>
                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-navy/50">
-                  This week
+                  Lessons this week
                 </p>
               </div>
             </div>
@@ -158,10 +158,10 @@ export default function HomePersonalized({
           <div className="bg-gradient-to-br from-teal to-teal-dark text-white rounded-2xl px-4 py-4 sm:py-5 shadow-sm">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[10px] sm:text-xs uppercase tracking-wider text-white/80">
-                Weekly goal
+                Weekly lesson goal
               </p>
               <p className="text-xs tabular-nums text-white/80">
-                {Math.min(weeklyCount, weeklyGoal)} / {weeklyGoal}
+                {Math.min(weeklyCount, weeklyGoal)} / {weeklyGoal} lessons
               </p>
             </div>
             <div className="mt-2 w-full h-2 bg-white/25 rounded-full overflow-hidden">
@@ -172,8 +172,8 @@ export default function HomePersonalized({
             </div>
             <p className="mt-2 text-xs sm:text-sm text-white/90">
               {weeklyCount >= weeklyGoal
-                ? "Goal hit — nice one!"
-                : `${weeklyGoal - weeklyCount} more this week`}
+                ? "Weekly goal reached — nice one!"
+                : `${weeklyGoal - weeklyCount} more ${weeklyGoal - weeklyCount === 1 ? "lesson" : "lessons"} to reach your goal this week`}
             </p>
           </div>
         </div>
@@ -192,17 +192,31 @@ export default function HomePersonalized({
         </div>
       </section>
 
-      {/* Small Explore row for anything the learner hasn't touched yet. */}
-      {explore.length > 0 && (
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-base sm:text-lg font-bold text-navy tracking-tight">
-              Explore more languages
-            </h2>
+      {/* Explore row for anything the learner hasn't touched yet. When
+          they've already started every visible language, swap in a
+          "studying everything" message so the section isn't just missing. */}
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-base sm:text-lg font-bold text-navy tracking-tight">
+            Explore more languages
+          </h2>
+          {explore.length > 0 && (
             <span className="text-xs text-navy/40 tabular-nums">
               {explore.length} available
             </span>
+          )}
+        </div>
+        {explore.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border bg-white/60 p-6 sm:p-8 text-center">
+            <p className="text-2xl sm:text-3xl mb-2" aria-hidden>🌍</p>
+            <p className="text-sm sm:text-base font-semibold text-navy">
+              You&rsquo;re studying every available language.
+            </p>
+            <p className="text-xs sm:text-sm text-navy/60 mt-1">
+              More coming soon — check back for new courses.
+            </p>
           </div>
+        ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {explore.map((l) => (
               <Link
@@ -231,8 +245,8 @@ export default function HomePersonalized({
               </Link>
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </main>
   );
 }
