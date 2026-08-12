@@ -1393,12 +1393,6 @@ export default function LessonClient({
                 >
                   {t("lesson.complete.backToSection")}
                 </Link>
-                <Link
-                  href="/dashboard"
-                  className="block py-3 text-sm font-medium text-navy/60 hover:text-teal transition-colors"
-                >
-                  {t("lesson.complete.viewDashboard")}
-                </Link>
               </div>
             </>
           ) : completion.not_authenticated ? (

@@ -179,6 +179,51 @@ export default function HomePersonalized({
         </div>
       </section>
 
+      {/* Travel-guide callout — only rendered when at least one active
+          language has a phrasebook. This is the ONE place in the app it
+          appears; it used to live on /learn but was consolidated here so
+          the homepage is the single home for the "bonus tool" pitch. */}
+      {(() => {
+        const travelLangs = active.filter((l) => hasTravelPhrasebook(l.slug));
+        if (travelLangs.length === 0) return null;
+        return (
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
+            <div className="rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
+              <div className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow ring-2 ring-white">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+                  <rect x="3" y="7" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 11v6M16 11v6M12 11v6" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm sm:text-base font-semibold text-amber-950">
+                  Planning a trip? Check out our travel phrase guide
+                </p>
+                <p className="text-xs sm:text-sm text-amber-900/70 mt-0.5">
+                  65 essential phrases with pronunciation and flashcards — a bonus tool alongside your course.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 sm:justify-end">
+                {travelLangs.map((l) => (
+                  <Link
+                    key={l.slug}
+                    href={`/languages/${l.slug}/travel-guide`}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-amber-600 rounded-full shadow hover:bg-amber-700 transition-colors whitespace-nowrap"
+                  >
+                    <span aria-hidden>✈</span>
+                    {l.name} Guide
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      })()}
+
       {/* Active languages — the meat of the personalized homepage.
           Each card jumps directly to the user's next lesson. */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-10">

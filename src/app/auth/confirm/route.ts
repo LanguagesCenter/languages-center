@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const token_hash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
-  const next = url.searchParams.get("next") ?? "/dashboard";
+  const next = url.searchParams.get("next") ?? "/";
 
   if (!token_hash || !type) {
     return NextResponse.redirect(new URL("/login?error=invalid_link", request.url));
