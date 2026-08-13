@@ -158,7 +158,7 @@ export default async function LearnPage() {
           <div className="grid grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-white border border-border rounded-2xl px-3 sm:px-5 py-4 sm:py-5 shadow-sm">
               <div className="flex items-center gap-2 sm:gap-3">
-                <StreakFlame streak={currentStreak} size="md" />
+                <StreakFlame streak={currentStreak} size="md" iconOnly />
                 <div className="min-w-0">
                   <p className="text-lg sm:text-2xl font-bold text-navy leading-tight">
                     {currentStreak}
