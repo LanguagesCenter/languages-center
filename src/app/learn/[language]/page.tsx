@@ -435,7 +435,7 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
       <main className="flex-1">
         <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10 lg:pt-12 pb-6 sm:pb-8">
           <Link
-            href="/learn"
+            href="/"
             className="inline-flex items-center gap-1.5 text-sm text-navy/60 hover:text-teal transition-colors mb-5 sm:mb-6"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
