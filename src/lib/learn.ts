@@ -41,6 +41,30 @@ export const CEFR_LABEL: Record<CEFRLevel, string> = {
   C1: "Advanced",
 };
 
+/**
+ * Human-readable label for a lesson.type value. Kept in one place so
+ * every card / badge / breadcrumb renders the same string. Notably maps
+ * "unit_test" → "Section Test" — the DB column has an underscore
+ * because it's a check-constraint enum, but users should never see it
+ * that way.
+ */
+export const LESSON_TYPE_LABEL: Record<LessonType, string> = {
+  vocabulary: "Vocabulary",
+  grammar: "Grammar",
+  phrases: "Phrases",
+  listening: "Listening",
+  speaking: "Speaking",
+  reading: "Reading",
+  writing: "Writing",
+  podcast: "Podcast",
+  conversation: "Conversation",
+  unit_test: "Section Test",
+};
+
+export function formatLessonType(type: string): string {
+  return LESSON_TYPE_LABEL[type as LessonType] ?? type;
+}
+
 // BCP-47 codes used for the Web Speech API (TTS + speech recognition).
 export const SPEECH_LANG_CODES: Record<string, string> = {
   spanish: "es-ES",

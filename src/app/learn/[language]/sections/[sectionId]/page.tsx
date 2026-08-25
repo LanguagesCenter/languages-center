@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getLanguageBySlug,
   getSectionWithLessons,
+  formatLessonType,
   type LessonWithStatus,
 } from "@/lib/learn";
 import { getServerLang, getServerT } from "@/lib/i18n-server";
@@ -79,7 +80,7 @@ function LessonCard({
         {lesson.description}
       </p>
       <div className="flex items-center justify-between text-xs text-navy/50">
-        <span className="capitalize">{lesson.type}</span>
+        <span>{formatLessonType(lesson.type)}</span>
         {!lesson.locked && (
           <span className="inline-flex items-center gap-1 text-teal font-semibold">
             {lesson.completed ? reviewLabel : startLabel}
