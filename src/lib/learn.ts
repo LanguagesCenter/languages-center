@@ -1,6 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
 import { isLanguageVisible } from "@/lib/languages";
 
+/**
+ * Development / QA override — when the server env var DISABLE_LESSON_LOCK
+ * is truthy ("true", "1", "yes"), every section and every lesson is
+ * force-unlocked regardless of the user's progress. Meant for testing
+ * lesson content across the whole catalogue without having to grind
+ * through prerequisites. Unset the var (or set to anything else) to
+ * restore the normal progression gating.
+ *
+ * The lesson route itself doesn't enforce locking — it's UI-only — so
+ * this single toggle is enough to expose the entire catalogue.
+ */
+function isLessonLockingDisabled(): boolean {
+  const v = (process.env.DISABLE_LESSON_LOCK ?? "").trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes" || v === "on";
+}
+
 export type LessonType =
   | "vocabulary"
   | "grammar"
@@ -691,13 +707,16 @@ export async function getCEFRTreeForLanguage(
   // Lock progression: a level is unlocked when the previous level is fully
   // complete. Within an unlocked level all sections are accessible — we keep
   // the order suggestive but don't hard-lock.
-  let prevLevelFullyComplete = true;
-  for (const group of groups) {
-    if (!prevLevelFullyComplete) {
-      for (const section of group.sections) section.locked = true;
-    }
-    if (group.lessonsTotal === 0 || group.lessonsCompleted < group.lessonsTotal) {
-      prevLevelFullyComplete = false;
+  // DISABLE_LESSON_LOCK env var short-circuits this for QA / content-review.
+  if (!isLessonLockingDisabled()) {
+    let prevLevelFullyComplete = true;
+    for (const group of groups) {
+      if (!prevLevelFullyComplete) {
+        for (const section of group.sections) section.locked = true;
+      }
+      if (group.lessonsTotal === 0 || group.lessonsCompleted < group.lessonsTotal) {
+        prevLevelFullyComplete = false;
+      }
     }
   }
 
@@ -756,10 +775,14 @@ export async function getSectionWithLessons(
     (a, b) => a.order_index - b.order_index,
   );
 
+  // DISABLE_LESSON_LOCK env var force-unlocks every lesson for QA /
+  // content review; otherwise a lesson is locked when a prior
+  // incomplete non-locked lesson is still pending in the section.
+  const lockingDisabled = isLessonLockingDisabled();
   let prev = true; // first lesson is unlocked
   const withStatus: LessonWithStatus[] = sorted.map((lesson) => {
     const completed = completedSet.has(lesson.id);
-    const locked = !prev && !completed;
+    const locked = lockingDisabled ? false : (!prev && !completed);
     if (!completed && !locked) prev = false;
     if (completed) prev = true;
     return { ...lesson, completed, locked };

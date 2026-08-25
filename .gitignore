@@ -43,5 +43,6 @@ next-env.d.ts
 # claude
 .claude/
 
-# regenerate-exercises.mjs progress log
+# regenerate-exercises.mjs progress log + run logs
 scripts/.regeneration-progress.json
+scripts/logs/
