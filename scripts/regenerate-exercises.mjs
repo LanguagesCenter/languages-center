@@ -20,6 +20,7 @@
 //   --language <slug>        limit to a language slug (spanish|french)
 //   --level <A1..C1>         limit to a CEFR level
 //   --section <needle>       limit to sections whose title contains this substring (case-insensitive)
+//   --lesson-type <type>     limit to a single lesson.type (vocabulary|grammar|phrases|listening|speaking|reading|writing|conversation|unit_test)
 //   --lesson-limit <N>       cap number of lessons regenerated this run
 //   --resume                 skip lessons already in the progress log (on by default)
 //   --no-resume              regenerate everything, ignoring progress
@@ -734,6 +735,61 @@ STOPWORDS.English = new Set([
   "december","spring","summer","autumn","fall","winter",
   // formal / informal register (common in translation answers)
   "formal","informal","polite","casual","standard",
+  // === CONTRACTION FRAGMENTS + BUCKET OF COMMON CONTENT WORDS ===
+  // Contractions with apostrophes get tokenized to two pieces
+  // ("doesn't" → "doesn" + "t"); the trailing letter is fine but the
+  // leading half needs to be an allowed stopword.
+  "doesn","don","didn","isn","aren","wasn","weren","hasn","haven","hadn",
+  "wouldn","couldn","shouldn","mustn","needn","won","mightn","oughtn",
+  "ll","ve","re","d","o","clock",
+  // Very common comprehension-answer nouns / verbs / adjectives that
+  // English MC answers rely on (added because they showed up as false
+  // rejections when the audit couldn't distinguish English answers
+  // from target-language content).
+  "adventure","adventures","affect","affects","affected","affecting",
+  "anything","anyone","anywhere","asia","europe","africa","america","australia",
+  "believe","believes","believed","believing","cannot","can't",
+  "cat","cats","dog","dogs","horse","horses","bird","birds","rabbit","rabbits",
+  "fish","cow","cows","pig","pigs","chicken","chickens","mouse","mice","pet","pets","animal","animals",
+  "cinema","movie","movies","film","films","theater","theatre","show","shows",
+  "concert","concerts","festival","festivals","exhibition","exhibitions",
+  "daily","weekly","monthly","yearly","hourly","routine","routines",
+  "discuss","discusses","discussed","discussing","discussion","discussions",
+  "environment","environmental","climate","weather","planet","earth",
+  "faster","slower","harder","easier","closer","farther","further",
+  "fun","enjoy","enjoyable","boring","exciting","funny",
+  "future","past","present","yesterday","tomorrow","tonight",
+  "general","generally","specific","specifically","particular","particularly",
+  "green","greener","greenest","greenery","natural","organic","eco","sustainable",
+  "hungry","thirsty","full","sleepy","awake",
+  "opinion","opinions","view","views","perspective","perspectives","thought","thoughts",
+  "interested","interests","interesting","interestingly","fascinated","fascinating",
+  "investing","invest","invests","invested","investment","investments","invester","investor","investors",
+  "lot","lots","plenty","many","few","several",
+  "nothing","something","everything","someone","everyone","noone","somewhere","everywhere","nowhere",
+  "prefer","prefers","preferred","preferring","preference","preferences",
+  "restaurant","restaurants","cafe","cafes","bar","bars","pub","pubs","hotel","hotels",
+  "rice","pasta","bread","meal","meals","food","foods","dish","dishes","drink","drinks",
+  "share","shares","shared","sharing","give","gives","gave","given","giving",
+  "seaside","beach","beaches","coast","coastal","ocean","lake","lakes","forest","forests","desert","deserts",
+  "hobby","hobbies","activity","activities","sport","sports","game","games","exercise","exercises",
+  "hi","hey","hello","goodbye","bye","see","later","soon","tomorrow","tonight",
+  // Marker for the placeholder dialogue speakers
+  "marc","alice","pierre","marie","jean","sophie","paul","claire","anna","ana",
+  // Common verbs the model reaches for in comprehension prompts
+  "explains","says","asks","tells","means","refers","suggests","implies","indicates",
+  "wants","needs","likes","dislikes","hates","loves","enjoys","hopes","expects",
+  "describes","introduces","greets","invites","offers","accepts","refuses","confirms",
+  "denies","agrees","disagrees","admits","claims","announces","reveals","hides",
+  "starts","stops","begins","ends","finishes","continues","opens","closes",
+  "arrives","leaves","comes","goes","returns","stays","waits","meets","joins",
+  // Adjectives the model reaches for
+  "important","serious","casual","strong","weak","possible","impossible","difficult","easy",
+  "clear","confused","obvious","subtle","true","false","real","fake","actual","genuine",
+  "friendly","unfriendly","polite","rude","helpful","unhelpful","kind","cruel","gentle","rough",
+  // Fragments from dialogue: "what", "when", already have; add:
+  "asking","telling","saying","greeting","introducing","responding","replying","answering",
+  "morning","afternoon","evening","noon","midday","midnight","weekday","weekend","holiday",
   // === EXPANDED CONTENT VOCAB — top-1500-ish English words ===
   // Body
   "body","head","hair","face","eye","eyes","ear","ears","nose","mouth","teeth","tooth","tongue",
@@ -991,6 +1047,7 @@ function parseArgs(argv) {
     language: null,
     level: null,
     section: null,
+    lessonType: null,
     lessonLimit: Infinity,
     resume: true,
     reset: false,
@@ -1004,6 +1061,7 @@ function parseArgs(argv) {
     else if (a === "--language") out.language = String(argv[++i] ?? "").toLowerCase();
     else if (a === "--level") out.level = String(argv[++i] ?? "").toUpperCase();
     else if (a === "--section") out.section = String(argv[++i] ?? "").toLowerCase();
+    else if (a === "--lesson-type") out.lessonType = String(argv[++i] ?? "").toLowerCase();
     else if (a === "--lesson-limit") out.lessonLimit = Number(argv[++i]);
     else if (a === "--resume") out.resume = true;
     else if (a === "--no-resume") out.resume = false;
@@ -1419,7 +1477,7 @@ async function main() {
   console.log(`\n== regenerate-exercises ==`);
   console.log(`mode:      ${args.live ? "LIVE (writing to DB)" : "DRY-RUN (no writes)"}`);
   console.log(`model:     ${MODEL}`);
-  console.log(`filter:    language=${args.language ?? "*"} level=${args.level ?? "*"} section=${args.section ?? "*"}`);
+  console.log(`filter:    language=${args.language ?? "*"} level=${args.level ?? "*"} section=${args.section ?? "*"} type=${args.lessonType ?? "*"}`);
   console.log(`lesson cap: ${Number.isFinite(args.lessonLimit) ? args.lessonLimit : "none"}`);
   console.log(`progress:  ${PROGRESS_PATH}`);
   console.log(``);
@@ -1472,6 +1530,11 @@ async function main() {
         const lesson = lessons[idx];
         const lessonKey = `${lang.code}:${course.cefr_level}:${course.title}:L${idx + 1}:${lesson.id}`;
 
+        if (args.lessonType && lesson.type !== args.lessonType) {
+          // Filter is silent — no log spam when narrowing to one type.
+          totalSkipped++;
+          continue;
+        }
         if (args.resume && progress.completed_lessons[lessonKey]) {
           console.log(`   L${idx + 1}. ${lesson.title.padEnd(40)} SKIP (already done ${progress.completed_lessons[lessonKey]})`);
           totalSkipped++;
