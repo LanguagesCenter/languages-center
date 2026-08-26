@@ -192,6 +192,19 @@ export default function Navbar() {
               )}
             </div>
 
+            {/* Travel link — defaults to the Spanish traveler map since
+                it's the most active track; users can jump to French from
+                inside the /learn/[language]/travel page. */}
+            <Link
+              href="/learn/spanish/travel"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
+              </svg>
+              Travel
+            </Link>
+
             {/* Pricing link */}
             <Link
               href="/pricing"

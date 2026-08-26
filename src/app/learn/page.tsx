@@ -212,6 +212,48 @@ export default async function LearnPage() {
         </section>
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-8">
+          {/* Traveler's Course banner — small teaser above the active
+              language grid, shown when the user has started Spanish or
+              French (the two languages with a traveler course today).
+              Links to the Spanish traveler map by default; from there
+              the user can jump to French. */}
+          {(() => {
+            const travelLangs = started
+              .map((e) => e.language.code)
+              .filter((c) => c === "spanish" || c === "french");
+            if (travelLangs.length === 0) return null;
+            const target = travelLangs.includes("spanish") ? "spanish" : "french";
+            return (
+              <Link
+                href={`/learn/${target}/travel`}
+                className="mb-6 flex items-center gap-3 rounded-2xl border border-sky-300/70 bg-gradient-to-r from-sky-50 via-white to-teal-light/60 px-4 sm:px-5 py-3 sm:py-4 shadow-sm hover:shadow-md hover:border-sky-400 transition-all group"
+              >
+                <span className="shrink-0 w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-sky-500 to-teal-dark text-white flex items-center justify-center shadow ring-2 ring-white">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
+                  </svg>
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-teal-dark mb-0.5">
+                    New
+                  </p>
+                  <p className="text-sm sm:text-base font-semibold text-navy leading-tight">
+                    Simulate a real trip abroad
+                  </p>
+                  <p className="text-xs sm:text-sm text-navy/60 mt-0.5">
+                    City by city — airport signs, cafe orders, metro maps. First 5 lessons per city are free.
+                  </p>
+                </div>
+                <span className="shrink-0 text-teal-dark text-sm font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  Explore
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </Link>
+            );
+          })()}
+
           {/* Active language grid. Empty state pushes users to the homepage
               to pick their first language. */}
           {started.length === 0 ? (
