@@ -21,15 +21,17 @@ interface Props {
 
 // Reasonable default map centers per language so the initial view frames
 // most highlighted countries + cities. The map does an automatic fitBounds
-// over the passed-in cities so these are just fallbacks for empty lists.
+// over the passed-in cities so these are just fallbacks for empty lists —
+// they're pre-tuned to be visually close to what fitBounds will produce,
+// so there's no flash of an unrelated region before the fit lands.
 const DEFAULT_CENTER: Record<Props["language"], [number, number]> = {
-  spanish: [-40, 20], // splits Atlantic between Spain and the Americas
-  french: [-20, 45],  // splits Atlantic between Paris and Montreal
+  spanish: [-48, 5],  // centered between Spain and the Americas
+  french:  [-35, 47], // splits Atlantic between Paris and Montreal
 };
 
 const DEFAULT_ZOOM: Record<Props["language"], number> = {
-  spanish: 1.6,
-  french: 1.8,
+  spanish: 1.5,
+  french: 2,
 };
 
 export default function TravelerMap({
@@ -103,8 +105,12 @@ export default function TravelerMap({
         firstSymbolLayerId(map),
       );
 
-      // City markers — one for each course. Clicking navigates to that
-      // city's traveler page.
+      // City markers — one per course. The marker element is sized
+      // EXACTLY to the dot (16×16) so `anchor: "center"` places the
+      // dot's geometric center precisely on the coordinate. The label
+      // is absolutely-positioned outside the button's bounding box; it
+      // still triggers the click via event bubbling because it remains
+      // a DOM child of the button.
       for (const c of cities) {
         const el = document.createElement("button");
         el.type = "button";
@@ -123,14 +129,17 @@ export default function TravelerMap({
           .addTo(map);
       }
 
-      // Frame the cities so all markers are visible with a bit of padding.
+      // Frame the cities so every dot is comfortably in-view at load.
+      // Right padding is extra-wide so the city labels (which extend to
+      // the right of each dot) don't get clipped by the map edge.
       if (cities.length >= 2) {
         const bounds = new mapboxgl.LngLatBounds();
         for (const c of cities) bounds.extend(c.coords);
         map.fitBounds(bounds, {
-          padding: { top: 60, bottom: 60, left: 60, right: 60 },
+          padding: { top: 80, bottom: 80, left: 80, right: 140 },
           maxZoom: 4.5,
           duration: 0,
+          linear: true,
         });
       } else if (cities.length === 1) {
         map.setCenter(cities[0].coords);
@@ -151,41 +160,51 @@ export default function TravelerMap({
         className="w-full h-[380px] sm:h-[460px] lg:h-[520px] rounded-2xl overflow-hidden border border-border shadow-sm"
       />
       {/* Marker styles — Tailwind can't reach into the imperatively-created
-          Mapbox marker DOM, so inline what we need. */}
+          Mapbox marker DOM, so inline what we need. Layout note: the
+          button element is sized EXACTLY to the dot (16×16, box-sizing:
+          border-box) so mapboxgl.Marker({anchor: "center"}) lands the
+          dot's center on the coordinate. The label is absolutely
+          positioned so it doesn't shift the button's bounding box. */}
       <style jsx global>{`
         .traveler-map-marker {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: transparent;
-          border: none;
-          cursor: pointer;
+          position: relative;
+          display: block;
+          width: 16px;
+          height: 16px;
           padding: 0;
-          transform: translateY(0);
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          box-sizing: border-box;
           transition: transform 160ms ease-out;
         }
         .traveler-map-marker:hover {
-          transform: translateY(-2px);
+          transform: scale(1.15);
         }
         .traveler-map-marker__dot {
-          width: 14px;
-          height: 14px;
+          position: absolute;
+          inset: 0;
           border-radius: 999px;
           background: #f97316; /* orange-500 */
           border: 3px solid #ffffff;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-          flex-shrink: 0;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05);
+          box-sizing: border-box;
         }
         .traveler-map-marker__label {
+          position: absolute;
+          left: calc(100% + 8px);
+          top: 50%;
+          transform: translateY(-50%);
           font-size: 12px;
           font-weight: 700;
           color: #1e293b;
-          background: rgba(255, 255, 255, 0.94);
+          background: rgba(255, 255, 255, 0.96);
           padding: 3px 8px;
           border-radius: 999px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
           white-space: nowrap;
           letter-spacing: -0.01em;
+          pointer-events: auto;
         }
       `}</style>
     </>

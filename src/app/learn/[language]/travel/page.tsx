@@ -48,13 +48,13 @@ export default async function TravelerLanguagePage(
         {/* Header */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12 pb-4">
           <Link
-            href="/learn"
+            href="/"
             className="inline-flex items-center gap-1.5 text-sm text-navy/60 hover:text-teal transition-colors mb-4"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Learn
+            Back to home
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
             <div>

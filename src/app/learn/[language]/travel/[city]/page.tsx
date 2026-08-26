@@ -56,8 +56,6 @@ export default async function TravelerCityPage(
   const { course, lessons } = data;
 
   const isPremium = await isCurrentUserPremium();
-  const langName = langSlug.charAt(0).toUpperCase() + langSlug.slice(1);
-  const backHref = `/learn/${langSlug}/travel`;
 
   const completedCount = lessons.filter((l) => l.completed).length;
   const totalCount = lessons.length;
@@ -84,13 +82,13 @@ export default async function TravelerCityPage(
             <div className="absolute inset-x-0 bottom-0">
               <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 sm:pb-10">
                 <Link
-                  href={backHref}
+                  href="/"
                   className="inline-flex items-center gap-1.5 text-sm text-white/85 hover:text-white transition-colors mb-4"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                   </svg>
-                  All {langName} cities
+                  Back to home
                 </Link>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
                   {course.country}

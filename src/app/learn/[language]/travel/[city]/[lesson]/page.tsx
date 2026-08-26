@@ -36,13 +36,13 @@ export default async function TravelerLessonPage(
       <main className="flex-1">
         <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-16">
           <Link
-            href={`/learn/${langSlug}/travel/${citySlug}`}
+            href="/"
             className="inline-flex items-center gap-1.5 text-sm text-navy/60 hover:text-teal transition-colors mb-6"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-            Back to {data.course.city}
+            Back to home
           </Link>
 
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal-dark">
