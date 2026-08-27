@@ -40,7 +40,7 @@ const CITY_META: Record<
   "Mexico City":  { coords: [-99.1332, 19.4326], cover: "https://images.unsplash.com/photo-1518659526054-190340b32735?w=1600&h=900&fit=crop&q=80", countryCode: "MX" },
   "Buenos Aires": { coords: [-58.3816, -34.6037], cover: "https://images.unsplash.com/photo-1589909202802-8f4aadce1849?w=1600&h=900&fit=crop&q=80", countryCode: "AR" },
   Paris:          { coords: [ 2.3522, 48.8566], cover: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1600&h=900&fit=crop&q=80", countryCode: "FR" },
-  Lyon:           { coords: [ 4.8357, 45.7640], cover: "https://images.unsplash.com/photo-1524429656601-1beb8ce3b26a?w=1600&h=900&fit=crop&q=80", countryCode: "FR" },
+  Lyon:           { coords: [ 4.8357, 45.7640], cover: "https://source.unsplash.com/800x600/?lyon,france,city", countryCode: "FR" },
   Montreal:       { coords: [-73.5673, 45.5017], cover: "https://images.unsplash.com/photo-1519178614-68673b201f36?w=1600&h=900&fit=crop&q=80", countryCode: "CA" },
 };
 

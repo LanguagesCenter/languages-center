@@ -19,19 +19,23 @@ interface Props {
   baseHref: string; // e.g. "/learn/spanish/travel" — dot clicks navigate to `${baseHref}/${slug}`
 }
 
-// Reasonable default map centers per language so the initial view frames
-// most highlighted countries + cities. The map does an automatic fitBounds
-// over the passed-in cities so these are just fallbacks for empty lists —
-// they're pre-tuned to be visually close to what fitBounds will produce,
-// so there's no flash of an unrelated region before the fit lands.
+// Default map center and zoom per language. These are the AUTHORITATIVE
+// initial view — no auto-fitBounds runs after load, so what you set
+// here is what the user sees on first render.
+//
+// Coordinates are [longitude, latitude] (Mapbox convention).
+//   Spanish [-50, 20] @ zoom 2 shows Mexico City through Barcelona and
+//   Buenos Aires all in-view without panning.
+//   French [10, 45] @ zoom 3 frames Paris + Lyon. See note below re:
+//   Montreal being off-screen at this default.
 const DEFAULT_CENTER: Record<Props["language"], [number, number]> = {
-  spanish: [-48, 5],  // centered between Spain and the Americas
-  french:  [-35, 47], // splits Atlantic between Paris and Montreal
+  spanish: [-50, 20],
+  french:  [10, 45],
 };
 
 const DEFAULT_ZOOM: Record<Props["language"], number> = {
-  spanish: 1.5,
-  french: 2,
+  spanish: 2,
+  french:  3,
 };
 
 export default function TravelerMap({
@@ -129,22 +133,10 @@ export default function TravelerMap({
           .addTo(map);
       }
 
-      // Frame the cities so every dot is comfortably in-view at load.
-      // Right padding is extra-wide so the city labels (which extend to
-      // the right of each dot) don't get clipped by the map edge.
-      if (cities.length >= 2) {
-        const bounds = new mapboxgl.LngLatBounds();
-        for (const c of cities) bounds.extend(c.coords);
-        map.fitBounds(bounds, {
-          padding: { top: 80, bottom: 80, left: 80, right: 140 },
-          maxZoom: 4.5,
-          duration: 0,
-          linear: true,
-        });
-      } else if (cities.length === 1) {
-        map.setCenter(cities[0].coords);
-        map.setZoom(4);
-      }
+      // (Intentionally no fitBounds call — the DEFAULT_CENTER / DEFAULT_ZOOM
+      // per language are the authoritative initial view. If you want the
+      // map to auto-frame the actual city list later, re-introduce
+      // map.fitBounds(bounds, {...}) here.)
     });
 
     return () => {
