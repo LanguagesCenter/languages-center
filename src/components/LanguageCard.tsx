@@ -64,43 +64,13 @@ export default function LanguageCard({
     // Card body links to the overview page. The Start/Continue CTA below
     // is its own link that goes straight to the learning route. Both can't
     // be nested as <Link> inside <Link>, so the outer wrapper is a div.
-    // `relative` is set so the optional Travel Guide corner tag can be
-    // positioned inside the card.
     <div
       id={language.slug}
       // No translate/scale on touch devices: it feels janky when the press
       // animation overlaps card snap on small viewports. Hover-only motion
       // is restored for sm+ where a real cursor exists.
-      className="group relative flex flex-col bg-white border border-border rounded-2xl p-5 sm:p-6 sm:hover:shadow-lg sm:hover:border-teal/40 sm:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 transition-all duration-200"
+      className="group flex flex-col bg-white border border-border rounded-2xl p-5 sm:p-6 sm:hover:shadow-lg sm:hover:border-teal/40 sm:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 transition-all duration-200"
     >
-      {/* Corner-tag stack. Traveler's Course sits above Travel Guide
-          because it's the more immersive product; both share the
-          top-right column and use z-10 so their click targets aren't
-          swallowed by the card's Overview / Start-learning links. */}
-      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
-        {hasTravelerCourse(language.slug) && (
-          <Link
-            href={`/learn/${language.slug}/travel`}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-sky-100 text-sky-900 text-[10px] sm:text-xs font-bold px-2.5 py-1 border border-sky-300 shadow-sm hover:bg-sky-200 hover:border-sky-400 active:scale-95 transition-colors"
-            aria-label={`Open ${localizedName} traveler's course`}
-          >
-            <span aria-hidden>✈</span>
-            Traveler&rsquo;s Course
-          </Link>
-        )}
-        {hasTravelPhrasebook(language.slug) && (
-          <Link
-            href={`/languages/${language.slug}/travel-guide`}
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-900 text-[10px] sm:text-xs font-bold px-2.5 py-1 border border-amber-300 shadow-sm hover:bg-amber-200 hover:border-amber-400 active:scale-95 transition-colors"
-            aria-label={`Open ${localizedName} travel phrase guide`}
-          >
-            <span aria-hidden>✈</span>
-            Travel Guide
-          </Link>
-        )}
-      </div>
       <Link
         href={`/languages/${language.slug}`}
         aria-label={`Learn more about ${localizedName}`}
@@ -146,9 +116,47 @@ export default function LanguageCard({
           </div>
         </div>
       </Link>
+
+      {/* Travel-track badge row — sits below the main card content and
+          above the Start-Learning CTA. Two clearly-distinct pills:
+          green for the immersive Traveler's Course, blue for the
+          Phrase Passport reference. Only renders for languages that
+          have those features (Spanish + French today). */}
+      {(hasTravelerCourse(language.slug) || hasTravelPhrasebook(language.slug)) && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {hasTravelerCourse(language.slug) && (
+            <Link
+              href={`/learn/${language.slug}/travel`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 rounded-full bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 border border-green-300 hover:bg-green-200 hover:border-green-400 active:scale-95 transition-colors"
+              aria-label={`Open ${localizedName} Traveler's Course`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Traveler&rsquo;s Course
+            </Link>
+          )}
+          {hasTravelPhrasebook(language.slug) && (
+            <Link
+              href={`/languages/${language.slug}/travel-guide`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 border border-blue-300 hover:bg-blue-200 hover:border-blue-400 active:scale-95 transition-colors"
+              aria-label={`Open ${localizedName} Phrase Passport`}
+            >
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
+              </svg>
+              Phrase Passport
+            </Link>
+          )}
+        </div>
+      )}
+
       <Link
         href={`/learn/${language.slug}`}
-        className="mt-5 inline-flex items-center justify-center gap-1.5 py-3 sm:py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark active:scale-[0.98] transition-all"
+        className="mt-4 inline-flex items-center justify-center gap-1.5 py-3 sm:py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark active:scale-[0.98] transition-all"
       >
         {t(
           hasProgress ? "card.continueLearning" : "card.startLearning",

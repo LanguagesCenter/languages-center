@@ -320,55 +320,87 @@ export default async function LanguageOverviewPage(
           </div>
         </section>
 
-        {/* Travel Phrase Guide — sits directly under the hero so it can't be
-            missed. Warm amber travel-themed palette makes it visually
-            distinct from the teal/white lesson-card system below. Only
-            rendered for languages that have a phrasebook (Spanish/French
-            today). */}
+        {/* Two side-by-side travel-track cards — Traveler's Course
+            (warm terracotta) + Phrase Passport (deep blue). Same shape,
+            same size, visually balanced, hard to confuse. Only rendered
+            for Spanish/French today. */}
         {hasTravelPhrasebook(slug) && (
           <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
-            <Link
-              href={`/languages/${slug}/travel-guide`}
-              className="group relative block overflow-hidden rounded-3xl border-2 border-amber-300/70 bg-gradient-to-br from-amber-100 via-orange-50 to-amber-50 p-6 sm:p-8 shadow-md hover:shadow-xl hover:border-amber-400 transition-all"
-            >
-              {/* Decorative pattern: soft repeating stamps in the background
-                  to reinforce the travel motif without overwhelming text. */}
-              <div className="pointer-events-none absolute -top-8 -right-8 opacity-10">
-                <svg className="w-56 h-56 text-amber-700" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
-                </svg>
-              </div>
-              <div className="relative flex flex-col md:flex-row md:items-center gap-6">
-                {/* Suitcase icon in a filled circle — the primary visual
-                    signal that this section is a travel tool, not a lesson. */}
-                <div className="shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-lg ring-4 ring-white/60">
-                  <svg className="w-9 h-9 sm:w-11 sm:h-11" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
-                    <rect x="3" y="7" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 11v6M16 11v6M12 11v6" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+              {/* Traveler's Course — terracotta */}
+              <Link
+                href={`/learn/${slug}/travel`}
+                className="group relative flex flex-col overflow-hidden rounded-3xl border-2 border-orange-300/70 bg-gradient-to-br from-orange-100 via-amber-50 to-orange-50 p-6 sm:p-7 shadow-md hover:shadow-xl hover:border-orange-400 transition-all"
+              >
+                <div className="pointer-events-none absolute -top-10 -right-10 opacity-10">
+                  <svg className="w-56 h-56 text-orange-700" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] bg-amber-600 text-white shadow-sm mb-2">
-                    <span aria-hidden>✈</span>
-                    Bonus tool
-                  </span>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-amber-950 tracking-tight">
-                    Travel Phrase Guide
-                  </h2>
-                  <p className="text-sm sm:text-base text-amber-900/80 mt-1.5 leading-relaxed">
-                    65 essential phrases for your next trip — with
-                    pronunciation and flashcards.
-                  </p>
+                <div className="relative flex items-start gap-4">
+                  <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 text-white flex items-center justify-center shadow-lg ring-4 ring-white/60">
+                    <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] bg-orange-600 text-white shadow-sm mb-2">
+                      Immersive course
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-bold text-orange-950 tracking-tight">
+                      Traveler&rsquo;s Course
+                    </h2>
+                  </div>
                 </div>
-                <span className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm sm:text-base font-bold text-white bg-amber-600 rounded-full shadow-md group-hover:bg-amber-700 group-hover:shadow-lg transition-all self-start md:self-center whitespace-nowrap">
-                  Open Guide
+                <p className="relative text-sm text-orange-900/80 mt-3 leading-relaxed flex-1">
+                  Simulate a real trip with 50 immersive lessons per city — airport to departure gate.
+                </p>
+                <span className="relative mt-4 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-white bg-orange-600 rounded-full shadow-md group-hover:bg-orange-700 group-hover:shadow-lg transition-all self-start whitespace-nowrap">
+                  Choose a City
                   <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>
                 </span>
-              </div>
-            </Link>
+              </Link>
+
+              {/* Phrase Passport — deep blue */}
+              <Link
+                href={`/languages/${slug}/travel-guide`}
+                className="group relative flex flex-col overflow-hidden rounded-3xl border-2 border-blue-500/40 bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 p-6 sm:p-7 shadow-md hover:shadow-xl hover:border-blue-400 transition-all"
+              >
+                <div className="pointer-events-none absolute -top-10 -right-10 opacity-10">
+                  <svg className="w-56 h-56 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
+                  </svg>
+                </div>
+                <div className="relative flex items-start gap-4">
+                  <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/15 text-white flex items-center justify-center shadow-lg ring-4 ring-white/20 backdrop-blur">
+                    <svg className="w-7 h-7 sm:w-8 sm:h-8" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] bg-white/20 text-white shadow-sm mb-2 backdrop-blur">
+                      Quick reference
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+                      Phrase Passport
+                    </h2>
+                  </div>
+                </div>
+                <p className="relative text-sm text-blue-100/90 mt-3 leading-relaxed flex-1">
+                  65 essential phrases with pronunciation — your pocket guide to getting by.
+                </p>
+                <span className="relative mt-4 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-blue-900 bg-white rounded-full shadow-md group-hover:bg-blue-50 group-hover:shadow-lg transition-all self-start whitespace-nowrap">
+                  Open Passport
+                  <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </Link>
+            </div>
           </section>
         )}
 

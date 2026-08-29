@@ -177,18 +177,18 @@ export default function Navbar() {
                         </span>
                         {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
                       </Link>
-                      {/* Bonus sub-link to the travel phrasebook. Indented
+                      {/* Bonus sub-link to the Phrase Passport. Indented
                           under the parent language row and rendered in an
-                          italic, muted amber tone so it reads as a
+                          italic, muted blue tone so it reads as a
                           companion tool, not another language entry. */}
                       {hasTravelPhrasebook(lang.slug) && (
                         <Link
                           href={`/languages/${lang.slug}/travel-guide`}
                           onClick={() => setOpen(false)}
-                          className="flex items-center gap-2 pl-14 pr-4 pb-2 -mt-1 text-xs italic font-medium text-amber-700/90 hover:text-amber-800 hover:bg-amber-50/60 transition-colors"
+                          className="flex items-center gap-2 pl-14 pr-4 pb-2 -mt-1 text-xs italic font-medium text-blue-700/90 hover:text-blue-800 hover:bg-blue-50/60 transition-colors"
                         >
-                          <span aria-hidden className="text-sm not-italic">✈</span>
-                          Travel Phrases
+                          <span aria-hidden className="text-sm not-italic">📖</span>
+                          Phrase Passport
                         </Link>
                       )}
                     </div>
@@ -197,9 +197,9 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Travel dropdown — mirrors the Languages dropdown pattern.
-                Two entries (Spanish / French) since those are the only
-                languages that have a Traveler's Course today. */}
+            {/* Travel dropdown — two grouped sections, each with Spanish /
+                French. Traveler's Course is the immersive city-by-city
+                simulator; Phrase Passport is the pocket phrasebook. */}
             <div className="relative" ref={travelRef}>
               <button
                 onClick={() => setTravelOpen(!travelOpen)}
@@ -219,7 +219,14 @@ export default function Navbar() {
                 </svg>
               </button>
               {travelOpen && (
-                <div className="absolute top-full start-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-border py-2">
+                <div className="absolute top-full start-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-border py-2">
+                  <div className="px-4 pt-1 pb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-green-700">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Traveler&rsquo;s Course
+                  </div>
                   <Link
                     href="/learn/spanish/travel"
                     onClick={() => setTravelOpen(false)}
@@ -239,6 +246,47 @@ export default function Navbar() {
                   </Link>
                   <Link
                     href="/learn/french/travel"
+                    onClick={() => setTravelOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
+                  >
+                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                      <Image
+                        src={`https://flagcdn.com/w40/fr.png`}
+                        alt="French flag"
+                        fill
+                        sizes="24px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    French
+                  </Link>
+                  <div className="border-t border-border my-1" />
+                  <div className="px-4 pt-1 pb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-700">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
+                    </svg>
+                    Phrase Passport
+                  </div>
+                  <Link
+                    href="/languages/spanish/travel-guide"
+                    onClick={() => setTravelOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
+                  >
+                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                      <Image
+                        src={`https://flagcdn.com/w40/es.png`}
+                        alt="Spanish flag"
+                        fill
+                        sizes="24px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    Spanish
+                  </Link>
+                  <Link
+                    href="/languages/french/travel-guide"
                     onClick={() => setTravelOpen(false)}
                     className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
                   >

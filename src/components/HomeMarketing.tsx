@@ -141,11 +141,11 @@ export default function HomeMarketing({
           />
           <HighlightCard
             eyebrow="Ready before you travel"
-            title="Travel Phrase Guide"
-            body="65 essential travel phrases per language with native audio and a built-in flashcard trainer. Skim it on the plane."
+            title="Phrase Passport"
+            body="65 essential travel phrases per language with native audio and a built-in flashcard trainer. Your pocket guide to getting by."
             accent="amber"
             href="/languages/spanish/travel-guide"
-            hrefLabel="Preview the Spanish guide"
+            hrefLabel="Preview the Spanish passport"
           />
           <HighlightCard
             eyebrow="See where you stand"

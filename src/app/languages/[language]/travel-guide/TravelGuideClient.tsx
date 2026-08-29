@@ -195,11 +195,11 @@ export default function TravelGuideClient({ book }: { book: TravelPhrasebook }) 
       </Link>
 
       <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal-dark mb-2">
-          Quick Reference
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 mb-2">
+          Phrase Passport
         </p>
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-navy tracking-tight">
-          {book.language} Travel Phrases
+          {book.language} Phrase Passport
         </h1>
         <p className="text-sm sm:text-base text-navy/60 mt-2 max-w-2xl">
           65 essential phrases for greetings, getting around, food, shopping and

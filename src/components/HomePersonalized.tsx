@@ -198,7 +198,7 @@ export default function HomePersonalized({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm sm:text-base font-semibold text-amber-950">
-                  Planning a trip? Check out our travel phrase guide
+                  Planning a trip? Check out your Phrase Passport
                 </p>
                 <p className="text-xs sm:text-sm text-amber-900/70 mt-0.5">
                   65 essential phrases with pronunciation and flashcards — a bonus tool alongside your course.
@@ -212,7 +212,7 @@ export default function HomePersonalized({
                     className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-amber-600 rounded-full shadow hover:bg-amber-700 transition-colors whitespace-nowrap"
                   >
                     <span aria-hidden>✈</span>
-                    {l.name} Guide
+                    {l.name} Passport
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
@@ -306,11 +306,11 @@ function ActiveLanguageCard({ lang }: { lang: ActiveLanguageEntry }) {
       {showTravel && (
         <Link
           href={`/languages/${lang.slug}/travel-guide`}
-          className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-1 border border-amber-300 hover:bg-amber-200 transition-colors"
-          aria-label={`Open ${lang.name} travel guide`}
+          className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-900 text-[10px] font-bold px-2 py-1 border border-blue-300 hover:bg-blue-200 transition-colors"
+          aria-label={`Open ${lang.name} Phrase Passport`}
         >
           <span aria-hidden>✈</span>
-          Travel Guide
+          Phrase Passport
         </Link>
       )}
       <div className="flex items-start gap-4">
