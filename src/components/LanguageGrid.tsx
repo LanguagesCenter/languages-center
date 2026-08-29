@@ -18,6 +18,7 @@ export interface LanguageGridItem extends Language {
 export default function LanguageGrid({
   languages,
   startedSlugsInOrder = [],
+  travelerCompletedCounts = {},
 }: {
   languages: LanguageGridItem[];
   /**
@@ -26,6 +27,12 @@ export default function LanguageGrid({
    * seed the "Recommended for you" relatedness query.
    */
   startedSlugsInOrder?: string[];
+  /**
+   * Per-language count of completed traveler-course lessons for the
+   * signed-in user (keyed by language slug). Empty for anon visitors.
+   * Drives the Start/Continue Journey CTA copy on each card.
+   */
+  travelerCompletedCounts?: Record<string, number>;
 }) {
   const { lang, t } = useI18n();
 
@@ -95,6 +102,7 @@ export default function LanguageGrid({
                 language={entry}
                 lessonsTotal={entry.lessonsTotal}
                 hasProgress={entry.hasProgress}
+                travelerCompletedCount={travelerCompletedCounts[entry.slug] ?? 0}
               />
             ))}
           </div>
@@ -112,6 +120,7 @@ export default function LanguageGrid({
                 language={entry}
                 lessonsTotal={entry.lessonsTotal}
                 hasProgress={entry.hasProgress}
+                travelerCompletedCount={travelerCompletedCounts[entry.slug] ?? 0}
               />
             ))}
           </div>

@@ -209,3 +209,43 @@ export async function getTravelerCourseByCitySlug(
 export function coverImageForCity(city: string): string {
   return coverFor(city);
 }
+
+// Per-language count of completed traveler lessons for the current user.
+// Returns `{}` if the user is signed out. Used by the homepage language
+// cards to decide whether the Traveler's Course CTA says "Start Journey"
+// or "Continue Journey".
+export async function getTravelerCompletedCountsByLanguage(): Promise<
+  Record<string, number>
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return {};
+
+  // One join query: progress → lesson → course → language.code. RLS
+  // already restricts to own rows, but we keep the explicit user filter
+  // for clarity and to survive any future policy changes.
+  const { data } = await supabase
+    .from("traveler_progress")
+    .select(
+      "traveler_lessons!inner(traveler_courses!inner(languages!inner(code)))",
+    )
+    .eq("user_id", user.id)
+    .eq("completed", true);
+
+  type Row = {
+    traveler_lessons: {
+      traveler_courses: {
+        languages: { code: string };
+      };
+    };
+  };
+
+  const counts: Record<string, number> = {};
+  for (const row of ((data ?? []) as unknown as Row[])) {
+    const code = row?.traveler_lessons?.traveler_courses?.languages?.code;
+    if (code) counts[code] = (counts[code] ?? 0) + 1;
+  }
+  return counts;
+}

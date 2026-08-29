@@ -24,6 +24,7 @@ import { FLAG_CODES } from "@/lib/flag-codes";
 import { createClient } from "@/lib/supabase/server";
 import { getServerLang } from "@/lib/i18n-server";
 import { getLocalizedLanguageName } from "@/lib/i18n";
+import { getTravelerCompletedCountsByLanguage } from "@/lib/traveler";
 
 // Per-user CTA on each card (Start vs Continue) means the homepage has
 // to render per request now. Dropping the static cache; the page is
@@ -41,13 +42,17 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [dbLangs, startedOrder, isPremium] = await Promise.all([
-    getLanguagesWithLessonCounts().catch(() => []),
-    getStartedLanguageOrder().catch(
-      () => [] as Array<{ code: string; firstActivity: string }>,
-    ),
-    isCurrentUserPremium().catch(() => false),
-  ]);
+  const [dbLangs, startedOrder, isPremium, travelerCompletedCounts] =
+    await Promise.all([
+      getLanguagesWithLessonCounts().catch(() => []),
+      getStartedLanguageOrder().catch(
+        () => [] as Array<{ code: string; firstActivity: string }>,
+      ),
+      isCurrentUserPremium().catch(() => false),
+      getTravelerCompletedCountsByLanguage().catch(
+        () => ({}) as Record<string, number>,
+      ),
+    ]);
 
   const startedSlugsInOrder = startedOrder.map((s) => s.code);
   const startedSet = new Set(startedSlugsInOrder);
@@ -112,6 +117,8 @@ export default async function Home() {
           totalXp: entry.stats?.total_xp ?? 0,
           continueHref,
           lastLessonTitle: lastCompleted?.title ?? null,
+          travelerCompletedCount:
+            travelerCompletedCounts[entry.language.code] ?? 0,
         };
       }),
     );
@@ -192,6 +199,7 @@ export default async function Home() {
         langs={langs}
         startedSlugsInOrder={startedSlugsInOrder}
         isPremium={isPremium}
+        travelerCompletedCounts={travelerCompletedCounts}
       />
       <Footer />
     </>

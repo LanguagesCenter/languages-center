@@ -22,6 +22,10 @@ export interface ActiveLanguageEntry {
   totalXp: number;
   continueHref: string; // deep link to the next lesson (or /learn/{slug})
   lastLessonTitle: string | null;
+  // Completed Traveler's Course lessons for this language. Drives the
+  // Start/Continue Journey CTA copy on the mini-section attached to the
+  // bottom of each active language card.
+  travelerCompletedCount: number;
 }
 
 export interface ExploreLanguageEntry {
@@ -179,51 +183,6 @@ export default function HomePersonalized({
         </div>
       </section>
 
-      {/* Travel-guide callout — only rendered when at least one active
-          language has a phrasebook. This is the ONE place in the app it
-          appears; it used to live on /learn but was consolidated here so
-          the homepage is the single home for the "bonus tool" pitch. */}
-      {(() => {
-        const travelLangs = active.filter((l) => hasTravelPhrasebook(l.slug));
-        if (travelLangs.length === 0) return null;
-        return (
-          <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-4">
-            <div className="rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm">
-              <div className="shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow ring-2 ring-white">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
-                  <rect x="3" y="7" width="18" height="14" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 11v6M16 11v6M12 11v6" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm sm:text-base font-semibold text-amber-950">
-                  Planning a trip? Check out your Phrase Passport
-                </p>
-                <p className="text-xs sm:text-sm text-amber-900/70 mt-0.5">
-                  65 essential phrases with pronunciation and flashcards — a bonus tool alongside your course.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 sm:justify-end">
-                {travelLangs.map((l) => (
-                  <Link
-                    key={l.slug}
-                    href={`/languages/${l.slug}/travel-guide`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-amber-600 rounded-full shadow hover:bg-amber-700 transition-colors whitespace-nowrap"
-                  >
-                    <span aria-hidden>✈</span>
-                    {l.name} Passport
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        );
-      })()}
-
       {/* Active languages — the meat of the personalized homepage.
           Each card jumps directly to the user's next lesson. */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-10">
@@ -297,12 +256,21 @@ export default function HomePersonalized({
   );
 }
 
+// Languages that have a Traveler's Course today. Kept in sync with the
+// same list in LanguageCard.tsx. If this grows, promote to a shared
+// helper.
+const TRAVELER_COURSE_SLUGS = new Set(["spanish", "french"]);
+function hasTravelerCourse(slug: string): boolean {
+  return TRAVELER_COURSE_SLUGS.has(slug);
+}
+
 function ActiveLanguageCard({ lang }: { lang: ActiveLanguageEntry }) {
   const pill = LEVEL_PILL[lang.currentLevel];
   const flag = FLAG_CODES[lang.slug] ?? lang.countryCode;
   const showTravel = hasTravelPhrasebook(lang.slug);
+  const showTraveler = hasTravelerCourse(lang.slug);
   return (
-    <div className="group relative bg-white border border-border rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:border-teal/40 transition-all">
+    <div className="group relative flex flex-col bg-white border border-border rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:border-teal/40 transition-all">
       {showTravel && (
         <Link
           href={`/languages/${lang.slug}/travel-guide`}
@@ -367,6 +335,42 @@ function ActiveLanguageCard({ lang }: { lang: ActiveLanguageEntry }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </Link>
+
+      {/* Traveler's Course mini-section — visually separated by a dashed
+          divider so it reads as a bonus feature, not another CTA. Whole
+          row is a Link → /learn/{slug}/travel. CTA copy flips based on
+          the user's completed traveler-lesson count. */}
+      {showTraveler && (
+        <Link
+          href={`/learn/${lang.slug}/travel`}
+          aria-label={`${
+            lang.travelerCompletedCount > 0 ? "Continue" : "Start"
+          } ${lang.name} Traveler's Course`}
+          className="group/traveler mt-5 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-4 pb-5 sm:pb-6 flex items-center justify-between gap-3 border-t border-dashed border-navy/10 bg-gradient-to-br from-orange-50/60 to-amber-50/40 rounded-b-2xl hover:from-orange-100/80 hover:to-amber-100/60 transition-colors"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 text-white flex items-center justify-center shadow-sm ring-2 ring-white">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700/80 leading-none">
+                Bonus
+              </p>
+              <p className="text-sm font-bold text-orange-950 leading-tight mt-0.5 truncate">
+                Traveler&rsquo;s Course
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-orange-600 rounded-full shadow-sm group-hover/traveler:bg-orange-700 group-hover/traveler:shadow-md transition-all whitespace-nowrap">
+            {lang.travelerCompletedCount > 0 ? "Continue Journey" : "Start Journey"}
+            <svg className="w-3 h-3 group-hover/traveler:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </span>
+        </Link>
+      )}
     </div>
   );
 }

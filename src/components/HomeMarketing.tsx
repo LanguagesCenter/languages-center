@@ -6,6 +6,7 @@ export interface HomeMarketingProps {
   langs: LanguageGridItem[];
   startedSlugsInOrder: string[];
   isPremium: boolean;
+  travelerCompletedCounts: Record<string, number>;
 }
 
 // Marketing homepage — anonymous visitors and signed-in users who
@@ -15,6 +16,7 @@ export default function HomeMarketing({
   langs,
   startedSlugsInOrder,
   isPremium,
+  travelerCompletedCounts,
 }: HomeMarketingProps) {
   return (
     <main className="flex-1">
@@ -77,6 +79,7 @@ export default function HomeMarketing({
         <LanguageGrid
           languages={langs}
           startedSlugsInOrder={startedSlugsInOrder}
+          travelerCompletedCounts={travelerCompletedCounts}
         />
       </section>
 
@@ -132,20 +135,12 @@ export default function HomeMarketing({
             More than flashcards
           </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <HighlightCard
             eyebrow="Speak with confidence"
             title="Speaking practice with instant coaching"
             body="Record yourself completing prompts and get scored on pronunciation, fluency and grammar — with concrete tips to improve."
             accent="teal"
-          />
-          <HighlightCard
-            eyebrow="Ready before you travel"
-            title="Phrase Passport"
-            body="65 essential travel phrases per language with native audio and a built-in flashcard trainer. Your pocket guide to getting by."
-            accent="amber"
-            href="/languages/spanish/travel-guide"
-            hrefLabel="Preview the Spanish passport"
           />
           <HighlightCard
             eyebrow="See where you stand"

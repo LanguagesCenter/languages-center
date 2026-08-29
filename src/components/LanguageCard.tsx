@@ -50,6 +50,7 @@ export default function LanguageCard({
   language,
   lessonsTotal,
   hasProgress = false,
+  travelerCompletedCount = 0,
 }: {
   language: Language;
   lessonsTotal?: number;
@@ -57,6 +58,10 @@ export default function LanguageCard({
   // language. Determines whether the CTA reads "Start learning X" or
   // "Continue learning X".
   hasProgress?: boolean;
+  // Number of Traveler's Course lessons this user has completed for the
+  // language. Determines whether the Traveler's Course CTA reads "Start
+  // Journey" (0 completions) or "Continue Journey" (≥1). 0 for anon.
+  travelerCompletedCount?: number;
 }) {
   const { t, lang } = useI18n();
   const localizedName = getLocalizedLanguageName(language.slug, lang, language.name);
@@ -117,40 +122,22 @@ export default function LanguageCard({
         </div>
       </Link>
 
-      {/* Travel-track badge row — sits below the main card content and
-          above the Start-Learning CTA. Two clearly-distinct pills:
-          green for the immersive Traveler's Course, blue for the
-          Phrase Passport reference. Only renders for languages that
-          have those features (Spanish + French today). */}
-      {(hasTravelerCourse(language.slug) || hasTravelPhrasebook(language.slug)) && (
+      {/* Phrase Passport badge — small pill, sits above the main CTA
+          alongside any other quick-reference tags. Only rendered for
+          languages that ship a phrasebook (Spanish + French today). */}
+      {hasTravelPhrasebook(language.slug) && (
         <div className="mt-4 flex flex-wrap gap-2">
-          {hasTravelerCourse(language.slug) && (
-            <Link
-              href={`/learn/${language.slug}/travel`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-full bg-green-100 text-green-800 text-xs font-bold px-3 py-1.5 border border-green-300 hover:bg-green-200 hover:border-green-400 active:scale-95 transition-colors"
-              aria-label={`Open ${localizedName} Traveler's Course`}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Traveler&rsquo;s Course
-            </Link>
-          )}
-          {hasTravelPhrasebook(language.slug) && (
-            <Link
-              href={`/languages/${language.slug}/travel-guide`}
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 border border-blue-300 hover:bg-blue-200 hover:border-blue-400 active:scale-95 transition-colors"
-              aria-label={`Open ${localizedName} Phrase Passport`}
-            >
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
-              </svg>
-              Phrase Passport
-            </Link>
-          )}
+          <Link
+            href={`/languages/${language.slug}/travel-guide`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 border border-blue-300 hover:bg-blue-200 hover:border-blue-400 active:scale-95 transition-colors"
+            aria-label={`Open ${localizedName} Phrase Passport`}
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
+            </svg>
+            Phrase Passport
+          </Link>
         </div>
       )}
 
@@ -166,6 +153,43 @@ export default function LanguageCard({
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       </Link>
+
+      {/* Traveler's Course mini-section — visually separated from the
+          main card by a divider so it reads as a bonus feature rather
+          than another badge. Whole row is a Link → /learn/{slug}/travel.
+          CTA copy flips based on completed traveler-lesson count. */}
+      {hasTravelerCourse(language.slug) && (
+        <Link
+          href={`/learn/${language.slug}/travel`}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`${
+            travelerCompletedCount > 0 ? "Continue" : "Start"
+          } ${localizedName} Traveler's Course`}
+          className="group/traveler mt-4 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-4 pb-5 sm:pb-6 flex items-center justify-between gap-3 border-t border-dashed border-navy/10 bg-gradient-to-br from-orange-50/60 to-amber-50/40 rounded-b-2xl hover:from-orange-100/80 hover:to-amber-100/60 transition-colors"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 text-white flex items-center justify-center shadow-sm ring-2 ring-white">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
+              </svg>
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700/80 leading-none">
+                Bonus
+              </p>
+              <p className="text-sm font-bold text-orange-950 leading-tight mt-0.5 truncate">
+                Traveler&rsquo;s Course
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-orange-600 rounded-full shadow-sm group-hover/traveler:bg-orange-700 group-hover/traveler:shadow-md transition-all whitespace-nowrap">
+            {travelerCompletedCount > 0 ? "Continue Journey" : "Start Journey"}
+            <svg className="w-3 h-3 group-hover/traveler:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </span>
+        </Link>
+      )}
     </div>
   );
 }
