@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import LanguageGrid, { type LanguageGridItem } from "@/components/LanguageGrid";
-import TravelerCourseBanner from "@/components/TravelerCourseBanner";
 
 export interface HomeMarketingProps {
   langs: LanguageGridItem[];
@@ -156,10 +155,6 @@ export default function HomeMarketing({
           />
         </div>
       </section>
-
-      {/* Traveler's Course banner — bonus track sitting between the
-          featured / language content and the final CTA. */}
-      <TravelerCourseBanner />
 
       {/* Closing CTA — one final push. */}
       <section className="bg-gradient-to-br from-teal to-teal-dark text-white">

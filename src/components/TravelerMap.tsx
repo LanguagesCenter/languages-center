@@ -109,28 +109,39 @@ export default function TravelerMap({
         firstSymbolLayerId(map),
       );
 
-      // City markers — one per course. The marker element is sized
-      // EXACTLY to the dot (16×16) so `anchor: "center"` places the
-      // dot's geometric center precisely on the coordinate. The label
-      // is absolutely-positioned outside the button's bounding box; it
-      // still triggers the click via event bubbling because it remains
-      // a DOM child of the button.
+      // City markers — one per course. The marker element is a PURE
+      // 16×16 dot (no children beyond the dot itself) so anchor
+      // "center" is unambiguous: the geometric center of the element
+      // sits exactly on the [lng, lat] coordinate. City name is
+      // rendered as a Mapbox Popup on hover — that keeps the marker
+      // element's bounding box guaranteed-square and eliminates any
+      // possibility of label DOM affecting positioning.
       for (const c of cities) {
         const el = document.createElement("button");
         el.type = "button";
         el.setAttribute("aria-label", `Open ${c.city} traveler course`);
         el.className = "traveler-map-marker";
-        el.innerHTML = `
-          <span class="traveler-map-marker__dot"></span>
-          <span class="traveler-map-marker__label">${escapeHtml(c.city)}</span>
-        `;
         el.addEventListener("click", (e) => {
           e.stopPropagation();
           router.push(`${baseHref}/${c.slug}`);
         });
+
         new mapboxgl.Marker({ element: el, anchor: "center" })
           .setLngLat(c.coords)
           .addTo(map);
+
+        // Hover popup for the city name — kept independent of the
+        // marker's setPopup binding so open/close is symmetric and
+        // idempotent (add-to-map on enter, remove on leave).
+        const popup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 14,
+          className: "traveler-map-popup",
+          anchor: "bottom",
+        }).setHTML(`<span>${escapeHtml(c.city)}</span>`);
+        el.addEventListener("mouseenter", () => popup.setLngLat(c.coords).addTo(map));
+        el.addEventListener("mouseleave", () => popup.remove());
       }
 
       // (Intentionally no fitBounds call — the DEFAULT_CENTER / DEFAULT_ZOOM
@@ -151,52 +162,41 @@ export default function TravelerMap({
         ref={container}
         className="w-full h-[380px] sm:h-[460px] lg:h-[520px] rounded-2xl overflow-hidden border border-border shadow-sm"
       />
-      {/* Marker styles — Tailwind can't reach into the imperatively-created
-          Mapbox marker DOM, so inline what we need. Layout note: the
-          button element is sized EXACTLY to the dot (16×16, box-sizing:
-          border-box) so mapboxgl.Marker({anchor: "center"}) lands the
-          dot's center on the coordinate. The label is absolutely
-          positioned so it doesn't shift the button's bounding box. */}
+      {/* Marker + popup styles — Tailwind can't reach into the
+          imperatively-created Mapbox DOM, so inline what we need. The
+          marker element is a pure 16×16 orange dot (nothing else in
+          the DOM) so anchor "center" is unambiguous. Popup carries
+          the city name on hover. */}
       <style jsx global>{`
         .traveler-map-marker {
-          position: relative;
           display: block;
           width: 16px;
           height: 16px;
           padding: 0;
-          border: none;
-          background: transparent;
-          cursor: pointer;
+          margin: 0;
+          border: 3px solid #ffffff;
+          border-radius: 999px;
+          background: #f97316; /* orange-500 */
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05);
           box-sizing: border-box;
+          cursor: pointer;
           transition: transform 160ms ease-out;
         }
         .traveler-map-marker:hover {
-          transform: scale(1.15);
+          transform: scale(1.2);
         }
-        .traveler-map-marker__dot {
-          position: absolute;
-          inset: 0;
+        .traveler-map-popup .mapboxgl-popup-content {
+          padding: 4px 10px;
           border-radius: 999px;
-          background: #f97316; /* orange-500 */
-          border: 3px solid #ffffff;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 0, 0, 0.05);
-          box-sizing: border-box;
-        }
-        .traveler-map-marker__label {
-          position: absolute;
-          left: calc(100% + 8px);
-          top: 50%;
-          transform: translateY(-50%);
           font-size: 12px;
           font-weight: 700;
           color: #1e293b;
           background: rgba(255, 255, 255, 0.96);
-          padding: 3px 8px;
-          border-radius: 999px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
-          white-space: nowrap;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
           letter-spacing: -0.01em;
-          pointer-events: auto;
+        }
+        .traveler-map-popup .mapboxgl-popup-tip {
+          border-top-color: rgba(255, 255, 255, 0.96);
         }
       `}</style>
     </>

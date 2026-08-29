@@ -7,6 +7,14 @@ import { getLocalizedLanguageName } from "@/lib/i18n";
 import type { Language, Difficulty } from "@/lib/languages";
 import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 
+// Languages with a Traveler's Course today (city-by-city trip
+// simulator, separate from the CEFR curriculum). Add slugs here as
+// courses get seeded in traveler_courses.
+const TRAVELER_COURSE_SLUGS = new Set(["spanish", "french"]);
+function hasTravelerCourse(slug: string): boolean {
+  return TRAVELER_COURSE_SLUGS.has(slug);
+}
+
 function DifficultyBadge({ level }: { level: Difficulty }) {
   const { t } = useI18n();
   const colors: Record<Difficulty, string> = {
@@ -65,20 +73,34 @@ export default function LanguageCard({
       // is restored for sm+ where a real cursor exists.
       className="group relative flex flex-col bg-white border border-border rounded-2xl p-5 sm:p-6 sm:hover:shadow-lg sm:hover:border-teal/40 sm:hover:-translate-y-0.5 focus-within:ring-2 focus-within:ring-teal focus-within:ring-offset-2 transition-all duration-200"
     >
-      {hasTravelPhrasebook(language.slug) && (
-        // Small corner tag that jumps directly to the travel phrasebook.
-        // Sits above the outer card link with z-10 so its click target is
-        // isolated from the card's Overview / Start-learning links.
-        <Link
-          href={`/languages/${language.slug}/travel-guide`}
-          onClick={(e) => e.stopPropagation()}
-          className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-900 text-[10px] sm:text-xs font-bold px-2.5 py-1 border border-amber-300 shadow-sm hover:bg-amber-200 hover:border-amber-400 active:scale-95 transition-colors"
-          aria-label={`Open ${localizedName} travel phrase guide`}
-        >
-          <span aria-hidden>✈</span>
-          Travel Guide
-        </Link>
-      )}
+      {/* Corner-tag stack. Traveler's Course sits above Travel Guide
+          because it's the more immersive product; both share the
+          top-right column and use z-10 so their click targets aren't
+          swallowed by the card's Overview / Start-learning links. */}
+      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-1.5">
+        {hasTravelerCourse(language.slug) && (
+          <Link
+            href={`/learn/${language.slug}/travel`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 rounded-full bg-sky-100 text-sky-900 text-[10px] sm:text-xs font-bold px-2.5 py-1 border border-sky-300 shadow-sm hover:bg-sky-200 hover:border-sky-400 active:scale-95 transition-colors"
+            aria-label={`Open ${localizedName} traveler's course`}
+          >
+            <span aria-hidden>✈</span>
+            Traveler&rsquo;s Course
+          </Link>
+        )}
+        {hasTravelPhrasebook(language.slug) && (
+          <Link
+            href={`/languages/${language.slug}/travel-guide`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-900 text-[10px] sm:text-xs font-bold px-2.5 py-1 border border-amber-300 shadow-sm hover:bg-amber-200 hover:border-amber-400 active:scale-95 transition-colors"
+            aria-label={`Open ${localizedName} travel phrase guide`}
+          >
+            <span aria-hidden>✈</span>
+            Travel Guide
+          </Link>
+        )}
+      </div>
       <Link
         href={`/languages/${language.slug}`}
         aria-label={`Learn more about ${localizedName}`}

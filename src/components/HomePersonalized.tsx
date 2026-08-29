@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import StreakFlame from "@/components/StreakFlame";
-import TravelerCourseBanner from "@/components/TravelerCourseBanner";
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 import type { CEFRLevel } from "@/lib/learn";
@@ -294,9 +293,6 @@ export default function HomePersonalized({
         )}
       </section>
 
-      {/* Traveler's Course banner — bonus track sitting between the
-          language / continue-learning content and the footer. */}
-      <TravelerCourseBanner />
     </main>
   );
 }

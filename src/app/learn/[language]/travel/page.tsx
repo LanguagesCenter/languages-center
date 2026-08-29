@@ -65,10 +65,7 @@ export default async function TravelerLanguagePage(
                 {langName} on the ground
               </h1>
               <p className="text-sm sm:text-base text-navy/60 mt-2 max-w-2xl">
-                A separate track from the main course. Pick a city and walk
-                through two weeks of realistic scenarios — airport signs,
-                cafe orders, metro maps, the exact {langName} you&rsquo;ll
-                actually hear on a trip.
+                {`A separate track from the main course. Pick a city and walk through two weeks of realistic scenarios — airport signs, cafe orders, metro maps, the exact ${langName} you'll actually hear on a trip.`}
               </p>
             </div>
           </div>

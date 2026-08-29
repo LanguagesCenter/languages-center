@@ -24,10 +24,12 @@ interface NavbarLanguage {
 export default function Navbar() {
   const { t, lang: uiLang } = useI18n();
   const [open, setOpen] = useState(false);
+  const [travelOpen, setTravelOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [languages, setLanguages] = useState<NavbarLanguage[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const travelRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
@@ -71,6 +73,9 @@ export default function Navbar() {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
+      }
+      if (travelRef.current && !travelRef.current.contains(e.target as Node)) {
+        setTravelOpen(false);
       }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
@@ -192,18 +197,66 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Travel link — defaults to the Spanish traveler map since
-                it's the most active track; users can jump to French from
-                inside the /learn/[language]/travel page. */}
-            <Link
-              href="/learn/spanish/travel"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
-              </svg>
-              Travel
-            </Link>
+            {/* Travel dropdown — mirrors the Languages dropdown pattern.
+                Two entries (Spanish / French) since those are the only
+                languages that have a Traveler's Course today. */}
+            <div className="relative" ref={travelRef}>
+              <button
+                onClick={() => setTravelOpen(!travelOpen)}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
+                </svg>
+                Travel
+                <svg
+                  className={`w-4 h-4 transition-transform ${travelOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {travelOpen && (
+                <div className="absolute top-full start-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-border py-2">
+                  <Link
+                    href="/learn/spanish/travel"
+                    onClick={() => setTravelOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
+                  >
+                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                      <Image
+                        src={`https://flagcdn.com/w40/es.png`}
+                        alt="Spanish flag"
+                        fill
+                        sizes="24px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    Spanish
+                  </Link>
+                  <Link
+                    href="/learn/french/travel"
+                    onClick={() => setTravelOpen(false)}
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
+                  >
+                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                      <Image
+                        src={`https://flagcdn.com/w40/fr.png`}
+                        alt="French flag"
+                        fill
+                        sizes="24px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    French
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Pricing link */}
             <Link
