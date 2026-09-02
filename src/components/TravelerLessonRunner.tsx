@@ -149,6 +149,16 @@ export default function TravelerLessonRunner({
 
         {phrases && phrases.phrases.length > 0 && (
           <SectionShell number={2} label="Key phrases">
+            {phrases.grammarNote && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-3 sm:p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 mb-1">
+                  Grammar note
+                </p>
+                <p className="text-sm text-amber-950 leading-relaxed">
+                  {phrases.grammarNote}
+                </p>
+              </div>
+            )}
             <PhraseDeck phrases={phrases.phrases} speechLang={speechLang} />
           </SectionShell>
         )}

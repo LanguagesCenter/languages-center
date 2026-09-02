@@ -262,6 +262,11 @@ export interface Phrase {
 export interface PhrasesSection {
   kind: "phrases";
   phrases: Phrase[];
+  // Optional plain-English explanation of one structural feature that
+  // ties the phrases together (verb tense, formality register, etc.).
+  // Rendered as a small note above the phrase deck. Null for legacy
+  // rows written before this field existed.
+  grammarNote: string | null;
 }
 
 export interface DialogueLine {
@@ -404,6 +409,7 @@ function normalizeSection(row: RawContentRow): LessonSection | null {
             grammar: asStringOrNull(o.grammar),
           };
         }),
+        grammarNote: asStringOrNull(data.grammarNote),
       };
     case "dialogue":
       return {
