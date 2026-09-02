@@ -1,7 +1,5 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { createClient } from "@/lib/supabase/server";
 import { isCurrentUserPremium } from "@/lib/learn";
 import { getTravelerLessonWithContent } from "@/lib/traveler";
@@ -53,32 +51,14 @@ export default async function TravelerLessonPage(
 
   const speechLang = SPEECH_LANG[langSlug] ?? "en-US";
 
+  // No Footer, no page background wrapper — the runner is a full
+  // adventure surface that owns its own layout and progress chrome.
+  // The Back-to-city link lives inside the runner's sticky progress
+  // bar instead.
   return (
     <>
       <Navbar />
-      <main className="flex-1 bg-gradient-to-b from-amber-50/50 via-white to-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
-          <Link
-            href={`/learn/${langSlug}/travel/${citySlug}`}
-            className="inline-flex items-center gap-1.5 text-sm text-navy/60 hover:text-teal transition-colors"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Back to {content.courseCity}
-          </Link>
-        </div>
-
+      <main className="flex-1">
         <TravelerLessonRunner
           languageSlug={langSlug}
           citySlug={citySlug}
@@ -87,7 +67,6 @@ export default async function TravelerLessonPage(
           isPremium={isPremium}
         />
       </main>
-      <Footer />
     </>
   );
 }
