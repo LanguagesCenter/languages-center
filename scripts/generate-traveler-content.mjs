@@ -54,7 +54,9 @@ import { existsSync } from "node:fs";
 
 const MODEL = "claude-sonnet-4-6";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const REPLICATE_URL = "https://api.replicate.com/v1/models/stability-ai/sdxl/predictions";
+const REPLICATE_PREDICTIONS_URL = "https://api.replicate.com/v1/predictions";
+const REPLICATE_MODEL_OWNER = "stability-ai";
+const REPLICATE_MODEL_NAME = "sdxl";
 const PROGRESS_PATH = new URL("./.traveler-content-progress.json", import.meta.url).pathname;
 
 // One landscape aspect ratio for every hero. SDXL trained natively at
@@ -226,7 +228,7 @@ For every lesson you receive a city, country, lesson title, location, lesson_typ
 
 7. grammar_note — a plain-English paragraph explaining ONE structural feature that ties these phrases together (verb tense, formality register, contraction, word order). Written for a beginner, no jargon.
 
-8. dialogue — 6-8 lines of realistic conversation between a "You" (the traveler) and one or more locals appropriate to the location (Officer, Waiter, Driver, Concierge, etc). Each line: { speaker, target, english }.
+8. dialogue — 6-11 lines of realistic conversation between a "You" (the traveler) and one or more locals appropriate to the location (Officer, Waiter, Driver, Concierge, etc). Aim for 6-8 in tightly-scoped situations (hotel check-in, buying a ticket) and 8-11 in richer social exchanges (small talk, invitations, misunderstandings). Each line: { speaker, target, english }.
    - speaker: short role label, always "You" for the traveler
    - target: what's said in the target language, natural and idiomatic to the region
    - english: idiomatic translation
@@ -401,7 +403,7 @@ function validateContent(ai) {
   const nPhrases = ai?.phrases?.length ?? 0;
   if (nPhrases !== 5) errs.push(`phrases must be exactly 5, got ${nPhrases}`);
   const nDialogue = ai?.dialogue?.length ?? 0;
-  if (nDialogue < 6 || nDialogue > 8) errs.push(`dialogue must be 6-8 lines, got ${nDialogue}`);
+  if (nDialogue < 6 || nDialogue > 11) errs.push(`dialogue must be 6-11 lines, got ${nDialogue}`);
   const nQuiz = ai?.quiz?.length ?? 0;
   if (nQuiz !== 4) errs.push(`quiz must be exactly 4, got ${nQuiz}`);
   for (const [i, q] of (ai?.quiz ?? []).entries()) {
@@ -421,11 +423,37 @@ function validateContent(ai) {
 
 // ---------- Replicate (SDXL) ----------
 
+// Cache the SDXL model version between calls so we only hit the model
+// metadata endpoint once per run.
+let cachedReplicateVersion = null;
+
+async function fetchReplicateVersion(token) {
+  if (cachedReplicateVersion) return cachedReplicateVersion;
+  return withRetry(`replicate model lookup`, async () => {
+    const res = await fetch(
+      `https://api.replicate.com/v1/models/${REPLICATE_MODEL_OWNER}/${REPLICATE_MODEL_NAME}`,
+      { headers: { Authorization: `Bearer ${token}` } },
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const err = new Error(`replicate model lookup ${res.status}: ${text.slice(0, 400)}`);
+      if (res.status === 429 || res.status >= 500) markRetryable(err);
+      throw err;
+    }
+    const model = await res.json();
+    const version = model?.latest_version?.id;
+    if (!version) throw new Error("replicate model response missing latest_version.id");
+    cachedReplicateVersion = version;
+    return version;
+  });
+}
+
 async function generateImage({ token, prompt }) {
+  const version = await fetchReplicateVersion(token);
   return withRetry(`replicate`, async () => {
     // Prefer: wait=60 makes the create call synchronous when possible;
     // long-running predictions still return a URL to poll.
-    const createRes = await fetch(REPLICATE_URL, {
+    const createRes = await fetch(REPLICATE_PREDICTIONS_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -433,6 +461,7 @@ async function generateImage({ token, prompt }) {
         Prefer: "wait=60",
       },
       body: JSON.stringify({
+        version,
         input: {
           prompt,
           width: IMAGE_WIDTH,
@@ -476,9 +505,23 @@ async function generateImage({ token, prompt }) {
 // ---------- content → DB rows ----------
 
 function toContentRows(lessonId, ai, imageUrl) {
+  // PostgREST bulk INSERT requires every object in the array to have
+  // identical keys (PGRST102: "All object keys must match"). We emit
+  // the full column set on every row with per-type overrides.
+  const base = {
+    traveler_lesson_id: lessonId,
+    content_type: null,
+    content_order: 0,
+    image_url: null,
+    image_alt: null,
+    explanation_text: null,
+    dialogue_lines: [],
+    quiz_questions: [],
+    data: {},
+  };
   return [
     {
-      traveler_lesson_id: lessonId,
+      ...base,
       content_type: "scene",
       content_order: 1,
       image_url: imageUrl,
@@ -490,7 +533,7 @@ function toContentRows(lessonId, ai, imageUrl) {
       },
     },
     {
-      traveler_lesson_id: lessonId,
+      ...base,
       content_type: "sign",
       content_order: 2,
       data: {
@@ -503,19 +546,19 @@ function toContentRows(lessonId, ai, imageUrl) {
       },
     },
     {
-      traveler_lesson_id: lessonId,
+      ...base,
       content_type: "phrases",
       content_order: 3,
       data: { phrases: ai.phrases, grammarNote: ai.grammar_note },
     },
     {
-      traveler_lesson_id: lessonId,
+      ...base,
       content_type: "dialogue",
       content_order: 4,
       dialogue_lines: ai.dialogue,
     },
     {
-      traveler_lesson_id: lessonId,
+      ...base,
       content_type: "quiz",
       content_order: 5,
       quiz_questions: ai.quiz,
