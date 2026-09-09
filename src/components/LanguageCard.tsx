@@ -122,7 +122,7 @@ export default function LanguageCard({
         </div>
       </Link>
 
-      {/* Phrase Passport badge — small pill, sits above the main CTA
+      {/* Phrase Lookup badge — small pill, sits above the main CTA
           alongside any other quick-reference tags. Only rendered for
           languages that ship a phrasebook (Spanish + French today). */}
       {hasTravelPhrasebook(language.slug) && (
@@ -131,12 +131,12 @@ export default function LanguageCard({
             href={`/languages/${language.slug}/travel-guide`}
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1.5 border border-blue-300 hover:bg-blue-200 hover:border-blue-400 active:scale-95 transition-colors"
-            aria-label={`Open ${localizedName} Phrase Passport`}
+            aria-label={`Open ${localizedName} Phrase Lookup`}
           >
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
             </svg>
-            Phrase Passport
+            Phrase Lookup
           </Link>
         </div>
       )}
@@ -177,7 +177,7 @@ export default function LanguageCard({
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-orange-700/80 leading-none">
                 Bonus
               </p>
-              <p className="text-sm font-bold text-orange-950 leading-tight mt-0.5 truncate">
+              <p className="text-sm font-bold text-orange-950 leading-tight mt-0.5">
                 Traveler&rsquo;s Course
               </p>
             </div>

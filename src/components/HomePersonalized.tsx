@@ -275,10 +275,10 @@ function ActiveLanguageCard({ lang }: { lang: ActiveLanguageEntry }) {
         <Link
           href={`/languages/${lang.slug}/travel-guide`}
           className="absolute top-3 right-3 z-10 inline-flex items-center gap-1 rounded-full bg-blue-100 text-blue-900 text-[10px] font-bold px-2 py-1 border border-blue-300 hover:bg-blue-200 transition-colors"
-          aria-label={`Open ${lang.name} Phrase Passport`}
+          aria-label={`Open ${lang.name} Phrase Lookup`}
         >
           <span aria-hidden>✈</span>
-          Phrase Passport
+          Phrase Lookup
         </Link>
       )}
       <div className="flex items-start gap-4">

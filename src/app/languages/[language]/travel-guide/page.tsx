@@ -13,9 +13,9 @@ export async function generateMetadata(
 ) {
   const { language } = await props.params;
   const book = getTravelPhrasebook(language);
-  if (!book) return { title: "Phrase Passport — Languages Center" };
+  if (!book) return { title: "Phrase Lookup — Languages Center" };
   return {
-    title: `${book.language} Phrase Passport — Languages Center`,
+    title: `${book.language} Phrase Lookup — Languages Center`,
     description: `65 essential ${book.language} phrases with pronunciation and audio — your pocket guide to getting by, plus a built-in flashcard trainer.`,
   };
 }

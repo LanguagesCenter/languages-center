@@ -177,7 +177,7 @@ export default function Navbar() {
                         </span>
                         {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
                       </Link>
-                      {/* Bonus sub-link to the Phrase Passport. Indented
+                      {/* Bonus sub-link to the Phrase Lookup. Indented
                           under the parent language row and rendered in an
                           italic, muted blue tone so it reads as a
                           companion tool, not another language entry. */}
@@ -188,7 +188,7 @@ export default function Navbar() {
                           className="flex items-center gap-2 pl-14 pr-4 pb-2 -mt-1 text-xs italic font-medium text-blue-700/90 hover:text-blue-800 hover:bg-blue-50/60 transition-colors"
                         >
                           <span aria-hidden className="text-sm not-italic">📖</span>
-                          Phrase Passport
+                          Phrase Lookup
                         </Link>
                       )}
                     </div>
@@ -199,7 +199,7 @@ export default function Navbar() {
 
             {/* Travel dropdown — two grouped sections, each with Spanish /
                 French. Traveler's Course is the immersive city-by-city
-                simulator; Phrase Passport is the pocket phrasebook. */}
+                simulator; Phrase Lookup is the pocket phrasebook. */}
             <div className="relative" ref={travelRef}>
               <button
                 onClick={() => setTravelOpen(!travelOpen)}
@@ -266,7 +266,7 @@ export default function Navbar() {
                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
                     </svg>
-                    Phrase Passport
+                    Phrase Lookup
                   </div>
                   <Link
                     href="/languages/spanish/travel-guide"

@@ -151,37 +151,6 @@ export default function HomeMarketing({
         </div>
       </section>
 
-      {/* Closing CTA — one final push. */}
-      <section className="bg-gradient-to-br from-teal to-teal-dark text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight">
-            Ready when you are.
-          </h2>
-          <p className="mt-3 text-base sm:text-lg text-white/85 max-w-xl mx-auto">
-            Sign up in seconds, take a placement test, and get your first
-            lesson recommended for you.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 max-w-md sm:max-w-none mx-auto">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-base font-semibold text-teal-dark bg-white rounded-full hover:bg-white/90 hover:shadow-lg active:scale-[0.98] transition-all"
-            >
-              Start learning for free
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-            {!isPremium && (
-              <Link
-                href="/pricing"
-                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 text-base font-medium text-white/85 hover:text-white transition-colors"
-              >
-                Compare plans
-              </Link>
-            )}
-          </div>
-        </div>
-      </section>
     </main>
   );
 }

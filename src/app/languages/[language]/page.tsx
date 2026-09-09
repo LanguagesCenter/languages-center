@@ -321,7 +321,7 @@ export default async function LanguageOverviewPage(
         </section>
 
         {/* Two side-by-side travel-track cards — Traveler's Course
-            (warm terracotta) + Phrase Passport (deep blue). Same shape,
+            (warm terracotta) + Phrase Lookup (deep blue). Same shape,
             same size, visually balanced, hard to confuse. Only rendered
             for Spanish/French today. */}
         {hasTravelPhrasebook(slug) && (
@@ -365,7 +365,7 @@ export default async function LanguageOverviewPage(
                 </span>
               </Link>
 
-              {/* Phrase Passport — deep blue */}
+              {/* Phrase Lookup — deep blue */}
               <Link
                 href={`/languages/${slug}/travel-guide`}
                 className="group relative flex flex-col overflow-hidden rounded-3xl border-2 border-blue-500/40 bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 p-6 sm:p-7 shadow-md hover:shadow-xl hover:border-blue-400 transition-all"
@@ -386,7 +386,7 @@ export default async function LanguageOverviewPage(
                       Quick reference
                     </span>
                     <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                      Phrase Passport
+                      Phrase Lookup
                     </h2>
                   </div>
                 </div>
@@ -394,7 +394,7 @@ export default async function LanguageOverviewPage(
                   65 essential phrases with pronunciation — your pocket guide to getting by.
                 </p>
                 <span className="relative mt-4 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-bold text-blue-900 bg-white rounded-full shadow-md group-hover:bg-blue-50 group-hover:shadow-lg transition-all self-start whitespace-nowrap">
-                  Open Passport
+                  Open Lookup
                   <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                   </svg>

@@ -95,7 +95,7 @@ export default function LanguageGrid({
           <p className="text-[11px] sm:text-xs uppercase tracking-[0.15em] font-semibold text-teal-dark">
             {t("home.continue")}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
             {continueCards.map((entry) => (
               <LanguageCard
                 key={entry.slug}
@@ -113,7 +113,7 @@ export default function LanguageGrid({
           <p className="text-[11px] sm:text-xs uppercase tracking-[0.15em] font-semibold text-teal-dark">
             {t("home.recommended")}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 lg:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
             {recommendedCards.map((entry) => (
               <LanguageCard
                 key={entry.slug}
