@@ -253,11 +253,18 @@ export default async function SectionPage(
                 );
                 // After lessons 1-7, drop in an alternating video/podcast
                 // placeholder. Index 0,2,4,6 → video; 1,3,5 → podcast. Skip
-                // after the dialogue (conversation) and the section test.
+                // after the dialogue (conversation), any actual podcast/
+                // video lesson (there should be none post-migration 055),
+                // and the section test. This guarantees no rogue
+                // placeholder can appear between the conversation
+                // practice and the section test in a French section,
+                // even if the podcast lesson still exists in the DB.
                 const isLast = idx === lessons.length - 1;
                 const skipGap =
                   isLast ||
                   lesson.type === "conversation" ||
+                  lesson.type === "podcast" ||
+                  lesson.type === "video" ||
                   lesson.type === "unit_test";
                 if (skipGap) return [card];
                 const kind: "video" | "podcast" = idx % 2 === 0 ? "video" : "podcast";

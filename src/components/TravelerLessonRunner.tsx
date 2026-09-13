@@ -801,8 +801,8 @@ function SignStep({
                 </p>
               )}
               {active.english && (
-                <p className="text-base sm:text-lg font-semibold text-navy mt-3 leading-snug">
-                  <span className="text-navy/50 font-bold">→ </span>
+                <p className="text-lg sm:text-xl font-bold text-navy mt-3 leading-snug">
+                  <span className="text-navy/50">→ </span>
                   {active.english}
                 </p>
               )}
@@ -884,8 +884,8 @@ function PhraseStep({
           </p>
         )}
         {phrase.english && (
-          <p className="text-lg sm:text-xl font-semibold text-navy mt-5 leading-snug">
-            <span className="text-navy/40 font-bold">→ </span>
+          <p className="text-xl sm:text-2xl font-bold text-navy mt-5 leading-snug">
+            <span className="text-navy/40">→ </span>
             {phrase.english}
           </p>
         )}
@@ -1116,7 +1116,7 @@ function DialogueStep({
                 </div>
                 {revealed.has(i) && (
                   <p
-                    className={`text-sm sm:text-base mt-2 font-medium ${isYou ? "text-white/95" : "text-navy/85"}`}
+                    className={`text-base sm:text-lg mt-2 font-semibold leading-snug ${isYou ? "text-white" : "text-navy"}`}
                   >
                     {line.english}
                   </p>
@@ -1359,8 +1359,8 @@ function QuizStep({
                 : `Not quite — the right answer is “${question.correctAnswer}”`}
             </p>
             {question.translation && (
-              <p className="text-xs text-navy/60 mt-1">
-                <span className="font-semibold">Meaning: </span>
+              <p className="text-base sm:text-lg text-navy/85 mt-2 font-medium leading-snug">
+                <span className="text-navy/50 font-bold uppercase tracking-wider text-xs mr-1.5">Meaning</span>
                 {question.translation}
               </p>
             )}

@@ -494,9 +494,9 @@ function ListeningMcExercise({
         })}
       </div>
       {disabled && exercise.translation && (
-        <p className="text-xs text-navy/50 text-center">
-          {t("lesson.listen.meaning")}{" "}
-          <span className="font-semibold text-navy/70">
+        <p className="text-base sm:text-lg text-navy/80 text-center leading-snug">
+          <span className="text-navy/55 font-medium">{t("lesson.listen.meaning")}</span>{" "}
+          <span className="font-semibold text-navy">
             {stripPhonetic(exercise.translation)}
           </span>
         </p>
@@ -608,7 +608,9 @@ function SpeakingRepeatExercise({
             {exercise.correct_answer}
           </p>
           {exercise.translation && (
-            <p className="text-xs text-navy/50 mt-0.5">{exercise.translation}</p>
+            <p className="text-base sm:text-lg font-medium text-navy/80 mt-1.5 leading-snug">
+              {exercise.translation}
+            </p>
           )}
         </div>
       </div>
@@ -752,7 +754,7 @@ function DialoguePhase({
               <div className="text-navy">{d.spanish}</div>
             </div>
             {showEnglish && (
-              <div className="text-base sm:text-lg font-medium text-navy/80 pt-4 leading-snug">{d.english}</div>
+              <div className="text-lg sm:text-xl font-semibold text-navy/85 pt-4 leading-snug">{d.english}</div>
             )}
           </div>
         ))}
@@ -850,10 +852,10 @@ function TeachingCard({
               <div className="space-y-3">
                 {lesson.vocab_items!.map((v, i) => (
                   <div key={i} className="border border-border rounded-xl p-4">
-                    <div className="flex items-start justify-between gap-3 mb-1">
+                    <div className="flex items-start justify-between gap-3 mb-3">
                       <div>
-                        <div className="text-2xl font-bold text-navy">{v.word}</div>
-                        <div className="text-xs text-navy/50 mt-0.5">{v.phonetic}</div>
+                        <div className="text-3xl font-bold text-navy">{v.word}</div>
+                        <div className="text-sm text-navy/60 mt-1 italic">{v.phonetic}</div>
                       </div>
                       <button
                         type="button"
@@ -866,10 +868,15 @@ function TeachingCard({
                         </svg>
                       </button>
                     </div>
-                    <div className="text-lg sm:text-xl font-semibold text-navy mb-3 leading-snug">{v.english}</div>
-                    <div className="text-sm sm:text-base italic leading-relaxed">
-                      <span className="text-navy/80">{v.example_es}</span>
-                      <span className="text-navy/60"> — {v.example_en}</span>
+                    {/* English meaning — big, bold, its own row so it can't
+                        be mistaken for a footnote. The most important line
+                        after the word itself. */}
+                    <div className="text-xl sm:text-2xl font-bold text-navy mb-4 leading-snug">
+                      {v.english}
+                    </div>
+                    <div className="text-base sm:text-lg leading-relaxed">
+                      <span className="text-navy/85 font-medium">{v.example_es}</span>
+                      <span className="text-navy/70"> — {v.example_en}</span>
                     </div>
                   </div>
                 ))}
@@ -1517,7 +1524,7 @@ export default function LessonClient({
         {exercise.translation &&
           exercise.type !== "speaking" &&
           exercise.type !== "listening" && (
-            <p className="text-sm text-navy/50 mb-8">
+            <p className="text-base sm:text-lg text-navy/80 font-medium mb-8 leading-snug">
               {stripPhonetic(exercise.translation)}
             </p>
           )}

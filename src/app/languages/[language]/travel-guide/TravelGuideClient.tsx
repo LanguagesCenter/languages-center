@@ -327,7 +327,9 @@ function PhraseCard({
             {phrase.phrase}
           </p>
           <p className="text-sm text-navy/50 italic mt-1">[{phrase.phonetic}]</p>
-          <p className="text-sm text-navy/80 mt-2">{phrase.english}</p>
+          <p className="text-base sm:text-lg font-semibold text-navy/85 mt-2 leading-snug">
+            {phrase.english}
+          </p>
         </div>
         <SpeakerButton
           text={phrase.phrase}

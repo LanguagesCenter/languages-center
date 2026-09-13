@@ -26,6 +26,7 @@ export type LessonType =
   | "reading"
   | "writing"
   | "podcast"
+  | "video"
   | "unit_test"
   | "conversation";
 export type ExerciseType = "multiple_choice" | "fill_blank" | "matching" | "listening" | "speaking";
@@ -57,6 +58,7 @@ export const LESSON_TYPE_LABEL: Record<LessonType, string> = {
   reading: "Reading",
   writing: "Writing",
   podcast: "Podcast",
+  video: "Video",
   conversation: "Conversation",
   unit_test: "Section Test",
 };
