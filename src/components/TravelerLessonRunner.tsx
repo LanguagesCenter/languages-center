@@ -801,8 +801,8 @@ function SignStep({
                 </p>
               )}
               {active.english && (
-                <p className="text-sm text-navy/85 mt-2">
-                  <span className="font-semibold text-navy/60">→ </span>
+                <p className="text-base sm:text-lg font-semibold text-navy mt-3 leading-snug">
+                  <span className="text-navy/50 font-bold">→ </span>
                   {active.english}
                 </p>
               )}
@@ -884,8 +884,8 @@ function PhraseStep({
           </p>
         )}
         {phrase.english && (
-          <p className="text-base text-navy/80 mt-4">
-            <span className="text-navy/45 font-semibold">→ </span>
+          <p className="text-lg sm:text-xl font-semibold text-navy mt-5 leading-snug">
+            <span className="text-navy/40 font-bold">→ </span>
             {phrase.english}
           </p>
         )}
@@ -1116,7 +1116,7 @@ function DialogueStep({
                 </div>
                 {revealed.has(i) && (
                   <p
-                    className={`text-xs mt-2 italic ${isYou ? "text-white/90" : "text-navy/70"}`}
+                    className={`text-sm sm:text-base mt-2 font-medium ${isYou ? "text-white/95" : "text-navy/85"}`}
                   >
                     {line.english}
                   </p>

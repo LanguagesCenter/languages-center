@@ -7,9 +7,7 @@ import { useI18n } from "@/components/I18nProvider";
 export default function Footer() {
   const { t } = useI18n();
   const companyItems = [
-    { key: "footer.about", label: t("footer.about") },
     { key: "footer.careers", label: t("footer.careers") },
-    { key: "footer.blog", label: t("footer.blog") },
     { key: "footer.contact", label: t("footer.contact") },
   ];
   const resourceItems = [

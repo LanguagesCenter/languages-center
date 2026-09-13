@@ -330,7 +330,9 @@ function ActiveLanguageCard({ lang }: { lang: ActiveLanguageEntry }) {
         href={lang.continueHref}
         className="mt-5 inline-flex items-center justify-center w-full gap-1.5 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark active:scale-[0.98] transition-all"
       >
-        Continue where you left off
+        {lang.totalCompleted > 0
+          ? "Continue where you left off"
+          : `Start learning ${lang.name}`}
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>

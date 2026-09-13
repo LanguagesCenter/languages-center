@@ -68,9 +68,12 @@ export default async function Home() {
       getLessonsCompletedThisWeek(),
     ]);
 
-    const activeProgress = progress.filter(
-      (p) => p.completedLessons > 0 || (p.stats?.total_xp ?? 0) > 0,
-    );
+    // A language is "active" only if the user has completed at least one
+    // lesson in it. Earning XP alone (e.g. from a placement exam) is not
+    // enough — those languages fall into "Explore more languages" so the
+    // "Continue learning" section only lists things the user is truly
+    // in the middle of.
+    const activeProgress = progress.filter((p) => p.completedLessons > 0);
 
     // For each active language, pull the CEFR tree + first-incomplete
     // lesson + last-completed lesson in parallel so the whole page
@@ -135,9 +138,8 @@ export default async function Home() {
     });
 
     // Derive the "already started" set from the same criterion used for
-    // `active` (completed lessons OR earned XP). Using getStartedLanguageOrder
-    // — which is completions-only — would let a language with XP but no
-    // completions leak into Explore, which is exactly the bug the user hit.
+    // `active` — completions-only. A language with XP but no completed
+    // lessons is NOT active; it belongs in Explore.
     const activeCodes = new Set(active.map((a) => a.slug));
     const explore: ExploreLanguageEntry[] = progress
       .filter(

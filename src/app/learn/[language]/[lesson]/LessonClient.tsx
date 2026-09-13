@@ -752,7 +752,7 @@ function DialoguePhase({
               <div className="text-navy">{d.spanish}</div>
             </div>
             {showEnglish && (
-              <div className="text-navy/50 italic pt-4">{d.english}</div>
+              <div className="text-base sm:text-lg font-medium text-navy/80 pt-4 leading-snug">{d.english}</div>
             )}
           </div>
         ))}
@@ -866,10 +866,10 @@ function TeachingCard({
                         </svg>
                       </button>
                     </div>
-                    <div className="text-sm font-medium text-navy/70 mb-2">{v.english}</div>
-                    <div className="text-sm text-navy/60 italic">
+                    <div className="text-lg sm:text-xl font-semibold text-navy mb-3 leading-snug">{v.english}</div>
+                    <div className="text-sm sm:text-base italic leading-relaxed">
                       <span className="text-navy/80">{v.example_es}</span>
-                      <span className="text-navy/40"> — {v.example_en}</span>
+                      <span className="text-navy/60"> — {v.example_en}</span>
                     </div>
                   </div>
                 ))}
