@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import type { PreviewLesson } from "@/lib/traveler-preview";
 
 // Traveler's Course data helpers. Keeps all traveler-DB queries in one
 // place so the pages stay presentational.
@@ -308,6 +309,10 @@ export interface LessonContent {
   courseCity: string;
   courseCountry: string;
   sections: LessonSection[];
+  // Populated when the DB row uses the new Adventure v2 shape
+  // (content_type='v2_lesson', data=<PreviewLesson>). When present the
+  // page mounts the v2 runner and ignores `sections`.
+  v2: PreviewLesson | null;
   // The next lesson in the same course (by order_index) — used by the
   // completion screen for the "Continue Journey" CTA. Null if this is
   // the final lesson.
@@ -495,9 +500,16 @@ export async function getTravelerLessonWithContent(
     .order("content_order");
 
   const rows = (data ?? []) as RawContentRow[];
-  const sections = rows
-    .map(normalizeSection)
-    .filter((s): s is LessonSection => s !== null);
+
+  // v2 rows short-circuit: one row per lesson, everything under `data`.
+  const v2Row = rows.find((r) => r.content_type === "v2_lesson");
+  const v2 = v2Row ? normalizeV2Row(v2Row, lesson) : null;
+
+  const sections = v2Row
+    ? [] // v2 owns the whole runner surface
+    : rows
+        .map(normalizeSection)
+        .filter((s): s is LessonSection => s !== null);
 
   const nextLessonRaw = bundle.lessons.find(
     (l) => l.orderIndex === lesson.orderIndex + 1,
@@ -517,7 +529,29 @@ export async function getTravelerLessonWithContent(
     courseCity: bundle.course.city,
     courseCountry: bundle.course.country,
     sections,
+    v2,
     nextLesson,
+  };
+}
+
+// Minimal-effort normalizer for the v2 shape: the generator writes a
+// PreviewLesson-shaped JSONB blob under `data`, and we surface it as-is
+// after backfilling id/orderIndex/city/nextLesson from the lesson row.
+function normalizeV2Row(
+  row: RawContentRow,
+  lesson: TravelerLessonSummary,
+): PreviewLesson | null {
+  if (!row.data || typeof row.data !== "object") return null;
+  const raw = row.data as Record<string, unknown>;
+  // Trust the generator's validated shape. Add lesson-scoped fields the
+  // generator can't know about.
+  return {
+    ...(raw as unknown as PreviewLesson),
+    id: lesson.id,
+    orderIndex: lesson.orderIndex,
+    title: lesson.title,
+    location: lesson.locationName,
+    xpReward: lesson.xpReward,
   };
 }
 

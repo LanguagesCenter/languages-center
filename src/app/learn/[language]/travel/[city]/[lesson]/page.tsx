@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { isCurrentUserPremium } from "@/lib/learn";
 import { getTravelerLessonWithContent } from "@/lib/traveler";
 import TravelerLessonRunner from "@/components/TravelerLessonRunner";
+import PreviewLessonRunner from "@/components/PreviewLessonRunner";
+import { markLessonComplete } from "./actions";
 
 const SUPPORTED_LANGS = new Set(["spanish", "french"]);
 
@@ -51,10 +53,46 @@ export default async function TravelerLessonPage(
 
   const speechLang = SPEECH_LANG[langSlug] ?? "en-US";
 
-  // No Footer, no page background wrapper — the runner is a full
-  // adventure surface that owns its own layout and progress chrome.
-  // The Back-to-city link lives inside the runner's sticky progress
-  // bar instead.
+  // v2 (Adventure format) rows: mount PreviewLessonRunner wired to the
+  // real markLessonComplete server action and DB-derived next-lesson.
+  if (content.v2) {
+    const nextLesson = content.nextLesson
+      ? {
+          id: content.nextLesson.id,
+          title: content.nextLesson.title,
+          location: content.nextLesson.locationName,
+          isPremium: content.nextLesson.isPremium,
+        }
+      : undefined;
+    const v2Lesson = {
+      ...content.v2,
+      city: content.courseCity,
+      country: content.courseCountry,
+      nextLesson,
+    };
+    return (
+      <>
+        <Navbar />
+        <main className="flex-1">
+          <PreviewLessonRunner
+            lesson={v2Lesson}
+            lang={speechLang}
+            lessonId={content.lesson.id}
+            markComplete={markLessonComplete}
+            exitHref={`/learn/${langSlug}/travel/${citySlug}`}
+            nextLessonHref={
+              content.nextLesson
+                ? `/learn/${langSlug}/travel/${citySlug}/${content.nextLesson.id}`
+                : undefined
+            }
+            isPremium={isPremium}
+          />
+        </main>
+      </>
+    );
+  }
+
+  // Legacy v1 runner for lessons that haven't been regenerated yet.
   return (
     <>
       <Navbar />
