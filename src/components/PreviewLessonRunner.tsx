@@ -701,6 +701,72 @@ function EndQuizQuestionView({
 }
 
 // ============================================================
+// LessonImage — shared opening/buildup image component.
+// - Shows a shimmer placeholder while the image loads.
+// - On load error (broken URL, network fail, expired CDN), swaps
+//   in a per-city Unsplash fallback with a soft "image unavailable"
+//   caption instead of the browser's default broken-image glyph.
+// ============================================================
+
+const CITY_FALLBACK_IMAGES: Record<string, string> = {
+  Madrid:         "https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=1600&h=1200&fit=crop&q=80",
+  Barcelona:      "https://images.unsplash.com/photo-1583422409516-2895a77efded?w=1600&h=1200&fit=crop&q=80",
+  "Mexico City":  "https://images.unsplash.com/photo-1518659526054-190340b32735?w=1600&h=1200&fit=crop&q=80",
+  "Buenos Aires": "https://images.unsplash.com/photo-1589909202802-8f4aadce1849?w=1600&h=1200&fit=crop&q=80",
+  Paris:          "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1600&h=1200&fit=crop&q=80",
+  Lyon:           "https://images.unsplash.com/photo-1524484485831-a92ffc0de03f?w=1600&h=1200&fit=crop&q=80",
+  Montreal:       "https://images.unsplash.com/photo-1519178614-68673b201f36?w=1600&h=1200&fit=crop&q=80",
+};
+
+function LessonImage({
+  src,
+  alt,
+  city,
+  priority = false,
+}: {
+  src: string | null | undefined;
+  alt: string;
+  city: string;
+  priority?: boolean;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [errored, setErrored] = useState(false);
+  const fallback = CITY_FALLBACK_IMAGES[city] ?? CITY_FALLBACK_IMAGES.Madrid;
+  const showFallback = !src || errored;
+  const url = showFallback ? fallback : src;
+
+  return (
+    <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl">
+      {loading && !showFallback && (
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-navy/70 via-navy/60 to-navy/80" />
+      )}
+      <Image
+        src={url}
+        alt={alt}
+        fill
+        sizes="(max-width: 768px) 100vw, 768px"
+        className={`object-cover transition-opacity duration-500 ${loading && !showFallback ? "opacity-0" : "opacity-100"}`}
+        priority={priority}
+        unoptimized
+        onLoad={() => setLoading(false)}
+        onError={() => {
+          setErrored(true);
+          setLoading(false);
+        }}
+      />
+      {showFallback && (
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/90 via-navy/60 to-transparent px-5 pt-8 pb-4">
+          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">
+            {city} · reference photo
+          </p>
+          <p className="text-sm text-white/85 leading-snug mt-1">{alt}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // Step components
 // ============================================================
 
@@ -718,17 +784,12 @@ function OpeningImageStep({
         <span className="text-xs uppercase tracking-wider font-bold text-peach-dark block mb-1">Scene</span>
         {lesson.scene}
       </p>
-      <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl">
-        <Image
-          src={opening.imageUrl}
-          alt={opening.imageAlt}
-          fill
-          sizes="(max-width: 768px) 100vw, 768px"
-          className="object-cover"
-          priority
-          unoptimized
-        />
-      </div>
+      <LessonImage
+        src={opening.imageUrl}
+        alt={opening.imageAlt}
+        city={lesson.city}
+        priority
+      />
       <div className="text-center space-y-3">
         <p className="text-sm text-navy/60 italic">Look at it. Try to guess what it says before continuing.</p>
         <button
@@ -920,16 +981,11 @@ function BuildupStep({
           <p className="text-xs text-white/60 mt-4">Replay the whole recording</p>
         </div>
       ) : (
-        <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl">
-          <Image
-            src={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageUrl}
-            alt={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageAlt}
-            fill
-            sizes="(max-width: 768px) 100vw, 768px"
-            className="object-cover"
-            unoptimized
-          />
-        </div>
+        <LessonImage
+          src={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageUrl}
+          alt={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageAlt}
+          city={lesson.city}
+        />
       )}
 
       {!revealed ? (

@@ -144,7 +144,7 @@ const MADRID_CHARACTERS = {
 
 function parseArgs(argv) {
   const flags = {
-    dryRun: true, live: false, withImages: false,
+    dryRun: true, live: false, withImages: false, imagesOnly: false,
     resume: true, reset: false, verbose: false,
     city: "Madrid", lesson: null, lessons: null, limit: null,
     sleepMs: 400,
@@ -155,6 +155,9 @@ function parseArgs(argv) {
     else if (a === "--live") { flags.live = true; flags.dryRun = false; }
     else if (a === "--skip-images") { flags.withImages = false; }
     else if (a === "--with-images") { flags.withImages = true; }
+    // --images-only: skip Claude entirely, only regen + reupload images
+    // for existing v2_lesson rows. Implies --live + --with-images.
+    else if (a === "--images-only") { flags.imagesOnly = true; flags.live = true; flags.dryRun = false; flags.withImages = true; }
     else if (a === "--resume") { flags.resume = true; }
     else if (a === "--no-resume") { flags.resume = false; }
     else if (a === "--reset") { flags.reset = true; }
@@ -221,6 +224,7 @@ function makeSupabase({ url, key }) {
   return {
     get:    (path)        => withRetry(`GET ${path}`,    () => req("GET",    path)),
     post:   (path, body)  => withRetry(`POST ${path}`,   () => req("POST",   path, { body, prefer: "return=representation" })),
+    patch:  (path, body)  => withRetry(`PATCH ${path}`,  () => req("PATCH",  path, { body, prefer: "return=representation" })),
     delete: (path)        => withRetry(`DELETE ${path}`, () => req("DELETE", path)),
   };
 }
@@ -424,6 +428,77 @@ REQUIREMENTS:
 }
 
 // ============================================================
+// Supabase Storage — upload Flux image bytes to a public bucket
+// so we get a permanent URL. Replicate delivery URLs expire in
+// ~24h; storing them in the DB directly gives you broken images
+// the next day.
+// ============================================================
+
+const STORAGE_BUCKET = "traveler-images";
+
+function citySlug(city) {
+  return city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function storagePathFor(city, orderIndex) {
+  return `${citySlug(city)}/L${orderIndex}.jpg`;
+}
+
+function publicStorageUrl(supabaseUrl, path) {
+  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+}
+
+async function downloadImage(url) {
+  return withRetry("download-image", async () => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = new Error(`download ${url} ${res.status}`);
+      if (res.status === 429 || res.status >= 500) markRetryable(err);
+      throw err;
+    }
+    const buf = new Uint8Array(await res.arrayBuffer());
+    return buf;
+  });
+}
+
+async function uploadToStorage({ supabaseUrl, serviceKey, path, bytes }) {
+  return withRetry(`upload ${path}`, async () => {
+    const res = await fetch(
+      `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/${STORAGE_BUCKET}/${path}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+          "Content-Type": "image/jpeg",
+          // upsert=true so re-runs overwrite the previous file at the
+          // same path (idempotent — safe to backfill or re-generate).
+          "x-upsert": "true",
+        },
+        body: bytes,
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const err = new Error(`storage upload ${res.status}: ${text.slice(0, 200)}`);
+      if (res.status === 429 || res.status >= 500) markRetryable(err);
+      throw err;
+    }
+    return await res.json().catch(() => ({}));
+  });
+}
+
+// End-to-end: given a Replicate URL and a target path, download the
+// image and upload it to Supabase Storage. Returns the permanent
+// public URL.
+async function stashImage({ replicateUrl, supabaseUrl, serviceKey, city, orderIndex }) {
+  const path = storagePathFor(city, orderIndex);
+  const bytes = await downloadImage(replicateUrl);
+  await uploadToStorage({ supabaseUrl, serviceKey, path, bytes });
+  return publicStorageUrl(supabaseUrl, path);
+}
+
+// ============================================================
 // Flux 1.1 Pro image generation
 // ============================================================
 
@@ -596,6 +671,17 @@ async function main() {
     ? lessons.filter((l) => l.order_index === flags.lesson)
     : lessons;
 
+  // --images-only takes a completely different path: read the existing
+  // v2 rows from the DB, regen each image via Flux, upload to Storage,
+  // update image_url + data.opening.imageUrl. No Claude calls, no
+  // MADRID_LESSON_PLAN dependency (works for any city with v2 rows).
+  if (flags.imagesOnly) {
+    return await runImagesOnly({
+      writeClient, readClient, replicateToken, supabaseUrl, serviceKey,
+      course, filtered,
+    });
+  }
+
   if (course.city !== "Madrid") {
     console.error(`Only Madrid has a lesson plan defined in this script. Add ${course.city}_LESSON_PLAN before running.`);
     process.exit(1);
@@ -667,10 +753,21 @@ async function main() {
       v2.type = plan.type;
       v2.medium = medium;
 
-      // Image generation for visual lessons.
+      // Image generation for visual lessons: generate via Flux, then
+      // stash the bytes in Supabase Storage so we get a permanent URL.
+      // Replicate delivery URLs expire in ~24h.
       let imageUrl = null;
       if (medium === "image" && flags.withImages) {
-        imageUrl = await generateFluxImage({ token: replicateToken, prompt: v2.opening.imagePrompt });
+        const replicateUrl = await generateFluxImage({ token: replicateToken, prompt: v2.opening.imagePrompt });
+        if (flags.live) {
+          imageUrl = await stashImage({
+            replicateUrl, supabaseUrl, serviceKey,
+            city: course.city, orderIndex: lesson.order_index,
+          });
+        } else {
+          // Dry-run: keep the ephemeral Replicate URL for inspection.
+          imageUrl = replicateUrl;
+        }
         v2.opening.imageUrl = imageUrl;
       }
 
@@ -738,6 +835,84 @@ async function main() {
     for (const f of failures) console.log(`  L${f.order} ${f.title} — ${f.error.slice(0, 200)}`);
   }
   console.log(`Progress log: ${PROGRESS_PATH}`);
+}
+
+// ============================================================
+// --images-only backfill: regen image + reupload for existing v2 rows
+// ============================================================
+
+async function runImagesOnly({ writeClient, readClient, replicateToken, supabaseUrl, serviceKey, course, filtered }) {
+  // Fetch all v2 rows for this course so we can pull the imagePrompt.
+  const rows = await readClient.get(
+    `/traveler_lesson_content?content_type=eq.v2_lesson&select=id,traveler_lesson_id,data&traveler_lesson_id=in.(${filtered.map((l) => l.id).join(",")})`,
+  );
+  const rowByLessonId = new Map(rows.map((r) => [r.traveler_lesson_id, r]));
+
+  let processed = 0, succeeded = 0, skipped = 0, failed = 0;
+  const failures = [];
+
+  console.log(`--images-only mode: ${filtered.length} lessons queued in ${course.city}`);
+  console.log(`  ${rows.length} have v2_lesson content rows\n`);
+
+  for (const lesson of filtered) {
+    const row = rowByLessonId.get(lesson.id);
+    const stamp = new Date().toTimeString().slice(0, 8);
+
+    if (!row) {
+      console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  SKIP     no v2_lesson row`);
+      skipped++;
+      continue;
+    }
+
+    const data = row.data ?? {};
+    const opening = data.opening ?? {};
+
+    if (opening.kind !== "image") {
+      console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  SKIP     audio lesson (no image)`);
+      skipped++;
+      continue;
+    }
+    if (!opening.imagePrompt) {
+      console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  SKIP     no imagePrompt on data.opening`);
+      skipped++;
+      continue;
+    }
+
+    processed++;
+    const t0 = Date.now();
+    console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  ${lesson.title.slice(0, 40)}`);
+
+    try {
+      const replicateUrl = await generateFluxImage({ token: replicateToken, prompt: opening.imagePrompt });
+      const permanentUrl = await stashImage({
+        replicateUrl, supabaseUrl, serviceKey,
+        city: course.city, orderIndex: lesson.order_index,
+      });
+      // PATCH the row: update image_url + data.opening.imageUrl.
+      // Postgres/PostgREST allows nested JSONB update by re-writing the
+      // whole data blob with the field changed.
+      const nextData = { ...data, opening: { ...opening, imageUrl: permanentUrl } };
+      await writeClient.patch(
+        `/traveler_lesson_content?id=eq.${row.id}`,
+        { image_url: permanentUrl, data: nextData },
+      );
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      console.log(`             STASHED  ${elapsed}s  ${permanentUrl.split("/").pop()}`);
+      succeeded++;
+    } catch (err) {
+      failed++;
+      failures.push({ order: lesson.order_index, title: lesson.title, error: err.message });
+      console.error(`             FAILED   ${err.message.slice(0, 300)}`);
+    }
+    await new Promise((r) => setTimeout(r, 400));
+  }
+
+  console.log("\n" + "=".repeat(60));
+  console.log(`Images backfill done. processed=${processed} succeeded=${succeeded} skipped=${skipped} failed=${failed}`);
+  if (failures.length) {
+    console.log("\nFailures:");
+    for (const f of failures) console.log(`  L${f.order} ${f.title} — ${f.error.slice(0, 200)}`);
+  }
 }
 
 main().catch((err) => {
