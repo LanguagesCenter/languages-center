@@ -442,7 +442,10 @@ async function generateFluxImage({ token, prompt }) {
           aspect_ratio: "4:3",
           output_format: "jpg",
           output_quality: 88,
-          safety_tolerance: 2,
+          // 5 (of 6 max) — the default 2 false-flagged e.g. boarding
+          // passes as NSFW. Content is still safe-guarded but far less
+          // trigger-happy on airport/document imagery.
+          safety_tolerance: 5,
         },
       }),
     });
@@ -631,17 +634,33 @@ async function main() {
         ? visualPrompt({ orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name, type: plan.type, subject: plan.visualSubject, priorCtx })
         : audioPrompt({ orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name, type: plan.type, subject: plan.audioSubject, priorCtx });
 
-      const { text, usage } = await callClaude({ apiKey: anthropicKey, systemPrompt: SYSTEM_PROMPT, userPrompt, maxTokens: 5000 });
-      const v2 = extractJson(text);
-      try {
-        assertShape(v2, medium);
-      } catch (validationErr) {
-        if (flags.verbose || flags.dryRun) {
-          console.error("--- validation failed, raw JSON: ---");
-          console.error(JSON.stringify(v2, null, 2).slice(0, 8000));
-          console.error("--- end raw ---");
+      // Two-shot: the first Claude call occasionally puts two same-kind
+      // exercises back-to-back or drops a required field. Retry once
+      // with a targeted "fix this" nudge before giving up.
+      let v2, usage;
+      {
+        const r1 = await callClaude({ apiKey: anthropicKey, systemPrompt: SYSTEM_PROMPT, userPrompt, maxTokens: 5000 });
+        usage = r1.usage;
+        v2 = extractJson(r1.text);
+        try {
+          assertShape(v2, medium);
+        } catch (validationErr) {
+          console.log(`         RETRY    validation: ${validationErr.message.slice(0, 120)}`);
+          const nudge = `${userPrompt}\n\nYour previous response failed validation with: "${validationErr.message}". Regenerate the WHOLE JSON object, fixing that specific issue. Keep the same lesson framing.`;
+          const r2 = await callClaude({ apiKey: anthropicKey, systemPrompt: SYSTEM_PROMPT, userPrompt: nudge, maxTokens: 5000 });
+          usage = r2.usage;
+          v2 = extractJson(r2.text);
+          try {
+            assertShape(v2, medium);
+          } catch (secondErr) {
+            if (flags.verbose || flags.dryRun) {
+              console.error("--- second validation failed, raw JSON: ---");
+              console.error(JSON.stringify(v2, null, 2).slice(0, 8000));
+              console.error("--- end raw ---");
+            }
+            throw secondErr;
+          }
         }
-        throw validationErr;
       }
 
       // Attach type + medium so the runner can branch without re-inferring.
