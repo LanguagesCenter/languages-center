@@ -8,6 +8,7 @@ import HomePersonalized, {
   type ActiveLanguageEntry,
   type ExploreLanguageEntry,
   type StartedTripEntry,
+  type ExploreCityEntry,
 } from "@/components/HomePersonalized";
 import { type LanguageGridItem } from "@/components/LanguageGrid";
 import {
@@ -168,6 +169,25 @@ export default async function Home() {
       nextLessonLocation: t.nextLessonLocation,
     }));
 
+    // Everything in traveler_courses the user has NOT started yet.
+    // "Started" = at least one completed lesson. Keeps every city they
+    // could still begin at their fingertips without hunting through
+    // /learn/[lang]/travel.
+    const startedKeys = new Set(
+      startedTrips.map((t) => `${t.languageSlug}:${t.citySlug}`),
+    );
+    const exploreCities: ExploreCityEntry[] = allCities
+      .filter((c) => !startedKeys.has(`${c.languageSlug}:${c.citySlug}`))
+      .map((c) => ({
+        languageSlug: c.languageSlug,
+        city: c.city,
+        country: c.country,
+        citySlug: c.citySlug,
+        coverImageUrl: c.coverImageUrl,
+        lessonsTotal: c.lessonsTotal,
+        freePreviewCount: c.freePreviewCount,
+      }));
+
     const activeCodes = new Set(active.map((a) => a.slug));
     const explore: ExploreLanguageEntry[] = progress
       .filter(
@@ -202,6 +222,7 @@ export default async function Home() {
           weeklyCount={weeklyCount}
           weeklyGoal={WEEKLY_GOAL}
           trips={trips}
+          exploreCities={exploreCities}
           active={active}
           explore={explore}
         />

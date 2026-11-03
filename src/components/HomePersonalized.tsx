@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import StreakFlame from "@/components/StreakFlame";
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 import { useI18n } from "@/components/I18nProvider";
+import { getLocalizedLanguageName } from "@/lib/i18n";
 
 // CEFR labels inlined here (vs. imported from learn.ts) because learn.ts
 // pulls in supabase/server which only runs in Server Components. This
@@ -63,6 +65,20 @@ export interface StartedTripEntry {
   nextLessonLocation: string | null;
 }
 
+// Every traveler_courses row the user has NOT started yet, used by
+// the "Explore more trips" strip. `lessonsTotal === 0` means content
+// isn't seeded yet — the card renders a "Coming soon" badge instead
+// of a Start button so users don't land on empty lessons.
+export interface ExploreCityEntry {
+  languageSlug: string;
+  city: string;
+  country: string;
+  citySlug: string;
+  coverImageUrl: string;
+  lessonsTotal: number;
+  freePreviewCount: number;
+}
+
 export interface HomePersonalizedProps {
   displayName: string;
   totalXp: number;
@@ -71,6 +87,7 @@ export interface HomePersonalizedProps {
   weeklyCount: number;
   weeklyGoal: number;
   trips: StartedTripEntry[];
+  exploreCities: ExploreCityEntry[];
   active: ActiveLanguageEntry[];
   explore: ExploreLanguageEntry[];
 }
@@ -99,6 +116,7 @@ export default function HomePersonalized({
   weeklyCount,
   weeklyGoal,
   trips,
+  exploreCities,
   active,
   explore,
 }: HomePersonalizedProps) {
@@ -212,10 +230,9 @@ export default function HomePersonalized({
         </div>
       </section>
 
-      {/* Continue your trip — now the top content block for signed-in
-          users who have started a trip. One card per city they've
-          made progress in, with a direct Continue link to their next
-          lesson. */}
+      {/* Continue your trip — top content block for signed-in users
+          who have started at least one city. One card per started
+          city with a direct Continue link to their next lesson. */}
       {trips.length > 0 && (
         <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-6 sm:pb-8">
           <h2 className="text-xl sm:text-2xl font-bold text-navy tracking-tight mb-4 flex items-center gap-2">
@@ -231,6 +248,15 @@ export default function HomePersonalized({
             ))}
           </div>
         </section>
+      )}
+
+      {/* Explore more trips — ALWAYS rendered when there are unstarted
+          cities. Lets users jump into any city they haven't begun yet
+          and surfaces newly-added traveler_courses rows automatically.
+          Tabs toggle between Spanish and French so a user studying
+          both can see every option without hunting around. */}
+      {exploreCities.length > 0 && (
+        <ExploreTripsSection cities={exploreCities} />
       )}
 
       {/* Fluency Course — smaller than before, now sits below trips. */}
@@ -304,6 +330,203 @@ export default function HomePersonalized({
         )}
       </section>
     </main>
+  );
+}
+
+// "Explore more trips" strip. Groups unstarted cities by language,
+// shows a Spanish/French tab bar when both are present, and includes a
+// "See all trips" link that follows the active tab. Cities whose
+// lesson count is 0 render a "Coming soon" badge instead of a Start
+// button so users can't land in an empty course.
+function ExploreTripsSection({ cities }: { cities: ExploreCityEntry[] }) {
+  const { t, lang: uiLang } = useI18n();
+
+  // Which languages are represented in the unstarted set. Preserve
+  // Spanish → French order; if a new language is added later it slots
+  // in alphabetically after the known two.
+  const languages = useMemo(() => {
+    const seen = new Set<string>();
+    const order = ["spanish", "french"];
+    const extras: string[] = [];
+    for (const c of cities) {
+      if (seen.has(c.languageSlug)) continue;
+      seen.add(c.languageSlug);
+      if (!order.includes(c.languageSlug)) extras.push(c.languageSlug);
+    }
+    return [
+      ...order.filter((s) => seen.has(s)),
+      ...extras.sort(),
+    ];
+  }, [cities]);
+
+  const [activeLang, setActiveLang] = useState<string>(languages[0] ?? "spanish");
+  // Guard against the active tab disappearing (e.g. user starts the
+  // last Spanish city, now only French remains).
+  const effectiveLang = languages.includes(activeLang)
+    ? activeLang
+    : languages[0] ?? "spanish";
+
+  const visible = cities.filter((c) => c.languageSlug === effectiveLang);
+  const seeAllHref = `/learn/${effectiveLang}/travel`;
+
+  return (
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-2 pb-10">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-navy tracking-tight flex items-center gap-2">
+            <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            {t("home.exploreMoreTrips")}
+          </h2>
+        </div>
+        <Link
+          href={seeAllHref}
+          className="inline-flex items-center gap-1.5 self-start sm:self-auto text-sm font-semibold text-orange-700 hover:text-orange-800 transition-colors whitespace-nowrap"
+        >
+          {t("home.seeAllTrips")}
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
+
+      {/* Language tabs — only rendered when more than one language has
+          an unstarted city. With just one, the tab bar is dead weight. */}
+      {languages.length > 1 && (
+        <div className="mb-5 inline-flex items-center bg-white border border-border rounded-full p-1 shadow-sm" role="tablist">
+          {languages.map((slug) => {
+            const label = getLocalizedLanguageName(
+              slug,
+              uiLang,
+              slug.charAt(0).toUpperCase() + slug.slice(1),
+            );
+            const flag = FLAG_CODES[slug] ?? slug;
+            const isActive = slug === effectiveLang;
+            return (
+              <button
+                key={slug}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveLang(slug)}
+                className={`inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold rounded-full transition-colors ${
+                  isActive
+                    ? "bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-sm"
+                    : "text-navy/60 hover:text-navy"
+                }`}
+              >
+                <Image
+                  src={`https://flagcdn.com/w40/${flag}.png`}
+                  alt=""
+                  width={18}
+                  height={13}
+                  className="rounded-sm shadow-sm ring-1 ring-black/5"
+                  unoptimized
+                />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        {visible.map((c) => (
+          <ExploreCityCard key={`${c.languageSlug}-${c.citySlug}`} city={c} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// Card for one unstarted city. Shows "Coming soon" when lessonsTotal
+// is 0 — the whole card becomes non-interactive so users can see the
+// city is in the roadmap without being able to open a hollow course.
+function ExploreCityCard({ city }: { city: ExploreCityEntry }) {
+  const { t } = useI18n();
+  const comingSoon = city.lessonsTotal === 0;
+  const href = `/learn/${city.languageSlug}/travel/${city.citySlug}`;
+
+  const body = (
+    <>
+      <div className="relative w-full aspect-[16/10] bg-navy/5">
+        {city.coverImageUrl && (
+          <Image
+            src={city.coverImageUrl}
+            alt={`${city.city}, ${city.country}`}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className={`object-cover transition-transform duration-500 ${
+              comingSoon ? "" : "group-hover:scale-[1.02]"
+            }`}
+          />
+        )}
+        <div className="absolute top-3 left-3">
+          {comingSoon ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-navy/80 text-white backdrop-blur px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-sm">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {t("home.comingSoon")}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 backdrop-blur px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-800 shadow-sm">
+              <span aria-hidden>✈</span>
+              {t("card.firstLessonsFree", {
+                count: String(city.freePreviewCount),
+              })}
+            </span>
+          )}
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
+        <div className="absolute bottom-3 left-3 right-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
+            {city.country}
+          </p>
+          <h3 className="text-2xl font-bold text-white leading-tight drop-shadow-sm truncate">
+            {city.city}
+          </h3>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 sm:py-4">
+        <p className="text-xs text-navy/60">
+          {comingSoon
+            ? t("home.comingSoonBody")
+            : t("card.cityLessons", { count: String(city.lessonsTotal) })}
+        </p>
+        {!comingSoon && (
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-orange-700 group-hover:text-orange-800 transition-colors whitespace-nowrap">
+            {t("card.startTrip")}
+            <svg className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  if (comingSoon) {
+    // Non-interactive placeholder — no Link, no hover state. The card
+    // reads as "we know about this city; it's not ready yet".
+    return (
+      <div
+        aria-disabled
+        className="relative flex flex-col overflow-hidden bg-white border border-border rounded-2xl opacity-85 cursor-default"
+      >
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="group relative flex flex-col overflow-hidden bg-white border border-border rounded-2xl hover:border-orange-400/40 hover:shadow-lg sm:hover:-translate-y-0.5 transition-all"
+    >
+      {body}
+    </Link>
   );
 }
 
