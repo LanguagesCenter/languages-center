@@ -11,18 +11,31 @@
 // Six lesson types, rotating so no two consecutive lessons share type:
 //   sign · menu · audio_announcement · overheard · document · advertisement
 //
-// Visual lessons get a Flux 1.1 Pro image (SDXL cannot render Spanish
-// text). Audio lessons store a TTS-driven script rendered at runtime
-// via browser SpeechSynthesis — no MP3 storage (upgradable later).
+// IMAGES — all photos come from real stock sources, never generated:
+//   - Google Street View Static API for lessons set at a named Madrid
+//     street / plaza / exterior landmark (Gran Vía, Puerta del Sol,
+//     Plaza Mayor, El Retiro, Atocha, Barajas, taxi lesson exterior,
+//     navigation/directions lessons, departures lesson).
+//   - Unsplash Search API for every other image lesson. The query is
+//     hand-tuned per lesson to match the exact scenario (airport
+//     arrivals hall, metro sign, menu, pharmacy green cross, etc.).
+//   - Audio lessons MAY carry a "context" photo (location backdrop
+//     shown behind the audio player) but do not require one.
+//
+// After fetch, each image is downloaded and uploaded to the
+// `traveler-images` Supabase Storage bucket so the URL stored on the
+// row is permanent (Unsplash URLs are stable but the Supabase copy
+// insulates us from search API changes).
 //
 // USAGE
 //   node scripts/generate-traveler-v2.mjs [flags]
 //
 // FLAGS
-//   --dry-run              default; hits Anthropic but no DB writes
+//   --dry-run              default; hits Anthropic + image APIs but
+//                          no DB writes and no Supabase Storage upload
 //   --live                 write to Supabase; requires SUPABASE_SERVICE_ROLE_KEY
-//   --skip-images          default; no Replicate calls
-//   --with-images          generate visual-lesson images via Flux 1.1 Pro
+//   --skip-images          skip image lookup entirely (text content only)
+//   --with-images          default; fetch Unsplash / Street View URLs
 //   --city <name>          limit (default Madrid)
 //   --lesson <N>           only order_index N
 //   --lessons <a,b,c>      only these order_index values
@@ -35,9 +48,10 @@
 //
 // REQUIRED ENV
 //   NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
-//   SUPABASE_SERVICE_ROLE_KEY (only --live)
 //   ANTHROPIC_API_KEY
-//   REPLICATE_API_TOKEN       (only --with-images)
+//   SUPABASE_SERVICE_ROLE_KEY   (only --live)
+//   UNSPLASH_ACCESS_KEY         (any image lesson that is not Street View)
+//   GOOGLE_MAPS_API_KEY         (any Street View lesson)
 // ============================================================
 
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -66,66 +80,78 @@ const ROOT = resolve(__dirname, "..");
 
 const MODEL = "claude-sonnet-4-6";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const FLUX_ENDPOINT =
-  "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions";
 const PROGRESS_PATH = resolve(__dirname, ".traveler-content-progress.json");
+const STORAGE_BUCKET = "traveler-images";
 
 // ============================================================
-// Madrid 50-lesson type plan — hand-tuned so each lesson's type
-// fits its location and no two consecutive lessons share a type.
+// Madrid 50-lesson plan.
+//
+// Each entry carries the lesson type + a precise image-source spec:
+//   - streetview: real Madrid coordinates for Google Street View Static
+//   - unsplash:   search query + a plain-English description of what
+//                 the fetched photo depicts, so Claude can write vocab
+//                 that matches the image
+//   - audio:      no primary image (audio lessons). May optionally carry
+//                 a `backdrop` Street View clip for ambience (e.g. the
+//                 taxi lesson shows the Barajas exterior).
+//
+// `visibleText` lists the specific Spanish words/phrases Claude MUST
+// teach — these are the words a traveler would literally see in that
+// kind of image. Claude's prompt gets this verbatim so the lesson
+// content aligns with the image.
 // ============================================================
 
 const MADRID_LESSON_PLAN = {
-  1:  { type: "sign",               visualSubject: "airport arrivals directional sign inside Madrid-Barajas Terminal 4" },
-  2:  { type: "document",           visualSubject: "an Iberia airline boarding pass" },
-  3:  { type: "overheard",          audioSubject: "a Madrid taxi driver making small talk on the way from Barajas to Chueca" },
-  4:  { type: "document",           visualSubject: "a Spanish hotel check-in form (ficha de policía) filled in halfway" },
-  5:  { type: "advertisement",      visualSubject: "an in-room hotel brochure card advertising the rooftop spa and mini-bar" },
-  6:  { type: "sign",               visualSubject: "Sol Metro station wayfinding sign for Línea 1, Línea 2 and Línea 3, correspondencia arrows" },
-  7:  { type: "advertisement",      visualSubject: "a Gran Vía billboard advertising a Spanish musical theatre show" },
-  8:  { type: "overheard",          audioSubject: "asking a stranger for directions on Calle Fuencarral in Malasaña" },
-  9:  { type: "document",           visualSubject: "a Madrid Abono Turístico transport card and its cardboard sleeve" },
-  10: { type: "audio_announcement", audioSubject: "a street pregón and bar barker overheard walking through Lavapiés at aperitivo hour" },
-  11: { type: "menu",               visualSubject: "the breakfast chalkboard menu at Café Comercial in Bilbao, Madrid — tostadas, café con leche, zumo" },
-  12: { type: "overheard",          audioSubject: "a fishmonger vendor calling out prices in Mercado de San Miguel" },
-  13: { type: "menu",               visualSubject: "a paper Menú del Día from Casa Botín in Madrid, list of primeros, segundos, postres, pan y bebida included" },
-  14: { type: "overheard",          audioSubject: "ordering a caña and a tapa at a crowded bar in Malasaña, bartender and patron" },
-  15: { type: "menu",               visualSubject: "the tiled interior menu of Chocolatería San Ginés listing chocolate con churros, porras, chocolate a la taza" },
-  16: { type: "sign",               visualSubject: "a large REBAJAS sale sign in the window of Zara Gran Vía, red on white with percentages" },
-  17: { type: "document",           visualSubject: "a Spanish pharmacy prescription receipt (receta médica) with medication and dosage" },
-  18: { type: "advertisement",      visualSubject: "a Plaza Mayor souvenir shop window covered in flamenco fans, magnets, bullfighter posters and prices in euros" },
-  19: { type: "overheard",          audioSubject: "haggling with a vendor at El Rastro Sunday flea market over the price of a vintage jacket" },
-  20: { type: "document",           visualSubject: "an El Corte Inglés paper return slip with barcode and article numbers" },
-  21: { type: "sign",               visualSubject: "the ticket-window sign at Museo del Prado with entry prices, hours, and free-admission slots" },
-  22: { type: "audio_announcement", audioSubject: "the opening lines of a Palacio Real audioguide, formal register" },
-  23: { type: "sign",               visualSubject: "the interpretive room sign next to Picasso's Guernica at Museo Reina Sofía" },
-  24: { type: "audio_announcement", audioSubject: "a Templo de Debod tourist information audio at sunset — the Egyptian temple's origin" },
-  25: { type: "advertisement",      visualSubject: "the rowboat and paddle-boat rental kiosk sign at El Retiro lake, prices per half hour" },
-  26: { type: "sign",               visualSubject: "aisle-marker signs inside a Mercadona supermarket in Malasaña — panadería, congelados, bebidas" },
-  27: { type: "document",           visualSubject: "a Correos parcel-sending form (impreso de envío) for shipping abroad" },
-  28: { type: "sign",               visualSubject: "the touchscreen of a BBVA ATM in Madrid showing the language and cash-withdrawal menu in Spanish" },
-  29: { type: "document",           visualSubject: "a self-service laundromat printed ticket from a Chamberí lavandería with machine number and end time" },
-  30: { type: "advertisement",      visualSubject: "a bright printed gym membership flyer for a Chamberí gimnasio with monthly plans and included classes" },
-  31: { type: "overheard",          audioSubject: "two Madrileños in their 20s in a Malasaña bar inviting a tourist to join their round" },
-  32: { type: "audio_announcement", audioSubject: "a Cadena SER radio traffic bulletin playing on the speakers inside a Madrid Uber" },
-  33: { type: "overheard",          audioSubject: "a voice note invitation on WhatsApp from Ana asking you to come to a cena at her flat in Chueca" },
-  34: { type: "menu",               visualSubject: "a chalkboard tapas menu at a La Latina restaurant with the day's specials" },
-  35: { type: "overheard",          audioSubject: "a customer and vendor at Mercado de la Cebada trying to sort out a mistaken order" },
-  36: { type: "menu",               visualSubject: "the vertical chalkboard sherry list at La Venencia in La Latina — fino, manzanilla, oloroso, amontillado, palo cortado, prices per copa" },
-  37: { type: "advertisement",      visualSubject: "a Pachá Madrid nightclub flyer for the weekend's DJ line-up, neon on dark" },
-  38: { type: "sign",               visualSubject: "the Corral de la Morería flamenco venue exterior sign advertising the evening's cuadro" },
-  39: { type: "audio_announcement", audioSubject: "the pre-match PA at Santiago Bernabéu welcoming the crowd before Real Madrid kick-off" },
-  40: { type: "sign",               visualSubject: "the illuminated Cines Callao marquee showing three movie titles and screening times in Spanish" },
-  41: { type: "document",           visualSubject: "a Metro Madrid lost-and-found (objetos perdidos) claim form filled in for a lost wallet" },
-  42: { type: "overheard",          audioSubject: "a general-practice doctor at Centro de Salud Chueca asking a foreign patient what's wrong" },
-  43: { type: "document",           visualSubject: "a Policía Nacional denuncia form (theft report) partially completed in Spanish" },
-  44: { type: "sign",               visualSubject: "the in-store service signage at Vodafone Gran Vía — 'Pídelo aquí' with a numbered ticket dispenser" },
-  45: { type: "document",           visualSubject: "an EMT Madrid night-bus (búho) printed timetable stuck to a Sol bus stop with route and stop times" },
-  46: { type: "audio_announcement", audioSubject: "a voicemail from Carlos the taxi driver saying he's fifteen minutes away and reminding you not to forget the passport" },
-  47: { type: "overheard",          audioSubject: "a phone call to hotel reception asking politely for a late checkout in Chueca" },
-  48: { type: "sign",               visualSubject: "the Barajas T4 departures board showing Iberia and Ryanair flights with statuses (Embarcando, Puerta, Retrasado)" },
-  49: { type: "advertisement",      visualSubject: "a duty-free perfume and jamón ibérico promotional stand sign at Barajas Terminal 4" },
-  50: { type: "audio_announcement", audioSubject: "the opening Iberia cabin welcome announcement on flight IB6250 to New York, from the captain and purser" },
+  1:  { type: "sign", image: { source: "unsplash", query: "airport arrivals hall sign terminal international spain", description: "The arrivals hall at Madrid-Barajas Airport Terminal 4, with overhead directional signs pointing travelers to passport control, baggage claim, and the exit.", visibleText: ["LLEGADAS", "LLEGADAS INTERNACIONALES", "CONTROL DE PASAPORTES", "RECOGIDA DE EQUIPAJES", "SALIDA"] } },
+  2:  { type: "document", image: { source: "unsplash", query: "airline boarding pass paper ticket flight", description: "A paper airline boarding pass with passenger name, flight number, origin/destination, boarding gate, seat assignment, and boarding time printed on it.", visibleText: ["EMBARQUE", "PUERTA", "ASIENTO", "NOMBRE", "DESTINO", "ORIGEN", "VUELO", "FECHA"] } },
+  3:  { type: "overheard", image: { source: "streetview", lat: 40.4983, lng: -3.5676, heading: 90, pitch: 5, description: "The street scene immediately outside the Madrid-Barajas Airport Terminal 4 taxi rank, with white-and-red Madrid taxis queueing by the curb.", visibleText: ["TAXI", "PARADA"] } },
+  4:  { type: "document", image: { source: "unsplash", query: "hotel check in form registration paper reception", description: "A paper hotel registration card (ficha de policía) partially filled in with the guest's name, passport number, nationality, dates of stay, and signature line.", visibleText: ["NOMBRE", "APELLIDOS", "PASAPORTE", "NACIONALIDAD", "FECHA DE ENTRADA", "FECHA DE SALIDA", "FIRMA"] } },
+  5:  { type: "advertisement", image: { source: "unsplash", query: "hotel brochure spa rooftop luxury room service card", description: "A tabletop in-room hotel brochure card advertising the rooftop spa and mini-bar, with prices in euros and opening hours.", visibleText: ["SPA", "TERRAZA", "MINIBAR", "HORARIO", "ABIERTO", "DESDE", "€", "RESERVAR"] } },
+  6:  { type: "sign", image: { source: "unsplash", query: "madrid metro station entrance sign line directions", description: "A Madrid Metro wayfinding sign for Sol station showing Lines 1, 2, and 3 with correspondencia (transfer) arrows and the SALIDA exit arrow.", visibleText: ["METRO", "SOL", "LÍNEA 1", "LÍNEA 2", "LÍNEA 3", "CORRESPONDENCIA", "SALIDA", "ANDÉN", "DIRECCIÓN"] } },
+  7:  { type: "advertisement", image: { source: "streetview", lat: 40.4200, lng: -3.7025, heading: 90, pitch: 10, description: "A view down Gran Vía in Madrid, Spain's famous theatre street — tall belle-époque buildings covered in illuminated billboards for musicals and shows.", visibleText: ["GRAN VÍA", "ENTRADAS", "FUNCIÓN", "ESTRENO", "TAQUILLA", "ESCENARIO"] } },
+  8:  { type: "overheard", image: { source: "streetview", lat: 40.4229, lng: -3.7014, heading: 180, pitch: 5, description: "A view of Calle Fuencarral in Malasaña, Madrid — a bustling pedestrian shopping street a tourist might walk down while asking a stranger for directions.", visibleText: ["CALLE", "FUENCARRAL", "A LA DERECHA", "A LA IZQUIERDA", "TODO RECTO", "ESQUINA"] } },
+  9:  { type: "document", image: { source: "unsplash", query: "madrid metro transport card ticket pass euro", description: "A Madrid Abono Turístico transport card with its paper sleeve showing zones, number of days of validity, and price in euros.", visibleText: ["ABONO TURÍSTICO", "ZONA", "DÍAS", "VALIDEZ", "PRECIO", "ADULTO", "INFANTIL"] } },
+  10: { type: "audio_announcement", image: null },
+  11: { type: "menu", image: { source: "unsplash", query: "spanish cafe breakfast chalkboard menu tostada coffee", description: "A chalkboard breakfast menu at a Madrid café listing tostadas, café con leche, zumo de naranja, and the daily desayuno combo with prices.", visibleText: ["DESAYUNO", "TOSTADA", "CAFÉ CON LECHE", "CAFÉ SOLO", "ZUMO", "NARANJA", "€"] } },
+  12: { type: "overheard", image: { source: "unsplash", query: "spanish food market stall vendor", description: "A view inside Mercado de San Miguel in Madrid showing the fishmonger's stall with vendors calling out prices and fresh seafood on ice.", visibleText: ["MERCADO", "PESCADERÍA", "KILO", "FRESCO", "GAMBAS", "PULPO", "BOQUERONES"] } },
+  13: { type: "menu", image: { source: "unsplash", query: "spanish restaurant menu board", description: "A printed paper menú del día from a traditional Madrid restaurant listing primeros, segundos, postres, and 'pan y bebida incluidos' at a fixed price.", visibleText: ["MENÚ DEL DÍA", "ENTRANTES", "PRIMERO", "SEGUNDO", "POSTRE", "PAN Y BEBIDA", "IVA INCLUIDO", "€"] } },
+  14: { type: "overheard", image: { source: "unsplash", query: "madrid tapas bar interior counter beer caña spanish", description: "The crowded counter of a Malasaña tapas bar in Madrid — a bartender pouring a caña (small draft beer) and plates of tapas lined up on the bar.", visibleText: ["CAÑA", "TAPA", "RACIÓN", "LA CUENTA", "POR FAVOR", "GRACIAS"] } },
+  15: { type: "menu", image: { source: "unsplash", query: "chocolate con churros menu spanish madrid cafe", description: "An interior tiled menu at Chocolatería San Ginés in Madrid listing chocolate con churros, porras, chocolate a la taza, and prices in euros.", visibleText: ["CHOCOLATE", "CHURROS", "PORRAS", "A LA TAZA", "DESDE", "RACIÓN", "€"] } },
+  16: { type: "sign", image: { source: "streetview", lat: 40.4203, lng: -3.7050, heading: 220, pitch: 5, description: "A view of Gran Vía in Madrid with a Zara storefront visible, large REBAJAS (sale) signs with percentages in the window.", visibleText: ["REBAJAS", "DESCUENTO", "HASTA", "%", "LIQUIDACIÓN", "ÚLTIMAS UNIDADES"] } },
+  17: { type: "document", image: { source: "unsplash", query: "pharmacy prescription receipt medication paper spanish", description: "A Spanish pharmacy prescription receipt (receta médica) listing medication name, dosage, patient name, and date.", visibleText: ["RECETA", "MEDICAMENTO", "DOSIS", "COMPRIMIDOS", "AL DÍA", "FARMACIA", "CADUCIDAD"] } },
+  18: { type: "advertisement", image: { source: "streetview", lat: 40.4154, lng: -3.7074, heading: 90, pitch: 0, description: "Plaza Mayor in Madrid — the arcaded central square with souvenir shops along the arcades, flamenco fans and magnets visible in shop windows.", visibleText: ["PLAZA MAYOR", "SOUVENIRS", "RECUERDOS", "FLAMENCO", "ABANICOS", "DESDE", "€"] } },
+  19: { type: "overheard", image: { source: "unsplash", query: "madrid rastro flea market vintage clothes stall sunday", description: "A stall at El Rastro Sunday flea market in Madrid with vintage jackets hanging and a vendor behind the counter — the scene of a classic Spanish haggling exchange.", visibleText: ["RASTRO", "¿CUÁNTO ES?", "DESCUENTO", "REGATEAR", "BARATO", "CARO", "TE LO DEJO EN"] } },
+  20: { type: "document", image: { source: "unsplash", query: "department store return receipt barcode spanish", description: "A paper return slip from El Corte Inglés in Madrid with the item barcode, article numbers, date, and refund amount.", visibleText: ["DEVOLUCIÓN", "ARTÍCULO", "IMPORTE", "FECHA", "TICKET", "CÓDIGO DE BARRAS"] } },
+  21: { type: "sign", image: { source: "unsplash", query: "madrid prado museum ticket entrance sign price", description: "The ticket-window information sign at Museo del Prado in Madrid listing entry prices in euros, opening hours, and the free-admission time slot.", visibleText: ["MUSEO DEL PRADO", "ENTRADA", "GENERAL", "REDUCIDA", "GRATUITA", "HORARIO", "LUNES A DOMINGO"] } },
+  22: { type: "audio_announcement", image: null },
+  23: { type: "sign", image: { source: "unsplash", query: "madrid reina sofia museum sign guernica picasso interpretive", description: "An interpretive wall sign next to Picasso's Guernica at Museo Reina Sofía in Madrid, with the painting's title, year, dimensions, and a short explanatory paragraph.", visibleText: ["GUERNICA", "PABLO PICASSO", "ÓLEO SOBRE LIENZO", "COLECCIÓN", "SALA", "NO TOCAR"] } },
+  24: { type: "audio_announcement", image: null },
+  25: { type: "advertisement", image: { source: "streetview", lat: 40.4153, lng: -3.6844, heading: 90, pitch: 0, description: "The entrance to El Retiro Park in Madrid near the lake, where visitors rent rowboats — the kiosk and the Monument to Alfonso XII visible across the water.", visibleText: ["EL RETIRO", "BARCAS", "ALQUILER", "MEDIA HORA", "POR PERSONA", "FIANZA", "€"] } },
+  26: { type: "sign", image: { source: "unsplash", query: "spanish supermarket aisle sign mercadona grocery", description: "The aisle-marker signs inside a Mercadona supermarket in Madrid listing panadería, congelados, bebidas, and lácteos with arrow directions.", visibleText: ["PANADERÍA", "CONGELADOS", "BEBIDAS", "LÁCTEOS", "CARNICERÍA", "FRUTERÍA", "CAJA"] } },
+  27: { type: "document", image: { source: "unsplash", query: "post office spanish parcel shipping form correos envelope", description: "A Correos parcel-sending form (impreso de envío) partially filled in with sender, recipient, weight, destination country, and declared value.", visibleText: ["CORREOS", "REMITENTE", "DESTINATARIO", "PESO", "DESTINO", "VALOR DECLARADO", "ORDINARIO", "CERTIFICADO"] } },
+  28: { type: "sign", image: { source: "unsplash", query: "atm bank spanish screen cash withdrawal menu", description: "The touchscreen of a BBVA ATM in Madrid showing the Spanish-language language selection and cash-withdrawal menu with amount options.", visibleText: ["IDIOMA", "RETIRAR EFECTIVO", "SALDO", "IMPORTE", "CONTINUAR", "CANCELAR", "INTRODUZCA SU PIN"] } },
+  29: { type: "document", image: { source: "unsplash", query: "laundromat printed ticket spanish self service receipt", description: "A printed self-service laundromat ticket from a Chamberí lavandería with machine number, cycle, estimated end time, and price.", visibleText: ["LAVANDERÍA", "MÁQUINA", "LAVADO", "SECADO", "FINALIZA", "IMPORTE", "€"] } },
+  30: { type: "advertisement", image: { source: "unsplash", query: "spanish gym fitness flyer poster membership classes", description: "A printed gym membership flyer for a Chamberí gimnasio with monthly plans, included classes (yoga, spinning), and a sign-up CTA.", visibleText: ["GIMNASIO", "MATRÍCULA GRATIS", "CUOTA MENSUAL", "CLASES INCLUIDAS", "YOGA", "SPINNING", "APÚNTATE"] } },
+  31: { type: "overheard", image: { source: "unsplash", query: "madrid malasaña bar interior friends drinks evening", description: "The crowded interior of a Malasaña bar in Madrid at night where two Madrileños in their 20s are chatting with a stranger over drinks.", visibleText: ["¿TE APETECE?", "RONDA", "INVITO YO", "CHAMPÚ", "SALUD"] } },
+  32: { type: "audio_announcement", image: null },
+  33: { type: "overheard", image: null },
+  34: { type: "menu", image: { source: "unsplash", query: "la latina madrid tapas chalkboard menu specials", description: "A chalkboard tapas menu at a restaurant in La Latina, Madrid, listing the day's specials — croquetas, tortilla, patatas bravas — with prices.", visibleText: ["ESPECIALIDADES DEL DÍA", "CROQUETAS", "TORTILLA", "PATATAS BRAVAS", "RACIÓN", "MEDIA RACIÓN", "€"] } },
+  35: { type: "overheard", image: { source: "unsplash", query: "madrid mercado cebada market vendor customer dispute order", description: "A vendor and customer at Mercado de la Cebada in Madrid trying to sort out a mistaken order at the vegetable stall.", visibleText: ["PERDONE", "NO ES LO QUE PEDÍ", "SE HA EQUIVOCADO", "LO SIENTO", "¿ME CAMBIA?"] } },
+  36: { type: "menu", image: { source: "unsplash", query: "spanish sherry list wine bar fino manzanilla chalkboard", description: "The vertical chalkboard sherry list at La Venencia in La Latina, Madrid, listing fino, manzanilla, oloroso, amontillado, and palo cortado with prices per copa.", visibleText: ["FINO", "MANZANILLA", "OLOROSO", "AMONTILLADO", "PALO CORTADO", "COPA", "€"] } },
+  37: { type: "advertisement", image: { source: "unsplash", query: "spanish nightclub flyer poster neon dj dance", description: "A Pachá Madrid nightclub flyer for the weekend's DJ line-up — neon type on a dark background with dates and door times.", visibleText: ["PACHÁ MADRID", "DJ", "VIERNES", "SÁBADO", "APERTURA", "ENTRADA", "LISTA"] } },
+  38: { type: "sign", image: { source: "unsplash", query: "flamenco venue sign madrid exterior theatre spanish", description: "The exterior venue sign at Corral de la Morería, Madrid, advertising the evening flamenco cuadro — artists' names, show time, and ticket price.", visibleText: ["FLAMENCO", "CUADRO", "ARTISTAS", "FUNCIÓN", "RESERVA", "ENTRADA"] } },
+  39: { type: "audio_announcement", image: null },
+  40: { type: "sign", image: { source: "unsplash", query: "cinema marquee movie theater sign night", description: "The illuminated Cines Callao marquee in Madrid showing three movie titles, screening times, and ticket prices in Spanish.", visibleText: ["CINE", "SESIÓN", "ENTRADA", "SALA", "TAQUILLA", "V.O.S.E.", "APTA PARA TODOS LOS PÚBLICOS"] } },
+  41: { type: "document", image: { source: "unsplash", query: "handwritten form paperwork pen desk", description: "A Metro Madrid lost-and-found (objetos perdidos) claim form filled in with the description of a lost wallet, date, line and station.", visibleText: ["OBJETOS PERDIDOS", "DESCRIPCIÓN", "FECHA DE PÉRDIDA", "LÍNEA", "ESTACIÓN", "DATOS PERSONALES"] } },
+  42: { type: "overheard", image: { source: "unsplash", query: "spanish doctor patient clinic consultation office", description: "A general-practice doctor at a Chueca Centro de Salud in Madrid speaking to a foreign patient across a desk.", visibleText: ["¿QUÉ LE OCURRE?", "ME DUELE", "DESDE CUÁNDO", "RECETA", "FIEBRE", "CABEZA", "GARGANTA"] } },
+  43: { type: "document", image: { source: "unsplash", query: "spanish police report form denuncia theft paper", description: "A Policía Nacional denuncia form in Madrid, partially completed in Spanish, for a stolen wallet with description, time, and place of the incident.", visibleText: ["DENUNCIA", "ROBO", "HURTO", "LUGAR DE LOS HECHOS", "FECHA", "DESCRIPCIÓN DE LO SUSTRAÍDO", "DNI/PASAPORTE"] } },
+  44: { type: "sign", image: { source: "unsplash", query: "spanish phone store service ticket queue number sign", description: "The in-store service signage at Vodafone Gran Vía in Madrid — a 'Pídelo aquí' numbered-ticket dispenser with the current turno (turn) displayed.", visibleText: ["PÍDELO AQUÍ", "TURNO", "ESPERE SU TURNO", "ATENCIÓN AL CLIENTE", "CAJA"] } },
+  45: { type: "document", image: { source: "unsplash", query: "bus stop schedule timetable printed", description: "An EMT Madrid night-bus (búho) printed timetable stuck to a Sol bus stop, listing route N1, intermediate stops, and arrival times.", visibleText: ["EMT", "BÚHO", "LÍNEA N1", "PARADA", "SALIDA", "LLEGADA", "FRECUENCIA", "LABORABLES", "FESTIVOS"] } },
+  46: { type: "audio_announcement", image: null },
+  47: { type: "overheard", image: null },
+  48: { type: "sign", image: { source: "streetview", lat: 40.4983, lng: -3.5676, heading: 270, pitch: 10, description: "The exterior of Madrid-Barajas Airport Terminal 4 at the drop-off curb — travelers heading to departures with luggage trolleys.", visibleText: ["SALIDAS", "FACTURACIÓN", "EMBARQUE", "SEGURIDAD", "PUERTA", "T4"] } },
+  49: { type: "advertisement", image: { source: "unsplash", query: "duty free airport perfume jamon display sign price promotion", description: "A duty-free promotional display at Barajas Terminal 4 for perfume and jamón ibérico, with 'Duty Free' and 'Promoción' signage and prices in euros.", visibleText: ["DUTY FREE", "PROMOCIÓN", "AHORRE", "DESDE", "PERFUMERÍA", "JAMÓN IBÉRICO", "€"] } },
+  50: { type: "audio_announcement", image: null },
 };
 
 // ============================================================
@@ -144,7 +170,7 @@ const MADRID_CHARACTERS = {
 
 function parseArgs(argv) {
   const flags = {
-    dryRun: true, live: false, withImages: false, imagesOnly: false,
+    dryRun: true, live: false, withImages: true,
     resume: true, reset: false, verbose: false,
     city: "Madrid", lesson: null, lessons: null, limit: null,
     sleepMs: 400,
@@ -155,9 +181,6 @@ function parseArgs(argv) {
     else if (a === "--live") { flags.live = true; flags.dryRun = false; }
     else if (a === "--skip-images") { flags.withImages = false; }
     else if (a === "--with-images") { flags.withImages = true; }
-    // --images-only: skip Claude entirely, only regen + reupload images
-    // for existing v2_lesson rows. Implies --live + --with-images.
-    else if (a === "--images-only") { flags.imagesOnly = true; flags.live = true; flags.dryRun = false; flags.withImages = true; }
     else if (a === "--resume") { flags.resume = true; }
     else if (a === "--no-resume") { flags.resume = false; }
     else if (a === "--reset") { flags.reset = true; }
@@ -262,16 +285,253 @@ async function callClaude({ apiKey, systemPrompt, userPrompt, maxTokens = 4000 }
 }
 
 function extractJson(text) {
-  // Strip code fences if the model added any, then parse.
   let s = text.trim();
   if (s.startsWith("```")) {
     s = s.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
   }
-  // Find the first { and last } to be tolerant of pre/post prose.
   const first = s.indexOf("{");
   const last = s.lastIndexOf("}");
   if (first !== -1 && last !== -1 && last > first) s = s.slice(first, last + 1);
   return JSON.parse(s);
+}
+
+// ============================================================
+// Image sources — Unsplash Search API + Google Street View Static
+// ============================================================
+
+// Fetch up to N Unsplash candidates for a query so the caller can walk
+// the list and skip bad matches that vision flags as unsuitable.
+async function fetchUnsplashCandidates({ query, accessKey, perPage = 8 }) {
+  return withRetry(`unsplash:${query.slice(0, 40)}`, async () => {
+    const u = new URL("https://api.unsplash.com/search/photos");
+    u.searchParams.set("query", query);
+    u.searchParams.set("per_page", String(perPage));
+    u.searchParams.set("orientation", "landscape");
+    u.searchParams.set("content_filter", "high");
+    const res = await fetch(u, {
+      headers: {
+        Authorization: `Client-ID ${accessKey}`,
+        "Accept-Version": "v1",
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const err = new Error(`unsplash ${res.status}: ${text.slice(0, 200)}`);
+      if (res.status === 429 || res.status >= 500) markRetryable(err);
+      throw err;
+    }
+    const json = await res.json();
+    const results = Array.isArray(json.results) ? json.results : [];
+    return results
+      .map((r) => r.urls?.regular ?? r.urls?.full ?? r.urls?.small)
+      .filter(Boolean);
+  });
+}
+
+// Build a Google Street View Static API URL. The URL itself IS the
+// image — we don't fetch it client-side, we download it in `fetchImage`
+// below and upload the bytes to Supabase Storage.
+function buildStreetViewUrl({ lat, lng, heading = 0, pitch = 0, apiKey }) {
+  const u = new URL("https://maps.googleapis.com/maps/api/streetview");
+  u.searchParams.set("size", "800x500");
+  u.searchParams.set("location", `${lat},${lng}`);
+  u.searchParams.set("heading", String(heading));
+  u.searchParams.set("pitch", String(pitch));
+  u.searchParams.set("fov", "90");
+  u.searchParams.set("key", apiKey);
+  return u.toString();
+}
+
+// Given a resolved external URL (Unsplash CDN or Street View endpoint),
+// download its bytes.
+async function fetchImageBytes(url) {
+  return withRetry("download-image", async () => {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const err = new Error(`download ${url.slice(0, 80)} ${res.status}`);
+      if (res.status === 429 || res.status >= 500) markRetryable(err);
+      throw err;
+    }
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.byteLength < 1024) {
+      throw new Error(`download too small (${buf.byteLength}B) — likely error response`);
+    }
+    return buf;
+  });
+}
+
+// ============================================================
+// Vision — have Claude look at the fetched image and extract the
+// actual visible content before we write the lesson. This is what
+// closes the loop between "image we got" and "lesson we author" so
+// the content is grounded in the real photo rather than in a hint.
+// ============================================================
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+  return Buffer.from(binary, "binary").toString("base64");
+}
+
+async function describeImageWithClaude({ apiKey, bytes, mediaType, planHint }) {
+  const hintBlock = planHint
+    ? `Planning hint (may or may not match the actual image you're looking at):
+  Lesson scenario: ${planHint.description}
+  Suggested Spanish words to look for (ignore if they aren't actually visible): ${(planHint.visibleText ?? []).join(", ") || "(none)"}`
+    : "";
+  const userText = `Look at this photo and describe exactly what is in it, for an immersive Spanish-learning lesson set in Madrid.
+
+${hintBlock}
+
+Respond with ONE JSON object:
+{
+  "sceneDescription": "A 1-2 sentence description of what the photo actually shows. Be literal — if the planning hint said 'metro sign' but the photo shows a street scene, describe the street scene.",
+  "visibleText": ["<every piece of Spanish or multilingual text / signage / branding you can read in the image, verbatim>"],
+  "visibleObjects": ["<up to 6 notable objects or elements a traveler would notice>"],
+  "suitableForMadridLesson": true | false,
+  "unsuitableReason": "<if false: 1 sentence why — e.g., 'photo is clearly not Spain / not Madrid / off-topic'. omit if true.>"
+}
+
+Return only JSON. No prose. No code fences.`;
+
+  const res = await withRetry("anthropic-vision", async () => {
+    const r = await fetch(ANTHROPIC_URL, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 800,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: bytesToBase64(bytes) } },
+            { type: "text", text: userText },
+          ],
+        }],
+      }),
+    });
+    if (!r.ok) {
+      const text = await r.text().catch(() => "");
+      const err = new Error(`anthropic-vision ${r.status}: ${text.slice(0, 400)}`);
+      if (r.status === 429 || r.status >= 500) markRetryable(err);
+      throw err;
+    }
+    return r.json();
+  });
+
+  const text = res.content?.[0]?.text ?? "";
+  return extractJson(text);
+}
+
+// ============================================================
+// Supabase Storage upload
+// ============================================================
+
+function citySlug(city) {
+  return city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function storagePathFor(city, orderIndex) {
+  return `${citySlug(city)}/L${orderIndex}.jpg`;
+}
+
+function publicStorageUrl(supabaseUrl, path) {
+  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
+}
+
+async function uploadToStorage({ supabaseUrl, serviceKey, path, bytes }) {
+  return withRetry(`upload ${path}`, async () => {
+    const res = await fetch(
+      `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/${STORAGE_BUCKET}/${path}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
+          "Content-Type": "image/jpeg",
+          "x-upsert": "true",
+        },
+        body: bytes,
+      },
+    );
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      const err = new Error(`storage upload ${res.status}: ${text.slice(0, 200)}`);
+      if (res.status === 429 || res.status >= 500) markRetryable(err);
+      throw err;
+    }
+    return await res.json().catch(() => ({}));
+  });
+}
+
+// Resolve the lesson's image plan: fetch URL, download bytes, run
+// Claude vision to describe what the photo actually shows, and (in
+// live mode) upload to Supabase Storage.
+//
+// Returns { url, source, vision } where `vision` holds the ground-truth
+// scene description + visible-text list extracted from the real photo.
+// The content prompt uses `vision` (not the plan hint) so the generated
+// lesson is grounded in what the learner will actually see.
+async function resolveAndStashImage({
+  plan, city, orderIndex,
+  unsplashKey, mapsKey, anthropicKey,
+  supabaseUrl, serviceKey,
+  skipUpload,
+}) {
+  if (!plan.image) return null;
+  const img = plan.image;
+
+  // Build candidate URL list. Street View always has one candidate
+  // (the pano for that lat/lng). Unsplash gives us up to 8 so we can
+  // walk down the list if vision flags the top hit as unsuitable.
+  let candidates;
+  if (img.source === "streetview") {
+    if (!mapsKey) throw new Error(`L${orderIndex}: Street View lesson requires GOOGLE_MAPS_API_KEY`);
+    candidates = [buildStreetViewUrl({
+      lat: img.lat, lng: img.lng,
+      heading: img.heading ?? 0, pitch: img.pitch ?? 0,
+      apiKey: mapsKey,
+    })];
+  } else if (img.source === "unsplash") {
+    if (!unsplashKey) throw new Error(`L${orderIndex}: Unsplash lesson requires UNSPLASH_ACCESS_KEY`);
+    candidates = await fetchUnsplashCandidates({ query: img.query, accessKey: unsplashKey });
+    if (candidates.length === 0) throw new Error(`unsplash: no results for "${img.query}"`);
+  } else {
+    throw new Error(`L${orderIndex}: unknown image source "${img.source}"`);
+  }
+
+  // Walk candidates, keeping the first one vision rates as suitable.
+  // If none pass, keep the first candidate anyway (so the lesson still
+  // gets an image) and surface the warning in `vision.unsuitableReason`.
+  let chosen = null;
+  let fallback = null;
+  for (let i = 0; i < candidates.length; i++) {
+    const url = candidates[i];
+    const bytes = await fetchImageBytes(url);
+    const vision = await describeImageWithClaude({
+      apiKey: anthropicKey, bytes, mediaType: "image/jpeg", planHint: img,
+    });
+    const attempt = { url, bytes, vision, candidateIndex: i };
+    if (!fallback) fallback = attempt;
+    if (vision.suitableForMadridLesson !== false) {
+      chosen = attempt;
+      break;
+    }
+    console.log(`         VISION-SKIP candidate ${i + 1}/${candidates.length}: ${vision.unsuitableReason ?? "unsuitable"}`);
+  }
+  const picked = chosen ?? fallback;
+
+  if (skipUpload) {
+    return { url: picked.url, source: img.source, vision: picked.vision, candidateIndex: picked.candidateIndex };
+  }
+
+  const path = storagePathFor(city, orderIndex);
+  await uploadToStorage({ supabaseUrl, serviceKey, path, bytes: picked.bytes });
+  return { url: publicStorageUrl(supabaseUrl, path), source: img.source, vision: picked.vision, candidateIndex: picked.candidateIndex };
 }
 
 // ============================================================
@@ -282,8 +542,6 @@ const SYSTEM_PROMPT = `You are an expert Spanish-language lesson author for an i
 
 You always respond with a single JSON object matching the schema the user gives you. Use the EXACT field names given — do not rename them. Never wrap the response in markdown code fences. Never add prose before or after the JSON.`;
 
-// Shared schema fragments referenced by both prompts — inline them
-// verbatim so Claude never invents field names.
 const EXERCISE_SCHEMA = `Each gatedExercise MUST be one of these FOUR shapes, using the EXACT field names shown:
   Multiple choice:
     { "kind": "multiple_choice", "question": "<English question>", "correct": "<the right option>", "wrong": ["<distractor>", "<distractor>", "<distractor>"] }
@@ -318,31 +576,54 @@ ${vocab}
 `;
 }
 
-function visualPrompt({ orderIndex, title, location, type, subject, priorCtx }) {
+// Build an "IMAGE CONTEXT" block that pins Claude's content to what the
+// learner will actually see. We feed in the vision analysis of the
+// REAL fetched photo (not the planning hint) so the lesson can't drift
+// from the image.
+function imageContextBlock({ source, vision }) {
+  if (!vision) return "";
+  const sourceLabel = source === "streetview"
+    ? "Google Street View photo (real Madrid location)"
+    : "Stock photo";
+  const visibleList = (vision.visibleText ?? []).map((w) => `  - ${w}`).join("\n");
+  const objectList = (vision.visibleObjects ?? []).map((o) => `  - ${o}`).join("\n");
+  return `
+IMAGE CONTEXT — this is what the learner is literally looking at (extracted by analyzing the actual photo, not a plan):
+  Source:      ${sourceLabel}
+  Scene:       ${vision.sceneDescription}
+  Visible objects / notable elements:
+${objectList || "  (none noted)"}
+  VERBATIM text visible in the image (Spanish or multilingual signage, menus, forms, etc.):
+${visibleList || "  (no legible text visible — build the lesson around the visible objects / scene)"}
+
+CRITICAL — the lesson MUST be built around THIS specific photo. Every decodeStep must be a word or phrase that is literally visible in the image above or that a traveler would need to understand the scene. buildup.fullEnglish must translate the visible text (not generic travel phrases). Do NOT invent Spanish vocabulary that isn't rooted in what's shown.
+`;
+}
+
+function visualPrompt({ orderIndex, title, location, type, image, vision, priorCtx }) {
   return `You are writing Lesson ${orderIndex} of a 50-lesson Madrid traveler course.
 
 LESSON META
 - Title: "${title}"
 - Location: "${location}"
-- Type: ${type}  (image-based — the learner sees ONE realistic photo and decodes it)
-- Visual subject: ${subject}
+- Type: ${type}  (image-based — the learner sees ONE real photo of this scene and decodes it)
 
+${imageContextBlock({ source: image?.source, vision })}
 ${buildContextBlock(priorCtx)}
 
 Write ONE JSON object with EXACTLY this shape:
 
 {
-  "scene": "A 1-2 sentence second-person scene-setter. E.g., 'You step out of Sol Metro. You see this sign overhead.'",
+  "scene": "A 1-2 sentence second-person scene-setter that references what the learner sees in the photo. E.g., 'You step off the escalator at Sol Metro. You see this wayfinding sign overhead.'",
   "storyRecap": "One sentence that will open the NEXT lesson, referring back to what happened here.",
   "opening": {
     "kind": "image",
-    "fullSignText": "The literal Spanish text visible in the image, exactly as it should appear, formatted for humans.",
-    "imagePrompt": "A Flux 1.1 Pro image-generation prompt. Photorealistic, editorial DSLR style. Spell out the exact Spanish text that must appear in the image. Include lighting, location detail, camera perspective. Aim for 60-120 words.",
+    "fullSignText": "The Spanish text/words visible in the image, formatted for humans (· separators are fine for a sign; line breaks for a menu/document).",
     "imageAlt": "One sentence of accessibility alt text describing the image."
   },
   "decodeSteps": [
     {
-      "wordOrPhrase": "Spanish word or short phrase from the sign/menu/document",
+      "wordOrPhrase": "Spanish word or short phrase visible in / implied by the image",
       "phonetic": "[phonetic guide in brackets, English speaker friendly]",
       "english": "English translation",
       "mnemonic": "A one-sentence memory hook — sound-alike or English cognate connection.",
@@ -351,8 +632,8 @@ Write ONE JSON object with EXACTLY this shape:
     }
   ],
   "buildup": {
-    "fullEnglish": "The full English translation of the whole sign/menu/document.",
-    "celebrationMessage": "One warm sentence celebrating that the learner just read authentic Spanish."
+    "fullEnglish": "The full English translation of the Spanish visible in the image.",
+    "celebrationMessage": "One warm sentence celebrating that the learner just read authentic Spanish from a real photo."
   },
   "endQuiz": [ …see QUIZ SCHEMA below… ]
 }
@@ -364,10 +645,9 @@ QUIZ SCHEMA
 ${QUIZ_SCHEMA}
 
 REQUIREMENTS:
-- decodeSteps: 5 to 7 items. Vary gatedExercise.kind across steps. NEVER put the same kind twice in a row. Include at least one "speaking" step.
-- endQuiz: exactly 5 items covering ONLY vocab from THIS lesson. Include at least three different kinds.
+- decodeSteps: 5 to 7 items drawn from the IMAGE CONTEXT visible-text list. Vary gatedExercise.kind across steps. NEVER put the same kind twice in a row. Include at least one "speaking" step.
+- endQuiz: exactly 5 items covering ONLY vocab from THIS lesson's image. Include at least three different kinds.
 - All Spanish text must be authentic Madrileño register.
-- imagePrompt: Flux 1.1 Pro renders text well — spell the Spanish letters exactly, and quote each phrase that must appear.
 - Return only the JSON. No prose, no code fences.`;
 }
 
@@ -428,132 +708,6 @@ REQUIREMENTS:
 }
 
 // ============================================================
-// Supabase Storage — upload Flux image bytes to a public bucket
-// so we get a permanent URL. Replicate delivery URLs expire in
-// ~24h; storing them in the DB directly gives you broken images
-// the next day.
-// ============================================================
-
-const STORAGE_BUCKET = "traveler-images";
-
-function citySlug(city) {
-  return city.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-function storagePathFor(city, orderIndex) {
-  return `${citySlug(city)}/L${orderIndex}.jpg`;
-}
-
-function publicStorageUrl(supabaseUrl, path) {
-  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/${STORAGE_BUCKET}/${path}`;
-}
-
-async function downloadImage(url) {
-  return withRetry("download-image", async () => {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const err = new Error(`download ${url} ${res.status}`);
-      if (res.status === 429 || res.status >= 500) markRetryable(err);
-      throw err;
-    }
-    const buf = new Uint8Array(await res.arrayBuffer());
-    return buf;
-  });
-}
-
-async function uploadToStorage({ supabaseUrl, serviceKey, path, bytes }) {
-  return withRetry(`upload ${path}`, async () => {
-    const res = await fetch(
-      `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/${STORAGE_BUCKET}/${path}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${serviceKey}`,
-          apikey: serviceKey,
-          "Content-Type": "image/jpeg",
-          // upsert=true so re-runs overwrite the previous file at the
-          // same path (idempotent — safe to backfill or re-generate).
-          "x-upsert": "true",
-        },
-        body: bytes,
-      },
-    );
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      const err = new Error(`storage upload ${res.status}: ${text.slice(0, 200)}`);
-      if (res.status === 429 || res.status >= 500) markRetryable(err);
-      throw err;
-    }
-    return await res.json().catch(() => ({}));
-  });
-}
-
-// End-to-end: given a Replicate URL and a target path, download the
-// image and upload it to Supabase Storage. Returns the permanent
-// public URL.
-async function stashImage({ replicateUrl, supabaseUrl, serviceKey, city, orderIndex }) {
-  const path = storagePathFor(city, orderIndex);
-  const bytes = await downloadImage(replicateUrl);
-  await uploadToStorage({ supabaseUrl, serviceKey, path, bytes });
-  return publicStorageUrl(supabaseUrl, path);
-}
-
-// ============================================================
-// Flux 1.1 Pro image generation
-// ============================================================
-
-async function generateFluxImage({ token, prompt }) {
-  return withRetry("flux", async () => {
-    const createRes = await fetch(FLUX_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Prefer: "wait=60",
-      },
-      body: JSON.stringify({
-        input: {
-          prompt,
-          aspect_ratio: "4:3",
-          output_format: "jpg",
-          output_quality: 88,
-          // 5 (of 6 max) — the default 2 false-flagged e.g. boarding
-          // passes as NSFW. Content is still safe-guarded but far less
-          // trigger-happy on airport/document imagery.
-          safety_tolerance: 5,
-        },
-      }),
-    });
-    if (!createRes.ok) {
-      const text = await createRes.text().catch(() => "");
-      const err = new Error(`flux create ${createRes.status}: ${text.slice(0, 400)}`);
-      if (createRes.status === 429 || createRes.status >= 500) markRetryable(err);
-      throw err;
-    }
-    let pred = await createRes.json();
-    while (pred.status === "starting" || pred.status === "processing") {
-      await new Promise((r) => setTimeout(r, 2500));
-      const pollRes = await fetch(pred.urls.get, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!pollRes.ok) {
-        const text = await pollRes.text().catch(() => "");
-        const err = new Error(`flux poll ${pollRes.status}: ${text.slice(0, 200)}`);
-        if (pollRes.status === 429 || pollRes.status >= 500) markRetryable(err);
-        throw err;
-      }
-      pred = await pollRes.json();
-    }
-    if (pred.status !== "succeeded") {
-      throw new Error(`flux finished status=${pred.status} err=${JSON.stringify(pred.error).slice(0, 200)}`);
-    }
-    const url = Array.isArray(pred.output) ? pred.output[0] : pred.output;
-    if (typeof url !== "string") throw new Error(`flux missing URL`);
-    return url;
-  });
-}
-
-// ============================================================
 // Validation
 // ============================================================
 
@@ -569,7 +723,6 @@ function assertShape(v2, mediumExpected) {
   if (mediumExpected === "audio" && kind !== "audio") throw new Error(`expected opening.kind='audio', got '${kind}'`);
   if (kind === "image") {
     if (!v2.opening.fullSignText) throw new Error("opening.fullSignText missing");
-    if (!v2.opening.imagePrompt) throw new Error("opening.imagePrompt missing");
   } else {
     if (!Array.isArray(v2.opening.script) || v2.opening.script.length < 1) throw new Error("opening.script missing");
   }
@@ -579,7 +732,6 @@ function assertShape(v2, mediumExpected) {
     if (!s.gatedExercise || !EXERCISE_KINDS.has(s.gatedExercise.kind)) throw new Error(`decodeSteps[${i}].gatedExercise invalid`);
     if (mediumExpected === "audio" && !s.audioSnippet) throw new Error(`decodeSteps[${i}].audioSnippet missing (required for audio)`);
   }
-  // No two consecutive same-kind exercises.
   for (let i = 1; i < v2.decodeSteps.length; i++) {
     if (v2.decodeSteps[i].gatedExercise.kind === v2.decodeSteps[i - 1].gatedExercise.kind) {
       throw new Error(`decodeSteps ${i - 1} and ${i} share exercise kind '${v2.decodeSteps[i].gatedExercise.kind}'`);
@@ -597,9 +749,6 @@ function assertShape(v2, mediumExpected) {
 // ============================================================
 
 async function loadProgress(reset) {
-  // Shared progress file with the v1 generator, but v2 keeps its own
-  // `completed_lessons_v2` + `vocab_v2` buckets so v1 history isn't
-  // clobbered and vice-versa.
   if (!existsSync(PROGRESS_PATH)) {
     return { started_at: new Date().toISOString(), completed_lessons_v2: {}, vocab_v2: [] };
   }
@@ -627,7 +776,6 @@ function priorContextFor(progress, city, orderIndex) {
     .filter((e) => e.city === city && e.order < orderIndex)
     .sort((a, b) => b.order - a.order);
   const priorRecap = prior[0]?.storyRecap ?? null;
-  // Last ~15 vocab items introduced.
   const recentVocab = (progress.vocab_v2 ?? [])
     .filter((v) => v.city === city && v.firstLesson < orderIndex)
     .sort((a, b) => b.firstLesson - a.firstLesson)
@@ -645,14 +793,15 @@ async function main() {
   const anonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   const anthropicKey = requireEnv("ANTHROPIC_API_KEY");
   const serviceKey = flags.live ? requireEnv("SUPABASE_SERVICE_ROLE_KEY") : null;
-  const replicateToken = flags.withImages ? requireEnv("REPLICATE_API_TOKEN") : null;
+  const unsplashKey = flags.withImages ? (process.env.UNSPLASH_ACCESS_KEY ?? null) : null;
+  const mapsKey = flags.withImages ? (process.env.GOOGLE_MAPS_API_KEY ?? null) : null;
 
   const readClient = makeSupabase({ url: supabaseUrl, key: anonKey });
   const writeClient = flags.live ? makeSupabase({ url: supabaseUrl, key: serviceKey }) : null;
 
   console.log("Traveler generator v2 — Adventure format");
   console.log(`  mode:    ${flags.dryRun ? "DRY-RUN" : "LIVE"}`);
-  console.log(`  images:  ${flags.withImages ? "Flux 1.1 Pro" : "off"}`);
+  console.log(`  images:  ${flags.withImages ? "Unsplash + Street View" : "off"}`);
   console.log(`  city:    ${flags.city}`);
   console.log(`  filter:  ${flags.lesson ? `lesson=${flags.lesson}` : flags.lessons ? `lessons=${flags.lessons.join(",")}` : "(all)"}`);
   console.log(`  resume:  ${flags.resume ? "on" : "off"}${flags.reset ? " (reset)" : ""}`);
@@ -670,17 +819,6 @@ async function main() {
     : flags.lesson
     ? lessons.filter((l) => l.order_index === flags.lesson)
     : lessons;
-
-  // --images-only takes a completely different path: read the existing
-  // v2 rows from the DB, regen each image via Flux, upload to Storage,
-  // update image_url + data.opening.imageUrl. No Claude calls, no
-  // MADRID_LESSON_PLAN dependency (works for any city with v2 rows).
-  if (flags.imagesOnly) {
-    return await runImagesOnly({
-      writeClient, readClient, replicateToken, supabaseUrl, serviceKey,
-      course, filtered,
-    });
-  }
 
   if (course.city !== "Madrid") {
     console.error(`Only Madrid has a lesson plan defined in this script. Add ${course.city}_LESSON_PLAN before running.`);
@@ -716,13 +854,31 @@ async function main() {
     console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)} ${plan.type.padEnd(19)} ${lesson.title}`);
 
     try {
-      const userPrompt = medium === "image"
-        ? visualPrompt({ orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name, type: plan.type, subject: plan.visualSubject, priorCtx })
-        : audioPrompt({ orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name, type: plan.type, subject: plan.audioSubject, priorCtx });
+      // Resolve the image URL FIRST (for image lessons). Download the
+      // bytes and run Claude vision so content is written against the
+      // ACTUAL photo, not against a plan hint.
+      let imageInfo = null;
+      if (flags.withImages && plan.image) {
+        imageInfo = await resolveAndStashImage({
+          plan, city: course.city, orderIndex: lesson.order_index,
+          unsplashKey, mapsKey, anthropicKey,
+          supabaseUrl, serviceKey,
+          skipUpload: flags.dryRun,
+        });
+      }
 
-      // Two-shot: the first Claude call occasionally puts two same-kind
-      // exercises back-to-back or drops a required field. Retry once
-      // with a targeted "fix this" nudge before giving up.
+      const userPrompt = medium === "image"
+        ? visualPrompt({
+            orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name,
+            type: plan.type, image: plan.image, vision: imageInfo?.vision, priorCtx,
+          })
+        : audioPrompt({
+            orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name,
+            type: plan.type,
+            subject: lesson.title, // audio lessons: title gives the setup; priorCtx carries recap
+            priorCtx,
+          });
+
       let v2, usage;
       {
         const r1 = await callClaude({ apiKey: anthropicKey, systemPrompt: SYSTEM_PROMPT, userPrompt, maxTokens: 5000 });
@@ -749,42 +905,42 @@ async function main() {
         }
       }
 
-      // Attach type + medium so the runner can branch without re-inferring.
       v2.type = plan.type;
       v2.medium = medium;
 
-      // Image generation for visual lessons: generate via Flux, then
-      // stash the bytes in Supabase Storage so we get a permanent URL.
-      // Replicate delivery URLs expire in ~24h.
-      let imageUrl = null;
-      if (medium === "image" && flags.withImages) {
-        const replicateUrl = await generateFluxImage({ token: replicateToken, prompt: v2.opening.imagePrompt });
-        if (flags.live) {
-          imageUrl = await stashImage({
-            replicateUrl, supabaseUrl, serviceKey,
-            city: course.city, orderIndex: lesson.order_index,
-          });
-        } else {
-          // Dry-run: keep the ephemeral Replicate URL for inspection.
-          imageUrl = replicateUrl;
+      // Pin the image URL + provenance badge onto the lesson. The
+      // runner reads `opening.imageSource === "streetview"` to toggle
+      // the "📍 Real Madrid street view" badge.
+      if (imageInfo) {
+        if (medium === "image") {
+          v2.opening.imageUrl = imageInfo.url;
+          v2.opening.imageSource = imageInfo.source;
         }
-        v2.opening.imageUrl = imageUrl;
       }
 
       const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       const shortSummary = medium === "image"
-        ? `text="${(v2.opening.fullSignText ?? "").slice(0, 60)}..."  ${v2.decodeSteps.length} steps`
+        ? `text="${(v2.opening.fullSignText ?? "").slice(0, 60)}..."  ${v2.decodeSteps.length} steps${imageInfo ? `  img=${imageInfo.source}` : ""}`
         : `${v2.opening.script.length} lines  ${v2.decodeSteps.length} decode`;
 
       if (flags.dryRun) {
         console.log(`         DRY-RUN  ${elapsed}s  ${shortSummary}${usage ? `  in=${usage.input_tokens} out=${usage.output_tokens}` : ""}`);
+        if (imageInfo?.vision) {
+          console.log(`         VISION   ${imageInfo.vision.sceneDescription}`);
+          if (imageInfo.vision.visibleText?.length) {
+            console.log(`         V-TEXT   ${imageInfo.vision.visibleText.join(" · ").slice(0, 200)}`);
+          }
+          if (imageInfo.vision.suitableForMadridLesson === false) {
+            console.log(`         ⚠ UNSUITABLE: ${imageInfo.vision.unsuitableReason}`);
+          }
+        }
         if (flags.verbose) console.log(JSON.stringify(v2, null, 2));
       } else {
         const row = {
           traveler_lesson_id: lesson.id,
           content_type: "v2_lesson",
           content_order: 1,
-          image_url: imageUrl,
+          image_url: imageInfo?.url ?? null,
           image_alt: medium === "image" ? v2.opening.imageAlt : null,
           explanation_text: v2.storyRecap ?? null,
           dialogue_lines: medium === "audio" ? v2.opening.script : [],
@@ -793,10 +949,9 @@ async function main() {
         };
         await writeClient.delete(`/traveler_lesson_content?traveler_lesson_id=eq.${lesson.id}`);
         await writeClient.post(`/traveler_lesson_content`, [row]);
-        console.log(`         WROTE    ${elapsed}s  ${shortSummary}${imageUrl ? "  +img" : ""}`);
+        console.log(`         WROTE    ${elapsed}s  ${shortSummary}`);
       }
 
-      // Record progress + vocab.
       progress.completed_lessons_v2[key] = {
         city: course.city,
         order: lesson.order_index,
@@ -805,7 +960,8 @@ async function main() {
         type: plan.type,
         medium,
         hasContent: !flags.dryRun,
-        hasImage: !!imageUrl,
+        hasImage: !!imageInfo,
+        imageSource: imageInfo?.source ?? null,
         storyRecap: v2.storyRecap,
         timestamp: new Date().toISOString(),
       };
@@ -835,84 +991,6 @@ async function main() {
     for (const f of failures) console.log(`  L${f.order} ${f.title} — ${f.error.slice(0, 200)}`);
   }
   console.log(`Progress log: ${PROGRESS_PATH}`);
-}
-
-// ============================================================
-// --images-only backfill: regen image + reupload for existing v2 rows
-// ============================================================
-
-async function runImagesOnly({ writeClient, readClient, replicateToken, supabaseUrl, serviceKey, course, filtered }) {
-  // Fetch all v2 rows for this course so we can pull the imagePrompt.
-  const rows = await readClient.get(
-    `/traveler_lesson_content?content_type=eq.v2_lesson&select=id,traveler_lesson_id,data&traveler_lesson_id=in.(${filtered.map((l) => l.id).join(",")})`,
-  );
-  const rowByLessonId = new Map(rows.map((r) => [r.traveler_lesson_id, r]));
-
-  let processed = 0, succeeded = 0, skipped = 0, failed = 0;
-  const failures = [];
-
-  console.log(`--images-only mode: ${filtered.length} lessons queued in ${course.city}`);
-  console.log(`  ${rows.length} have v2_lesson content rows\n`);
-
-  for (const lesson of filtered) {
-    const row = rowByLessonId.get(lesson.id);
-    const stamp = new Date().toTimeString().slice(0, 8);
-
-    if (!row) {
-      console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  SKIP     no v2_lesson row`);
-      skipped++;
-      continue;
-    }
-
-    const data = row.data ?? {};
-    const opening = data.opening ?? {};
-
-    if (opening.kind !== "image") {
-      console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  SKIP     audio lesson (no image)`);
-      skipped++;
-      continue;
-    }
-    if (!opening.imagePrompt) {
-      console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  SKIP     no imagePrompt on data.opening`);
-      skipped++;
-      continue;
-    }
-
-    processed++;
-    const t0 = Date.now();
-    console.log(`[${stamp}] L${String(lesson.order_index).padStart(2)}  ${lesson.title.slice(0, 40)}`);
-
-    try {
-      const replicateUrl = await generateFluxImage({ token: replicateToken, prompt: opening.imagePrompt });
-      const permanentUrl = await stashImage({
-        replicateUrl, supabaseUrl, serviceKey,
-        city: course.city, orderIndex: lesson.order_index,
-      });
-      // PATCH the row: update image_url + data.opening.imageUrl.
-      // Postgres/PostgREST allows nested JSONB update by re-writing the
-      // whole data blob with the field changed.
-      const nextData = { ...data, opening: { ...opening, imageUrl: permanentUrl } };
-      await writeClient.patch(
-        `/traveler_lesson_content?id=eq.${row.id}`,
-        { image_url: permanentUrl, data: nextData },
-      );
-      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      console.log(`             STASHED  ${elapsed}s  ${permanentUrl.split("/").pop()}`);
-      succeeded++;
-    } catch (err) {
-      failed++;
-      failures.push({ order: lesson.order_index, title: lesson.title, error: err.message });
-      console.error(`             FAILED   ${err.message.slice(0, 300)}`);
-    }
-    await new Promise((r) => setTimeout(r, 400));
-  }
-
-  console.log("\n" + "=".repeat(60));
-  console.log(`Images backfill done. processed=${processed} succeeded=${succeeded} skipped=${skipped} failed=${failed}`);
-  if (failures.length) {
-    console.log("\nFailures:");
-    for (const f of failures) console.log(`  L${f.order} ${f.title} — ${f.error.slice(0, 200)}`);
-  }
 }
 
 main().catch((err) => {

@@ -723,11 +723,13 @@ function LessonImage({
   alt,
   city,
   priority = false,
+  imageSource,
 }: {
   src: string | null | undefined;
   alt: string;
   city: string;
   priority?: boolean;
+  imageSource?: "streetview" | "unsplash";
 }) {
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
@@ -744,7 +746,7 @@ function LessonImage({
         src={url}
         alt={alt}
         fill
-        sizes="(max-width: 768px) 100vw, 768px"
+        sizes="(max-width: 768px) 100vw, 100vw"
         className={`object-cover transition-opacity duration-500 ${loading && !showFallback ? "opacity-0" : "opacity-100"}`}
         priority={priority}
         unoptimized
@@ -754,6 +756,12 @@ function LessonImage({
           setLoading(false);
         }}
       />
+      {!showFallback && imageSource === "streetview" && (
+        <div className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur px-2.5 py-1 text-[10px] font-semibold text-white shadow-md">
+          <span aria-hidden>📍</span>
+          <span>Real {city} street view</span>
+        </div>
+      )}
       {showFallback && (
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/90 via-navy/60 to-transparent px-5 pt-8 pb-4">
           <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">
@@ -789,6 +797,7 @@ function OpeningImageStep({
         alt={opening.imageAlt}
         city={lesson.city}
         priority
+        imageSource={opening.imageSource}
       />
       <div className="text-center space-y-3">
         <p className="text-sm text-navy/60 italic">Look at it. Try to guess what it says before continuing.</p>
@@ -985,6 +994,7 @@ function BuildupStep({
           src={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageUrl}
           alt={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageAlt}
           city={lesson.city}
+          imageSource={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageSource}
         />
       )}
 
@@ -1032,6 +1042,14 @@ function EndQuizStep({
   const [cursor, setCursor] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [lastAnswered, setLastAnswered] = useState(false);
+
+  // Scroll back to top when advancing to the next quiz question. The
+  // parent runner's scroll effect only fires on phase changes, not on
+  // cursor changes within a single phase.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [cursor]);
 
   const total = lesson.endQuiz.length;
   const q = lesson.endQuiz[cursor];
@@ -1189,6 +1207,18 @@ export default function PreviewLessonRunner({
   const [phase, setPhase] = useState<Phase>({ kind: "opening" });
   const isPreview = !lessonId || !markComplete;
   const resolvedExitHref = exitHref ?? "/preview/madrid";
+
+  // Whenever the step changes (opening → decode[i] → buildup → quiz →
+  // complete), scroll back to the top of the viewport. Without this
+  // the user ends their current step at the bottom (where the Continue
+  // button sits) and the next step mounts off-screen.
+  // Keyed on both phase.kind and phase.index so each decode-step jump
+  // and quiz-question jump re-triggers the scroll.
+  const phaseKey = phase.kind === "decode" ? `decode:${phase.index}` : phase.kind;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [phaseKey]);
 
   const totalSteps = 1 + lesson.decodeSteps.length + 1 + 1; // opening + decodes + buildup + quiz
   const currentStep = useMemo(() => {

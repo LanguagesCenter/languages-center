@@ -12,6 +12,10 @@ export type OpeningImage = {
   imageUrl: string;
   imageAlt: string;
   fullSignText: string;
+  // Provenance of the image: "streetview" means a Google Street View
+  // Static capture of the real location (badged in the UI);
+  // "unsplash" means a stock photo matched to the scenario.
+  imageSource?: "streetview" | "unsplash";
 };
 
 export type AudioLine = {

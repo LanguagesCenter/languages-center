@@ -5,11 +5,13 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "flagcdn.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
-      // source.unsplash.com is the random-image redirector; it 302s to
-      // an images.unsplash.com URL. Kept separate from images.unsplash.com
-      // so next/image will accept src="https://source.unsplash.com/…"
-      // as-is (the Lyon cover uses this to grab a random Lyon photo).
-      { protocol: "https", hostname: "source.unsplash.com" },
+      // Google Street View Static API — traveler lessons set at named
+      // Madrid locations (Gran Vía, Puerta del Sol, Plaza Mayor, El
+      // Retiro, Atocha, Barajas) display real Street View captures.
+      { protocol: "https", hostname: "maps.googleapis.com" },
+      // Supabase Storage — permanent copies of every traveler lesson
+      // image live under /storage/v1/object/public/traveler-images/.
+      { protocol: "https", hostname: "*.supabase.co" },
     ],
   },
 };
