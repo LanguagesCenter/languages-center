@@ -68,9 +68,14 @@ export default function PricingPage() {
     t("pricing.feat.progress"),
     t("pricing.feat.offline"),
   ];
+  // Reordered to lead with the Traveler's Course value — unlocking all
+  // 50 lessons per city is the primary thing Premium gets you now. The
+  // Fluency Course benefit comes next, then the long-tail features.
   const premiumFeatures = [
+    t("pricing.feat.allCityLessons"),
+    t("pricing.feat.allCities"),
+    t("pricing.feat.fullFluency"),
     t("pricing.feat.everythingFree"),
-    t("pricing.feat.fullLessons"),
     t("pricing.feat.audio"),
     t("pricing.feat.progress"),
     t("pricing.feat.offline"),

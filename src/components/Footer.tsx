@@ -34,7 +34,8 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Resources — only the working link */}
+          {/* Resources — three primary links in the new order:
+              Trips, Fluency Course, Phrase Lookup. */}
           <div>
             <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-4">
               {t("footer.resources")}
@@ -42,10 +43,26 @@ export default function Footer() {
             <ul className="space-y-2.5">
               <li>
                 <Link
+                  href="/learn/spanish/travel"
+                  className="text-sm text-white/40 hover:text-peach transition-colors"
+                >
+                  {t("footer.trips")}
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/learn"
                   className="text-sm text-white/40 hover:text-peach transition-colors"
                 >
-                  {t("footer.lessons")}
+                  {t("footer.fluencyCourse")}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/languages/spanish/travel-guide"
+                  className="text-sm text-white/40 hover:text-peach transition-colors"
+                >
+                  {t("footer.phraseLookup")}
                 </Link>
               </li>
             </ul>

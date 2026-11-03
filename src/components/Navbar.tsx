@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { isLanguageVisible } from "@/lib/languages";
-import { hasTravelPhrasebook } from "@/lib/travel-phrases";
 import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName, UI_LANG_NAMES } from "@/lib/i18n";
 import { sortByPopularity } from "@/lib/language-proximity";
@@ -21,21 +20,50 @@ interface NavbarLanguage {
   countryCode: string;
 }
 
+// Cities per Traveler's Course language. Hardcoded in sync with
+// CITY_META / traveler_courses — any additions here must also land in
+// the DB (and vice versa). Kept client-side so the dropdown renders
+// without a round-trip.
+const TRIPS_BY_LANG: {
+  slug: string;
+  flag: string;
+  cities: { city: string; citySlug: string; country: string; countryFlag: string }[];
+}[] = [
+  {
+    slug: "spanish",
+    flag: "es",
+    cities: [
+      { city: "Madrid", citySlug: "madrid", country: "Spain", countryFlag: "es" },
+      { city: "Barcelona", citySlug: "barcelona", country: "Spain", countryFlag: "es" },
+      { city: "Mexico City", citySlug: "mexico-city", country: "Mexico", countryFlag: "mx" },
+      { city: "Buenos Aires", citySlug: "buenos-aires", country: "Argentina", countryFlag: "ar" },
+    ],
+  },
+  {
+    slug: "french",
+    flag: "fr",
+    cities: [
+      { city: "Paris", citySlug: "paris", country: "France", countryFlag: "fr" },
+      { city: "Lyon", citySlug: "lyon", country: "France", countryFlag: "fr" },
+      { city: "Montreal", citySlug: "montreal", country: "Canada", countryFlag: "ca" },
+    ],
+  },
+];
+
 export default function Navbar() {
   const { t, lang: uiLang } = useI18n();
-  const [open, setOpen] = useState(false);
-  const [travelOpen, setTravelOpen] = useState(false);
+  const [tripsOpen, setTripsOpen] = useState(false);
+  const [fluencyOpen, setFluencyOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [languages, setLanguages] = useState<NavbarLanguage[]>([]);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const travelRef = useRef<HTMLDivElement>(null);
+  const tripsRef = useRef<HTMLDivElement>(null);
+  const fluencyRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    // Auth
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
     });
@@ -46,8 +74,6 @@ export default function Navbar() {
       setUser(session?.user ?? null);
     });
 
-    // Languages — pulled live from the same Supabase table the rest of the
-    // app uses, so any new row added there shows up here automatically.
     supabase
       .from("languages")
       .select("name, code")
@@ -61,8 +87,6 @@ export default function Navbar() {
             slug: row.code,
             countryCode: FLAG_CODES[row.code] ?? row.code,
           }));
-        // Site-wide popularity order so the dropdown matches the
-        // homepage and /learn page lists.
         setLanguages(sortByPopularity(mapped));
       });
 
@@ -71,11 +95,11 @@ export default function Navbar() {
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      if (tripsRef.current && !tripsRef.current.contains(e.target as Node)) {
+        setTripsOpen(false);
       }
-      if (travelRef.current && !travelRef.current.contains(e.target as Node)) {
-        setTravelOpen(false);
+      if (fluencyRef.current && !fluencyRef.current.contains(e.target as Node)) {
+        setFluencyOpen(false);
       }
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setUserMenuOpen(false);
@@ -85,18 +109,16 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // While the languages dropdown is open, freeze the page behind it. Without
-  // this, wheel events that reach the dropdown's max-height boundary scroll
-  // the body underneath. `overscroll-contain` alone is unreliable on
-  // touchpads and across browsers; locking the body is the robust fix.
+  // Freeze body scroll while the Fluency Course dropdown is open — same
+  // reason as the old Languages dropdown: wheel events leak otherwise.
   useEffect(() => {
-    if (!open) return;
+    if (!fluencyOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prevOverflow;
     };
-  }, [open]);
+  }, [fluencyOpen]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -111,31 +133,37 @@ export default function Navbar() {
           {/* Home button + logo */}
           <div className="flex items-center gap-3">
             <HomeButton />
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image
-              src="/Logo fianl.jpg"
-              alt="Languages Center logo"
-              width={40}
-              height={40}
-              className="rounded-lg"
-            />
-            <span className="text-xl font-bold text-navy tracking-tight">
-              Languages Center
-            </span>
-          </Link>
+            <Link href="/" className="flex items-center gap-2.5">
+              <Image
+                src="/Logo fianl.jpg"
+                alt="Languages Center logo"
+                width={40}
+                height={40}
+                className="rounded-lg"
+              />
+              <span className="text-xl font-bold text-navy tracking-tight">
+                Languages Center
+              </span>
+            </Link>
           </div>
 
-          {/* Center nav */}
+          {/* Center nav — Trips first, Fluency Course second, Phrase
+              Lookup third, Pricing fourth. Everything that used to live
+              under the old "Travel" dropdown now lives under Trips. */}
           <div className="hidden md:flex items-center gap-8">
-            {/* Languages dropdown */}
-            <div className="relative" ref={dropdownRef}>
+            {/* Trips dropdown — cities grouped by language. This is the
+                new primary entry point. */}
+            <div className="relative" ref={tripsRef}>
               <button
-                onClick={() => setOpen(!open)}
-                className="flex items-center gap-1 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
+                onClick={() => setTripsOpen(!tripsOpen)}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:text-orange-600 transition-colors"
               >
-                {t("nav.languages")}
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
+                </svg>
+                {t("nav.trips")}
                 <svg
-                  className={`w-4 h-4 transition-transform ${open ? "rotate-180" : ""}`}
+                  className={`w-4 h-4 transition-transform ${tripsOpen ? "rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -143,26 +171,101 @@ export default function Navbar() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-              {open && (
+              {tripsOpen && (
+                <div className="absolute top-full start-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-border py-2 max-h-[70vh] overflow-y-auto">
+                  <div className="px-4 pt-1 pb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-orange-700">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {t("nav.tripsHeading")}
+                  </div>
+                  {TRIPS_BY_LANG.map((group) => (
+                    <div key={group.slug} className="pt-1">
+                      <Link
+                        href={`/learn/${group.slug}/start`}
+                        onClick={() => setTripsOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2 text-sm font-semibold text-navy hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                      >
+                        <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                          <Image
+                            src={`https://flagcdn.com/w40/${group.flag}.png`}
+                            alt=""
+                            fill
+                            sizes="24px"
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </span>
+                        {getLocalizedLanguageName(
+                          group.slug,
+                          uiLang,
+                          group.slug === "spanish" ? "Spanish" : "French",
+                        )}
+                      </Link>
+                      {group.cities.map((c) => (
+                        <Link
+                          key={c.citySlug}
+                          href={`/learn/${group.slug}/travel/${c.citySlug}`}
+                          onClick={() => setTripsOpen(false)}
+                          className="flex items-center gap-3 pl-11 pr-4 py-1.5 text-sm text-navy/70 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                        >
+                          <span className="relative inline-block w-5 h-[15px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                            <Image
+                              src={`https://flagcdn.com/w40/${c.countryFlag}.png`}
+                              alt=""
+                              fill
+                              sizes="20px"
+                              className="object-cover"
+                              unoptimized
+                            />
+                          </span>
+                          {c.city}
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Fluency Course dropdown — every language, routing to the
+                CEFR course page. This is the renamed version of the old
+                "Languages" dropdown; the phrasebook sub-link is gone
+                because Phrase Lookup now has its own top-level entry. */}
+            <div className="relative" ref={fluencyRef}>
+              <button
+                onClick={() => setFluencyOpen(!fluencyOpen)}
+                className="flex items-center gap-1 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
+              >
+                {t("nav.fluencyCourse")}
+                <svg
+                  className={`w-4 h-4 transition-transform ${fluencyOpen ? "rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {fluencyOpen && (
                 <div
                   className="absolute top-full start-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-border py-2 max-h-80 overflow-y-auto overscroll-contain"
-                  // Mousewheel/touch events stay inside this list; body
-                  // scroll-lock handled by the open-effect above.
                   onWheel={(e) => e.stopPropagation()}
                   onTouchMove={(e) => e.stopPropagation()}
                 >
-                  {/* Hide the row that matches the user's UI language —
-                      we don't promote learning the language they already
-                      use to navigate the site. */}
+                  <div className="px-4 pt-1 pb-1.5 text-[11px] font-bold uppercase tracking-wider text-teal-dark">
+                    {t("nav.fluencyHeading")}
+                  </div>
                   {languages
                     .filter(
                       (l) => l.slug !== (UI_LANG_NAMES[uiLang]?.slug ?? null),
                     )
                     .map((lang) => (
-                    <div key={lang.slug}>
                       <Link
-                        href={`/languages/${lang.slug}`}
-                        onClick={() => setOpen(false)}
+                        key={lang.slug}
+                        href={`/learn/${lang.slug}`}
+                        onClick={() => setFluencyOpen(false)}
                         className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
                       >
                         <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
@@ -177,155 +280,33 @@ export default function Navbar() {
                         </span>
                         {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
                       </Link>
-                      {/* Bonus sub-link to the Phrase Lookup. Indented
-                          under the parent language row and rendered in an
-                          italic, muted blue tone so it reads as a
-                          companion tool, not another language entry. */}
-                      {hasTravelPhrasebook(lang.slug) && (
-                        <Link
-                          href={`/languages/${lang.slug}/travel-guide`}
-                          onClick={() => setOpen(false)}
-                          className="flex items-center gap-2 pl-14 pr-4 pb-2 -mt-1 text-xs italic font-medium text-blue-700/90 hover:text-blue-800 hover:bg-blue-50/60 transition-colors"
-                        >
-                          <span aria-hidden className="text-sm not-italic">📖</span>
-                          Phrase Lookup
-                        </Link>
-                      )}
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
 
-            {/* Travel dropdown — two grouped sections, each with Spanish /
-                French. Traveler's Course is the immersive city-by-city
-                simulator; Phrase Lookup is the pocket phrasebook. */}
-            <div className="relative" ref={travelRef}>
-              <button
-                onClick={() => setTravelOpen(!travelOpen)}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
-                </svg>
-                Travel
-                <svg
-                  className={`w-4 h-4 transition-transform ${travelOpen ? "rotate-180" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {travelOpen && (
-                <div className="absolute top-full start-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-border py-2">
-                  <div className="px-4 pt-1 pb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-green-700">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Traveler&rsquo;s Course
-                  </div>
-                  <Link
-                    href="/learn/spanish/travel"
-                    onClick={() => setTravelOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
-                  >
-                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
-                      <Image
-                        src={`https://flagcdn.com/w40/es.png`}
-                        alt="Spanish flag"
-                        fill
-                        sizes="24px"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </span>
-                    Spanish
-                  </Link>
-                  <Link
-                    href="/learn/french/travel"
-                    onClick={() => setTravelOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
-                  >
-                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
-                      <Image
-                        src={`https://flagcdn.com/w40/fr.png`}
-                        alt="French flag"
-                        fill
-                        sizes="24px"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </span>
-                    French
-                  </Link>
-                  <div className="border-t border-border my-1" />
-                  <div className="px-4 pt-1 pb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-blue-700">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                      <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
-                    </svg>
-                    Phrase Lookup
-                  </div>
-                  <Link
-                    href="/languages/spanish/travel-guide"
-                    onClick={() => setTravelOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
-                  >
-                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
-                      <Image
-                        src={`https://flagcdn.com/w40/es.png`}
-                        alt="Spanish flag"
-                        fill
-                        sizes="24px"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </span>
-                    Spanish
-                  </Link>
-                  <Link
-                    href="/languages/french/travel-guide"
-                    onClick={() => setTravelOpen(false)}
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-navy/80 hover:bg-peach-light hover:text-teal-dark transition-colors"
-                  >
-                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
-                      <Image
-                        src={`https://flagcdn.com/w40/fr.png`}
-                        alt="French flag"
-                        fill
-                        sizes="24px"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </span>
-                    French
-                  </Link>
-                </div>
-              )}
-            </div>
+            {/* Phrase Lookup — tertiary, now a top-level link. Only two
+                languages have one today, so instead of a dropdown we
+                drop them inline (Spanish, French). Click Spanish by
+                default; the French variant is one more click away via
+                the homepage/overview. */}
+            <Link
+              href="/languages/spanish/travel-guide"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-blue-700 transition-colors"
+            >
+              <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
+              </svg>
+              {t("nav.phraseLookup")}
+            </Link>
 
-            {/* Pricing link */}
+            {/* Pricing */}
             <Link
               href="/pricing"
               className="text-sm font-medium text-navy/70 hover:text-teal transition-colors"
             >
               {t("nav.pricing")}
             </Link>
-
-            {/* YouTube link */}
-            <a
-              href="https://www.youtube.com/@the-language-center/?sub_confirmation=1"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
-            >
-              <svg className="w-5 h-5 text-[#FF0000]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-              </svg>
-              {t("nav.youtube")}
-            </a>
           </div>
 
           {/* Auth + UI lang switcher */}
@@ -341,9 +322,6 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      // Explicit h-10 so the language switcher pill, the
-                      // user pill, and the Sign-in button all share the
-                      // exact same height in the navbar.
                       className="flex items-center gap-2 h-10 pl-1 pr-3 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
                     >
                       <span className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center text-sm font-semibold">
@@ -420,3 +398,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

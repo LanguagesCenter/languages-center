@@ -453,7 +453,10 @@ export default async function LanguagePage(props: PageProps<"/learn/[language]">
               className="rounded-md object-cover shadow-sm ring-1 ring-black/5 sm:w-20 sm:h-15"
             />
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1">
+              <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-teal-dark">
+                {t("card.fluencyCourse")} · A1 → C1
+              </p>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-1 mt-1">
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-navy tracking-tight">
                   {localizedLanguageName}
                 </h1>

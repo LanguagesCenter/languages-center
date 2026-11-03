@@ -1,10 +1,13 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ResetSuccessBanner from "@/components/ResetSuccessBanner";
-import HomeMarketing from "@/components/HomeMarketing";
+import HomeMarketing, {
+  type HomeMarketingCity,
+} from "@/components/HomeMarketing";
 import HomePersonalized, {
   type ActiveLanguageEntry,
   type ExploreLanguageEntry,
+  type StartedTripEntry,
 } from "@/components/HomePersonalized";
 import { type LanguageGridItem } from "@/components/LanguageGrid";
 import {
@@ -17,23 +20,23 @@ import {
   getFirstIncompleteLessonId,
   getLastCompletedLessonInLanguage,
   getHighestReachedLevel,
-  isCurrentUserPremium,
   type CEFRLevel,
 } from "@/lib/learn";
 import { FLAG_CODES } from "@/lib/flag-codes";
 import { createClient } from "@/lib/supabase/server";
 import { getServerLang } from "@/lib/i18n-server";
 import { getLocalizedLanguageName } from "@/lib/i18n";
-import { getTravelerCompletedCountsByLanguage } from "@/lib/traveler";
+import {
+  getTravelerCompletedCountsByLanguage,
+  getStartedTravelerCourses,
+  getAllTravelerCourses,
+} from "@/lib/traveler";
 
 // Per-user CTA on each card (Start vs Continue) means the homepage has
-// to render per request now. Dropping the static cache; the page is
-// still cheap to render.
+// to render per request. Dropping the static cache; the page is still
+// cheap to render.
 export const dynamic = "force-dynamic";
 
-// Rough weekly target — used only by the "Weekly goal" widget on the
-// personalized homepage. Kept as a constant here so it's easy to make
-// user-configurable later.
 const WEEKLY_GOAL = 5;
 
 export default async function Home() {
@@ -42,24 +45,47 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const [dbLangs, startedOrder, isPremium, travelerCompletedCounts] =
+  const [dbLangs, startedOrder, travelerCompletedCounts, allCities, startedTrips] =
     await Promise.all([
       getLanguagesWithLessonCounts().catch(() => []),
       getStartedLanguageOrder().catch(
         () => [] as Array<{ code: string; firstActivity: string }>,
       ),
-      isCurrentUserPremium().catch(() => false),
       getTravelerCompletedCountsByLanguage().catch(
         () => ({}) as Record<string, number>,
       ),
+      getAllTravelerCourses().catch(
+        () => [] as Awaited<ReturnType<typeof getAllTravelerCourses>>,
+      ),
+      user
+        ? getStartedTravelerCourses().catch(
+            () => [] as Awaited<ReturnType<typeof getStartedTravelerCourses>>,
+          )
+        : Promise.resolve(
+            [] as Awaited<ReturnType<typeof getStartedTravelerCourses>>,
+          ),
     ]);
 
   const startedSlugsInOrder = startedOrder.map((s) => s.code);
   const startedSet = new Set(startedSlugsInOrder);
-  const isReturning = !!user && startedSet.size > 0;
+  // "Returning" now means EITHER fluency progress OR traveler progress.
+  // Trip-only users still need the personalized homepage.
+  const hasAnyTrip = startedTrips.length > 0;
+  const hasAnyFluency = !!user && startedSet.size > 0;
+  const isReturning = !!user && (hasAnyFluency || hasAnyTrip);
 
-  // Signed-in learner with real progress → personalized dashboard-style
-  // homepage. Everything else falls through to the marketing page.
+  // The homepage city grid for anon/no-progress users — same list for
+  // every visitor, derived from the DB.
+  const cities: HomeMarketingCity[] = allCities.map((c) => ({
+    languageSlug: c.languageSlug,
+    city: c.city,
+    country: c.country,
+    citySlug: c.citySlug,
+    coverImageUrl: c.coverImageUrl,
+    lessonsTotal: c.lessonsTotal,
+    freePreviewCount: c.freePreviewCount,
+  }));
+
   if (isReturning) {
     const uiLang = await getServerLang();
     const [progress, profile, weeklyCount] = await Promise.all([
@@ -68,16 +94,10 @@ export default async function Home() {
       getLessonsCompletedThisWeek(),
     ]);
 
-    // A language is "active" only if the user has completed at least one
-    // lesson in it. Earning XP alone (e.g. from a placement exam) is not
-    // enough — those languages fall into "Explore more languages" so the
-    // "Continue learning" section only lists things the user is truly
-    // in the middle of.
+    // Fluency progress — only languages the user has completed at least
+    // one Fluency Course lesson in.
     const activeProgress = progress.filter((p) => p.completedLessons > 0);
 
-    // For each active language, pull the CEFR tree + first-incomplete
-    // lesson + last-completed lesson in parallel so the whole page
-    // resolves in roughly one round-trip's worth of latency.
     const active: ActiveLanguageEntry[] = await Promise.all(
       activeProgress.map(async (entry) => {
         const [tree, firstIncompleteId, lastCompleted] = await Promise.all([
@@ -85,8 +105,6 @@ export default async function Home() {
           getFirstIncompleteLessonId(entry.language.id),
           getLastCompletedLessonInLanguage(entry.language.id),
         ]);
-        // Current level = the first level that isn't fully finished. If
-        // everything is done, fall back to the highest they've reached.
         let currentLevel: CEFRLevel = getHighestReachedLevel(tree);
         for (const group of tree) {
           if (group.lessonsTotal > 0 && group.lessonsCompleted < group.lessonsTotal) {
@@ -126,9 +144,7 @@ export default async function Home() {
       }),
     );
 
-    // Preserve the FIRST-started ordering the user already sees on
-    // /learn — new learners come last so their in-progress language
-    // stays at the top.
+    // Preserve the FIRST-started ordering already used elsewhere.
     active.sort((a, b) => {
       const ai = startedSlugsInOrder.indexOf(a.slug);
       const bi = startedSlugsInOrder.indexOf(b.slug);
@@ -137,9 +153,21 @@ export default async function Home() {
       return av - bv;
     });
 
-    // Derive the "already started" set from the same criterion used for
-    // `active` — completions-only. A language with XP but no completed
-    // lessons is NOT active; it belongs in Explore.
+    // Shape trips for the personalized page. Already sorted
+    // server-side by getStartedTravelerCourses().
+    const trips: StartedTripEntry[] = startedTrips.map((t) => ({
+      languageSlug: t.languageSlug,
+      city: t.city,
+      country: t.country,
+      citySlug: t.citySlug,
+      coverImageUrl: t.coverImageUrl,
+      lessonsTotal: t.lessonsTotal,
+      lessonsCompleted: t.lessonsCompleted,
+      nextLessonId: t.nextLessonId,
+      nextLessonTitle: t.nextLessonTitle,
+      nextLessonLocation: t.nextLessonLocation,
+    }));
+
     const activeCodes = new Set(active.map((a) => a.slug));
     const explore: ExploreLanguageEntry[] = progress
       .filter(
@@ -173,6 +201,7 @@ export default async function Home() {
           longestStreak={profile?.longest_streak ?? 0}
           weeklyCount={weeklyCount}
           weeklyGoal={WEEKLY_GOAL}
+          trips={trips}
           active={active}
           explore={explore}
         />
@@ -200,8 +229,9 @@ export default async function Home() {
       <HomeMarketing
         langs={langs}
         startedSlugsInOrder={startedSlugsInOrder}
-        isPremium={isPremium}
         travelerCompletedCounts={travelerCompletedCounts}
+        cities={cities}
+        isLoggedIn={!!user}
       />
       <Footer />
     </>

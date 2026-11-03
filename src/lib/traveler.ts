@@ -68,6 +68,69 @@ function coordsFor(city: string): [number, number] {
   return CITY_META[city]?.coords ?? [0, 0];
 }
 
+// Every traveler course on the site (both Spanish and French), ordered
+// by language slug then order_index. Used by the marketing homepage's
+// "Pick your city" grid. No per-user data — this is a static-friendly
+// listing that renders identically for every visitor.
+export interface AllTravelerCourseEntry {
+  languageSlug: string;
+  languageName: string;
+  city: string;
+  country: string;
+  citySlug: string;
+  coverImageUrl: string;
+  lessonsTotal: number;
+  freePreviewCount: number;
+}
+
+export async function getAllTravelerCourses(): Promise<
+  AllTravelerCourseEntry[]
+> {
+  const supabase = await createClient();
+  const { data: courses } = await supabase
+    .from("traveler_courses")
+    .select(
+      "id, city, country, order_index, cover_image_url, languages!inner(code, name)",
+    )
+    .order("order_index");
+
+  type CourseRow = {
+    id: number;
+    city: string;
+    country: string;
+    order_index: number;
+    cover_image_url: string | null;
+    languages: { code: string; name: string };
+  };
+  const rows = (courses ?? []) as unknown as CourseRow[];
+  if (rows.length === 0) return [];
+
+  const courseIds = rows.map((r) => r.id);
+  const { data: lessons } = await supabase
+    .from("traveler_lessons")
+    .select("id, traveler_course_id, is_premium")
+    .in("traveler_course_id", courseIds);
+  const lessonRows = (lessons ?? []) as Array<{
+    id: number;
+    traveler_course_id: number;
+    is_premium: boolean;
+  }>;
+
+  return rows.map((c) => {
+    const own = lessonRows.filter((l) => l.traveler_course_id === c.id);
+    return {
+      languageSlug: c.languages.code,
+      languageName: c.languages.name,
+      city: c.city,
+      country: c.country,
+      citySlug: cityToSlug(c.city),
+      coverImageUrl: coverFor(c.city) || c.cover_image_url || "",
+      lessonsTotal: own.length,
+      freePreviewCount: own.filter((l) => !l.is_premium).length,
+    };
+  });
+}
+
 // Returns the traveler courses for the given language slug ("spanish" |
 // "french"), each row enriched with lesson counts and (if the user is
 // signed in) their completion count.
@@ -599,6 +662,170 @@ export async function completeTravelerLesson(
     });
   }
   return xp;
+}
+
+// A city the current user has at least partially completed, enriched
+// with the next lesson they should resume at. Used by the signed-in
+// homepage's "Continue your trip" strip, where each card has to deep
+// link straight into the user's next step.
+export interface StartedTravelerCourse {
+  languageSlug: string; // "spanish" | "french"
+  languageName: string; // DB-canonical name, UI-side localization applied in the component
+  city: string;
+  country: string;
+  citySlug: string;
+  coverImageUrl: string;
+  lessonsTotal: number;
+  lessonsCompleted: number;
+  // Null when the user has finished every lesson in the city (the card
+  // then just links back to the city hub).
+  nextLessonId: number | null;
+  nextLessonTitle: string | null;
+  nextLessonLocation: string | null;
+  lastLessonTitle: string | null;
+}
+
+// Every city the signed-in user has made progress in, across every
+// language they study. Sorted by (languageSlug, orderIndex) so Spanish
+// cities group together, French together, etc. Empty when the user is
+// signed out or has no completions.
+export async function getStartedTravelerCourses(): Promise<
+  StartedTravelerCourse[]
+> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // One query to find every (course_id, lesson order) the user has
+  // completed. We'll aggregate in JS — the dataset is bounded to tens
+  // of rows per user even at the ceiling.
+  const { data: progressRows } = await supabase
+    .from("traveler_progress")
+    .select(
+      "traveler_lesson_id, completed_at, traveler_lessons!inner(id, title, location_name, order_index, traveler_course_id, traveler_courses!inner(id, city, country, order_index, language_id, languages!inner(code, name)))",
+    )
+    .eq("user_id", user.id)
+    .eq("completed", true);
+
+  type Row = {
+    traveler_lesson_id: number;
+    completed_at: string | null;
+    traveler_lessons: {
+      id: number;
+      title: string;
+      location_name: string;
+      order_index: number;
+      traveler_course_id: number;
+      traveler_courses: {
+        id: number;
+        city: string;
+        country: string;
+        order_index: number;
+        language_id: number;
+        languages: { code: string; name: string };
+      };
+    };
+  };
+  const rows = (progressRows ?? []) as unknown as Row[];
+  if (rows.length === 0) return [];
+
+  // Group completions by course_id, keep the max completed order_index
+  // and the title of the most-recently-completed lesson.
+  const byCourse = new Map<
+    number,
+    {
+      course: Row["traveler_lessons"]["traveler_courses"];
+      maxOrder: number;
+      completed: number;
+      lastLessonTitle: string | null;
+      lastCompletedAt: string | null;
+    }
+  >();
+  for (const r of rows) {
+    const course = r.traveler_lessons.traveler_courses;
+    const existing = byCourse.get(course.id);
+    const order = r.traveler_lessons.order_index;
+    if (!existing) {
+      byCourse.set(course.id, {
+        course,
+        maxOrder: order,
+        completed: 1,
+        lastLessonTitle: r.traveler_lessons.title,
+        lastCompletedAt: r.completed_at,
+      });
+    } else {
+      existing.completed += 1;
+      const newer = (r.completed_at ?? "") > (existing.lastCompletedAt ?? "");
+      if (newer || existing.lastCompletedAt == null) {
+        existing.maxOrder = Math.max(existing.maxOrder, order);
+        existing.lastLessonTitle = r.traveler_lessons.title;
+        existing.lastCompletedAt = r.completed_at;
+      }
+    }
+  }
+
+  // Per course, pull total lessons + the next incomplete lesson in one
+  // batch. The counts we already have from progressRows; totals + next
+  // lesson require a second query.
+  const courseIds = Array.from(byCourse.keys());
+  const { data: lessonsData } = await supabase
+    .from("traveler_lessons")
+    .select("id, title, location_name, order_index, traveler_course_id")
+    .in("traveler_course_id", courseIds)
+    .order("order_index");
+  const lessonRows = (lessonsData ?? []) as Array<{
+    id: number;
+    title: string;
+    location_name: string;
+    order_index: number;
+    traveler_course_id: number;
+  }>;
+
+  // Lookup for completed lesson ids per course so we can find the
+  // next-incomplete one without extra queries.
+  const completedIdsByCourse = new Map<number, Set<number>>();
+  for (const r of rows) {
+    const cid = r.traveler_lessons.traveler_course_id;
+    if (!completedIdsByCourse.has(cid)) {
+      completedIdsByCourse.set(cid, new Set());
+    }
+    completedIdsByCourse.get(cid)!.add(r.traveler_lesson_id);
+  }
+
+  const result: StartedTravelerCourse[] = [];
+  for (const [courseId, agg] of byCourse) {
+    const courseLessons = lessonRows.filter(
+      (l) => l.traveler_course_id === courseId,
+    );
+    const total = courseLessons.length;
+    const completedSet = completedIdsByCourse.get(courseId) ?? new Set();
+    const next = courseLessons.find((l) => !completedSet.has(l.id)) ?? null;
+    result.push({
+      languageSlug: agg.course.languages.code,
+      languageName: agg.course.languages.name,
+      city: agg.course.city,
+      country: agg.course.country,
+      citySlug: cityToSlug(agg.course.city),
+      coverImageUrl: coverFor(agg.course.city),
+      lessonsTotal: total,
+      lessonsCompleted: agg.completed,
+      nextLessonId: next?.id ?? null,
+      nextLessonTitle: next?.title ?? null,
+      nextLessonLocation: next?.location_name ?? null,
+      lastLessonTitle: agg.lastLessonTitle,
+    });
+  }
+
+  // Spanish before French, then by city order within each language.
+  result.sort((a, b) => {
+    if (a.languageSlug !== b.languageSlug) {
+      return a.languageSlug.localeCompare(b.languageSlug);
+    }
+    return a.city.localeCompare(b.city);
+  });
+  return result;
 }
 
 // Per-language count of completed traveler lessons for the current user.

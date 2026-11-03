@@ -18,8 +18,8 @@ export async function generateMetadata(
   const { language } = await props.params;
   const langName = language.charAt(0).toUpperCase() + language.slice(1);
   return {
-    title: `${langName} Traveler's Course — Languages Center`,
-    description: `Simulate a real trip abroad in ${langName}. City by city, sign by sign — learn the ${langName} you'll actually hear on the ground.`,
+    title: `${langName} on the ground — Traveler's Course · Languages Center`,
+    description: `Simulate a real trip in ${langName}, city by city — airport signs, taxis, menus, real streets. The exact ${langName} you'll hear on the ground, in 50 immersive lessons per city.`,
   };
 }
 

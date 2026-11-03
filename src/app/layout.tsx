@@ -10,9 +10,10 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Languages Center — Learn Any Language",
+  title:
+    "Languages Center — Learn the language you'll actually need on your trip",
   description:
-    "Explore languages from around the world. Learn Spanish, French, German, Greek, and more with Languages Center.",
+    "Simulate a real trip, city by city — airport signs, taxis, menus, real streets. Spanish and French Traveler's Course, plus full A1 → C1 Fluency Course in seven languages.",
 };
 
 export default async function RootLayout({

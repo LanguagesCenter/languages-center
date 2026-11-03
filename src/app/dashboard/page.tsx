@@ -148,7 +148,10 @@ export default async function DashboardPage() {
         </section>
 
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          <h2 className="text-xl font-bold text-navy mb-4">{t("dashboard.continueLearning")}</h2>
+          <h2 className="text-xl font-bold text-navy mb-1">{t("dashboard.continueLearning")}</h2>
+          <p className="text-xs text-navy/50 uppercase tracking-[0.14em] font-semibold mb-4">
+            {t("card.fluencyCourse")}
+          </p>
           {continueTargets.length === 0 ? (
             <p className="text-sm text-navy/50">
               {t("dashboard.startLanguage")}{" "}
