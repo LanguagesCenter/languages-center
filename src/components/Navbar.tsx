@@ -21,9 +21,8 @@ interface NavbarLanguage {
 }
 
 // Cities per Traveler's Course language. Hardcoded in sync with
-// CITY_META / traveler_courses — any additions here must also land in
-// the DB (and vice versa). Kept client-side so the dropdown renders
-// without a round-trip.
+// CITY_META / traveler_courses so the Trips dropdown renders without
+// a DB round-trip. New rows must land in both places.
 const TRIPS_BY_LANG: {
   slug: string;
   flag: string;
@@ -50,16 +49,50 @@ const TRIPS_BY_LANG: {
   },
 ];
 
+// Shared Tailwind class for every top-level nav item (Trips, Fluency
+// Course, Phrase Lookup, Pricing). Keeping this in one constant is the
+// only way to guarantee the four items don't drift — each item must
+// render identically so the user can't tell which one was built first.
+const NAV_LINK = [
+  "inline-flex items-center gap-1 h-10 text-sm font-medium",
+  "text-navy/70 hover:text-teal transition-colors whitespace-nowrap",
+].join(" ");
+
+// Chevron renders at the same size + same gap-from-label on every nav
+// item that drops down. Non-dropdown items (Phrase Lookup, Pricing)
+// get no chevron and no icon — matching the "all or none" rule.
+function NavChevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-180" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
 export default function Navbar() {
   const { t, lang: uiLang } = useI18n();
   const [tripsOpen, setTripsOpen] = useState(false);
   const [fluencyOpen, setFluencyOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // Mobile drawer state. `mobileOpen` toggles the hamburger panel;
+  // `mobileTripsOpen`/`mobileFluencyOpen` drive the accordion rows
+  // inside it. These are separate from the desktop dropdowns because
+  // the hamburger panel is only rendered below `lg`.
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileTripsOpen, setMobileTripsOpen] = useState(false);
+  const [mobileFluencyOpen, setMobileFluencyOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [languages, setLanguages] = useState<NavbarLanguage[]>([]);
   const tripsRef = useRef<HTMLDivElement>(null);
   const fluencyRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const supabase = createClient();
 
@@ -109,16 +142,34 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Freeze body scroll while the Fluency Course dropdown is open — same
-  // reason as the old Languages dropdown: wheel events leak otherwise.
+  // Freeze body scroll while any overlay is open. Without this, wheel
+  // events bleed through to the page underneath the Fluency dropdown
+  // and the mobile drawer.
   useEffect(() => {
-    if (!fluencyOpen) return;
+    const anyOpen = fluencyOpen || mobileOpen;
+    if (!anyOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prevOverflow;
     };
-  }, [fluencyOpen]);
+  }, [fluencyOpen, mobileOpen]);
+
+  // Escape closes the mobile drawer. Keeping it scoped to the drawer
+  // avoids fighting with other Escape handlers on nested pages.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        // Return focus to the hamburger so keyboard users keep their
+        // place in the tab order.
+        hamburgerRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -126,53 +177,63 @@ export default function Navbar() {
     router.refresh();
   }
 
+  // Close the mobile drawer on navigation. Used by every link inside
+  // the drawer so a tap closes it before the destination loads.
+  function closeMobile() {
+    setMobileOpen(false);
+    setMobileTripsOpen(false);
+    setMobileFluencyOpen(false);
+  }
+
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Home button + logo */}
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between h-16 gap-3">
+          {/* Home button + logo. Logo text truncates / disappears on
+              small screens so it can never force the nav to wrap. */}
+          <div className="flex items-center gap-3 min-w-0">
             <HomeButton />
-            <Link href="/" className="flex items-center gap-2.5">
+            <Link href="/" className="flex items-center gap-2.5 min-w-0">
               <Image
                 src="/Logo fianl.jpg"
                 alt="Languages Center logo"
                 width={40}
                 height={40}
-                className="rounded-lg"
+                className="rounded-lg shrink-0"
               />
-              <span className="text-xl font-bold text-navy tracking-tight">
+              <span className="hidden sm:inline text-xl font-bold text-navy tracking-tight truncate">
                 Languages Center
               </span>
             </Link>
           </div>
 
-          {/* Center nav — Trips first, Fluency Course second, Phrase
-              Lookup third, Pricing fourth. Everything that used to live
-              under the old "Travel" dropdown now lives under Trips. */}
-          <div className="hidden md:flex items-center gap-8">
-            {/* Trips dropdown — cities grouped by language. This is the
-                new primary entry point. */}
+          {/* Center nav — only at xl+ (1280px) where every supported
+              language's labels fit on one line without crowding. Long
+              translations (Russian "Курс свободного владения", German
+              "Phrasen-Nachschlag") need the full width; below xl we
+              collapse into the hamburger. All four items share
+              NAV_LINK so they can't drift. Trips and Fluency have
+              chevrons (dropdowns); Phrase Lookup and Pricing don't.
+              No icons on any of them — the "all or none" rule. gap-7
+              keeps rhythm consistent and leaves breathing room before
+              the language-switcher pill on the right. */}
+          <div className="hidden xl:flex items-center gap-7">
             <div className="relative" ref={tripsRef}>
               <button
+                type="button"
                 onClick={() => setTripsOpen(!tripsOpen)}
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-navy hover:text-orange-600 transition-colors"
+                aria-expanded={tripsOpen}
+                aria-haspopup="menu"
+                className={NAV_LINK}
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1L15 22v-1.5L13 19v-5.5L21 16z" />
-                </svg>
                 {t("nav.trips")}
-                <svg
-                  className={`w-4 h-4 transition-transform ${tripsOpen ? "rotate-180" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <NavChevron open={tripsOpen} />
               </button>
               {tripsOpen && (
-                <div className="absolute top-full start-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-border py-2 max-h-[70vh] overflow-y-auto">
+                <div
+                  role="menu"
+                  className="absolute top-full start-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-border py-2 max-h-[70vh] overflow-y-auto"
+                >
                   <div className="px-4 pt-1 pb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-orange-700">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -229,27 +290,20 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Fluency Course dropdown — every language, routing to the
-                CEFR course page. This is the renamed version of the old
-                "Languages" dropdown; the phrasebook sub-link is gone
-                because Phrase Lookup now has its own top-level entry. */}
             <div className="relative" ref={fluencyRef}>
               <button
+                type="button"
                 onClick={() => setFluencyOpen(!fluencyOpen)}
-                className="flex items-center gap-1 text-sm font-medium text-navy/70 hover:text-teal transition-colors"
+                aria-expanded={fluencyOpen}
+                aria-haspopup="menu"
+                className={NAV_LINK}
               >
                 {t("nav.fluencyCourse")}
-                <svg
-                  className={`w-4 h-4 transition-transform ${fluencyOpen ? "rotate-180" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <NavChevron open={fluencyOpen} />
               </button>
               {fluencyOpen && (
                 <div
+                  role="menu"
                   className="absolute top-full start-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-xl border border-border py-2 max-h-80 overflow-y-auto overscroll-contain"
                   onWheel={(e) => e.stopPropagation()}
                   onTouchMove={(e) => e.stopPropagation()}
@@ -285,32 +339,42 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Phrase Lookup — tertiary, now a top-level link. Only two
-                languages have one today, so instead of a dropdown we
-                drop them inline (Spanish, French). Click Spanish by
-                default; the French variant is one more click away via
-                the homepage/overview. */}
-            <Link
-              href="/languages/spanish/travel-guide"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-navy/70 hover:text-blue-700 transition-colors"
-            >
-              <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path d="M5 3a2 2 0 00-2 2v16l7-4 7 4V5a2 2 0 00-2-2H5z" />
-              </svg>
+            <Link href="/languages/spanish/travel-guide" className={NAV_LINK}>
               {t("nav.phraseLookup")}
             </Link>
 
-            {/* Pricing */}
-            <Link
-              href="/pricing"
-              className="text-sm font-medium text-navy/70 hover:text-teal transition-colors"
-            >
+            <Link href="/pricing" className={NAV_LINK}>
               {t("nav.pricing")}
             </Link>
           </div>
 
-          {/* Auth + UI lang switcher */}
-          <div className="flex items-center gap-3">
+          {/* Right rail — hamburger (below lg), language switcher,
+              and user menu / sign-in. All three are h-10 to share a
+              baseline with the center nav. */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Hamburger — only below lg. 44x44 tap target; morphs
+                between the lines icon and the X icon so one button
+                carries both open and close affordances. */}
+            <button
+              ref={hamburgerRef}
+              type="button"
+              onClick={() => setMobileOpen((o) => !o)}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-nav"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              className="xl:hidden inline-flex items-center justify-center w-11 h-11 -mr-1 rounded-lg text-navy/70 hover:text-teal hover:bg-navy/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal"
+            >
+              {mobileOpen ? (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+
             <LanguageSwitcher />
             {user ? (
               (() => {
@@ -322,19 +386,26 @@ export default function Navbar() {
                     <button
                       type="button"
                       onClick={() => setUserMenuOpen(!userMenuOpen)}
-                      className="flex items-center gap-2 h-10 pl-1 pr-3 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
+                      aria-haspopup="menu"
+                      aria-expanded={userMenuOpen}
+                      aria-label={fullName || user.email || "Account"}
+                      // Flag-only-style pill on mobile/tablet; the
+                      // name shows from lg so the control matches the
+                      // LanguageSwitcher behaviour.
+                      className="flex items-center gap-2 h-10 pl-1 pr-1 xl:pr-3 text-sm font-medium text-navy/70 hover:text-teal rounded-full border border-border hover:border-teal/30 transition-colors"
                     >
                       <span className="w-8 h-8 rounded-full bg-teal text-white flex items-center justify-center text-sm font-semibold">
                         {avatarChar}
                       </span>
-                      <span className="hidden sm:inline max-w-[180px] truncate">
+                      <span className="hidden xl:inline max-w-[180px] truncate">
                         {displayLabel}
                       </span>
                       <svg
-                        className={`w-3.5 h-3.5 transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
+                        className={`hidden xl:inline w-3.5 h-3.5 transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
+                        aria-hidden
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
@@ -387,7 +458,7 @@ export default function Navbar() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center h-10 px-5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark hover:shadow-md transition-all duration-200"
+                className="inline-flex items-center h-10 px-4 lg:px-5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark hover:shadow-md transition-all duration-200 whitespace-nowrap"
               >
                 {t("nav.signIn")}
               </Link>
@@ -395,7 +466,170 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Mobile drawer — slide-down panel that occupies the viewport
+          below the sticky nav. Accordion rows for Trips (cities) and
+          Fluency Course (languages); flat links for Phrase Lookup and
+          Pricing. Only rendered below `lg`; higher widths show the
+          horizontal nav above. */}
+      {mobileOpen && (
+        <div
+          id="mobile-nav"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Site navigation"
+          // Fixed, full-viewport-below-header. z-40 sits under the
+          // sticky nav (z-50) so the hamburger button stays clickable
+          // to close the panel.
+          className="xl:hidden fixed inset-x-0 top-16 bottom-0 z-40 bg-white overflow-y-auto overscroll-contain"
+        >
+          <nav className="divide-y divide-border">
+            {/* Trips accordion */}
+            <MobileAccordion
+              label={t("nav.trips")}
+              open={mobileTripsOpen}
+              onToggle={() => setMobileTripsOpen((o) => !o)}
+            >
+              {TRIPS_BY_LANG.map((group) => (
+                <div key={group.slug} className="pb-1">
+                  <Link
+                    href={`/learn/${group.slug}/start`}
+                    onClick={closeMobile}
+                    className="flex items-center gap-3 px-6 py-3 text-sm font-semibold text-navy hover:bg-orange-50 active:bg-orange-100 transition-colors min-h-[44px]"
+                  >
+                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                      <Image
+                        src={`https://flagcdn.com/w40/${group.flag}.png`}
+                        alt=""
+                        fill
+                        sizes="24px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    {getLocalizedLanguageName(
+                      group.slug,
+                      uiLang,
+                      group.slug === "spanish" ? "Spanish" : "French",
+                    )}
+                  </Link>
+                  {group.cities.map((c) => (
+                    <Link
+                      key={c.citySlug}
+                      href={`/learn/${group.slug}/travel/${c.citySlug}`}
+                      onClick={closeMobile}
+                      className="flex items-center gap-3 pl-14 pr-6 py-2.5 text-sm text-navy/70 hover:bg-orange-50 active:bg-orange-100 transition-colors min-h-[44px]"
+                    >
+                      <span className="relative inline-block w-5 h-[15px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                        <Image
+                          src={`https://flagcdn.com/w40/${c.countryFlag}.png`}
+                          alt=""
+                          fill
+                          sizes="20px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </span>
+                      {c.city}
+                    </Link>
+                  ))}
+                </div>
+              ))}
+            </MobileAccordion>
+
+            {/* Fluency Course accordion */}
+            <MobileAccordion
+              label={t("nav.fluencyCourse")}
+              open={mobileFluencyOpen}
+              onToggle={() => setMobileFluencyOpen((o) => !o)}
+            >
+              {languages
+                .filter((l) => l.slug !== (UI_LANG_NAMES[uiLang]?.slug ?? null))
+                .map((lang) => (
+                  <Link
+                    key={lang.slug}
+                    href={`/learn/${lang.slug}`}
+                    onClick={closeMobile}
+                    className="flex items-center gap-3 px-6 py-3 text-sm text-navy/80 hover:bg-peach-light active:bg-peach-light transition-colors min-h-[44px]"
+                  >
+                    <span className="relative inline-block w-6 h-[18px] overflow-hidden rounded-sm shrink-0 ring-1 ring-black/5">
+                      <Image
+                        src={`https://flagcdn.com/w40/${lang.countryCode}.png`}
+                        alt={`${lang.name} flag`}
+                        fill
+                        sizes="24px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </span>
+                    {getLocalizedLanguageName(lang.slug, uiLang, lang.name)}
+                  </Link>
+                ))}
+            </MobileAccordion>
+
+            <Link
+              href="/languages/spanish/travel-guide"
+              onClick={closeMobile}
+              className="flex items-center justify-between w-full px-4 py-4 text-base font-medium text-navy hover:bg-navy/5 active:bg-navy/10 transition-colors min-h-[44px]"
+            >
+              {t("nav.phraseLookup")}
+              <svg className="w-4 h-4 text-navy/40" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+
+            <Link
+              href="/pricing"
+              onClick={closeMobile}
+              className="flex items-center justify-between w-full px-4 py-4 text-base font-medium text-navy hover:bg-navy/5 active:bg-navy/10 transition-colors min-h-[44px]"
+            >
+              {t("nav.pricing")}
+              <svg className="w-4 h-4 text-navy/40" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </nav>
+        </div>
+      )}
     </nav>
   );
 }
 
+// One accordion row inside the mobile drawer. The whole row is the
+// toggle (44px min height); when `open`, children render below in a
+// white sub-list.
+function MobileAccordion({
+  label,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex items-center justify-between w-full px-4 py-4 text-base font-medium text-navy hover:bg-navy/5 active:bg-navy/10 transition-colors min-h-[44px]"
+      >
+        <span>{label}</span>
+        <svg
+          className={`w-4 h-4 text-navy/40 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          viewBox="0 0 24 24"
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="bg-navy/[0.02] border-t border-border">{children}</div>}
+    </div>
+  );
+}
