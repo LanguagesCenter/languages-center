@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import HomeButton from "@/components/HomeButton";
 import { useI18n } from "@/components/I18nProvider";
 
 type Phase = "verifying" | "form" | "submitting" | "invalid";
@@ -15,16 +14,19 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="p-6 flex items-center gap-3">
-        <HomeButton />
-        <Link href="/" className="flex items-center gap-2.5 w-fit">
+        <Link
+          href="/"
+          aria-label="Languages Center home"
+          className="group inline-flex items-center gap-2.5 w-fit -mx-1 px-1 py-1 rounded-lg active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
+        >
           <Image
             src="/Logo fianl.jpg"
-            alt="Languages Center logo"
+            alt=""
             width={36}
             height={36}
-            className="rounded-lg"
+            className="rounded-lg shrink-0 transition-transform duration-200 group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
           />
-          <span className="text-lg font-bold text-navy tracking-tight">
+          <span className="relative text-lg font-bold text-navy tracking-tight transition-colors duration-200 group-hover:text-teal group-focus-visible:text-teal after:pointer-events-none after:content-[''] after:absolute after:left-0 after:-bottom-0.5 after:h-[2px] after:w-0 after:bg-teal after:transition-[width] after:duration-200 group-hover:after:w-full group-focus-visible:after:w-full">
             Languages Center
           </span>
         </Link>

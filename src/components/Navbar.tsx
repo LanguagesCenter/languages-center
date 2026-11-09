@@ -230,7 +230,11 @@ export default function Navbar() {
               className="rounded-lg shrink-0 transition-transform duration-200 group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
             />
             <span
-              className="relative hidden sm:inline text-xl font-bold tracking-tight truncate transition-colors duration-200 text-navy group-hover:text-teal group-focus-visible:text-teal after:content-[''] after:absolute after:left-0 after:-bottom-0.5 after:h-[2px] after:w-0 after:bg-teal after:transition-[width] after:duration-200 group-hover:after:w-full group-focus-visible:after:w-full"
+              // `after:pointer-events-none` so the decorative underline
+              // can never intercept clicks (the strip sticks ~2px below
+              // the wordmark via `-bottom-0.5`, outside the span's own
+              // layout box). Clicks still land on the <Link>.
+              className="relative hidden sm:inline text-xl font-bold tracking-tight truncate transition-colors duration-200 text-navy group-hover:text-teal group-focus-visible:text-teal after:pointer-events-none after:content-[''] after:absolute after:left-0 after:-bottom-0.5 after:h-[2px] after:w-0 after:bg-teal after:transition-[width] after:duration-200 group-hover:after:w-full group-focus-visible:after:w-full"
             >
               Languages Center
             </span>
