@@ -11,7 +11,6 @@ import { useI18n } from "@/components/I18nProvider";
 import { getLocalizedLanguageName, UI_LANG_NAMES } from "@/lib/i18n";
 import { sortByPopularity } from "@/lib/language-proximity";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import HomeButton from "@/components/HomeButton";
 import type { User } from "@supabase/supabase-js";
 
 interface NavbarLanguage {
@@ -171,6 +170,26 @@ export default function Navbar() {
     return () => document.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
+  // Close the drawer when the user taps anything outside it that
+  // isn't the hamburger (e.g. the logo link, language switcher,
+  // profile avatar in the header strip above the drawer).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onDown(e: MouseEvent) {
+      const target = e.target as Node | null;
+      if (!target) return;
+      const inDrawer = document
+        .getElementById("mobile-nav")
+        ?.contains(target);
+      const inHamburger = hamburgerRef.current?.contains(target);
+      if (!inDrawer && !inHamburger) {
+        setMobileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [mobileOpen]);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     setUserMenuOpen(false);
@@ -186,26 +205,36 @@ export default function Navbar() {
   }
 
   return (
+    // Fragment because the mobile drawer must render OUTSIDE the <nav>.
+    // The <nav> uses `backdrop-blur-md`, which turns it into the
+    // containing block for any descendant `position: fixed` element —
+    // our drawer would otherwise be clipped to the 64px-tall nav,
+    // which is why it was showing up empty/invisible.
+    <>
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-3">
-          {/* Home button + logo. Logo text truncates / disappears on
-              small screens so it can never force the nav to wrap. */}
-          <div className="flex items-center gap-3 min-w-0">
-            <HomeButton />
-            <Link href="/" className="flex items-center gap-2.5 min-w-0">
-              <Image
-                src="/Logo fianl.jpg"
-                alt="Languages Center logo"
-                width={40}
-                height={40}
-                className="rounded-lg shrink-0"
-              />
-              <span className="hidden sm:inline text-xl font-bold text-navy tracking-tight truncate">
-                Languages Center
-              </span>
-            </Link>
-          </div>
+          {/* Logo + wordmark = single home link. The whole area is one
+              generous tap target with an animated teal underline under
+              the wordmark and a slight scale on the logo mark. */}
+          <Link
+            href="/"
+            aria-label="Languages Center home"
+            className="group flex items-center gap-2.5 min-w-0 -mx-1 px-1 py-1 rounded-lg active:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
+          >
+            <Image
+              src="/Logo fianl.jpg"
+              alt=""
+              width={40}
+              height={40}
+              className="rounded-lg shrink-0 transition-transform duration-200 group-hover:scale-[1.04] group-focus-visible:scale-[1.04]"
+            />
+            <span
+              className="relative hidden sm:inline text-xl font-bold tracking-tight truncate transition-colors duration-200 text-navy group-hover:text-teal group-focus-visible:text-teal after:content-[''] after:absolute after:left-0 after:-bottom-0.5 after:h-[2px] after:w-0 after:bg-teal after:transition-[width] after:duration-200 group-hover:after:w-full group-focus-visible:after:w-full"
+            >
+              Languages Center
+            </span>
+          </Link>
 
           {/* Center nav — only at xl+ (1280px) where every supported
               language's labels fit on one line without crowding. Long
@@ -466,13 +495,18 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+    </nav>
 
-      {/* Mobile drawer — slide-down panel that occupies the viewport
-          below the sticky nav. Accordion rows for Trips (cities) and
-          Fluency Course (languages); flat links for Phrase Lookup and
-          Pricing. Only rendered below `lg`; higher widths show the
-          horizontal nav above. */}
-      {mobileOpen && (
+    {/* Mobile drawer — slide-down panel that occupies the viewport
+        below the sticky nav. Accordion rows for Trips (cities) and
+        Fluency Course (languages); flat links for Phrase Lookup and
+        Pricing. Only rendered below `xl`; higher widths show the
+        horizontal nav above.
+        Rendered as a SIBLING of <nav> (not a child) so the nav's
+        `backdrop-blur-md` doesn't become the containing block for
+        this drawer's `position: fixed`. That trap was why the panel
+        showed up with zero height before. */}
+    {mobileOpen && (
         <div
           id="mobile-nav"
           role="dialog"
@@ -588,10 +622,10 @@ export default function Navbar() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </Link>
-          </nav>
-        </div>
-      )}
-    </nav>
+        </nav>
+      </div>
+    )}
+    </>
   );
 }
 
