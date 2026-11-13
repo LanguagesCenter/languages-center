@@ -1,5 +1,4 @@
 import { notFound, redirect } from "next/navigation";
-import Navbar from "@/components/Navbar";
 import { createClient } from "@/lib/supabase/server";
 import { isCurrentUserPremium } from "@/lib/learn";
 import { getTravelerLessonWithContent } from "@/lib/traveler";
@@ -70,42 +69,39 @@ export default async function TravelerLessonPage(
       country: content.courseCountry,
       nextLesson,
     };
+    // Lessons are a focused, full-screen experience — no site Navbar
+    // here. The runner provides its own top-of-screen header with an
+    // exit button that goes back to the city timeline.
     return (
-      <>
-        <Navbar />
-        <main className="flex-1">
-          <PreviewLessonRunner
-            lesson={v2Lesson}
-            lang={speechLang}
-            lessonId={content.lesson.id}
-            markComplete={markLessonComplete}
-            exitHref={`/learn/${langSlug}/travel/${citySlug}`}
-            nextLessonHref={
-              content.nextLesson
-                ? `/learn/${langSlug}/travel/${citySlug}/${content.nextLesson.id}`
-                : undefined
-            }
-            isPremium={isPremium}
-            onSkipSpeaking={recordSkip}
-          />
-        </main>
-      </>
+      <main>
+        <PreviewLessonRunner
+          lesson={v2Lesson}
+          lang={speechLang}
+          lessonId={content.lesson.id}
+          markComplete={markLessonComplete}
+          exitHref={`/learn/${langSlug}/travel/${citySlug}`}
+          nextLessonHref={
+            content.nextLesson
+              ? `/learn/${langSlug}/travel/${citySlug}/${content.nextLesson.id}`
+              : undefined
+          }
+          isPremium={isPremium}
+          onSkipSpeaking={recordSkip}
+        />
+      </main>
     );
   }
 
   // Legacy v1 runner for lessons that haven't been regenerated yet.
   return (
-    <>
-      <Navbar />
-      <main className="flex-1">
-        <TravelerLessonRunner
-          languageSlug={langSlug}
-          citySlug={citySlug}
-          content={content}
-          speechLang={speechLang}
-          isPremium={isPremium}
-        />
-      </main>
-    </>
+    <main>
+      <TravelerLessonRunner
+        languageSlug={langSlug}
+        citySlug={citySlug}
+        content={content}
+        speechLang={speechLang}
+        isPremium={isPremium}
+      />
+    </main>
   );
 }

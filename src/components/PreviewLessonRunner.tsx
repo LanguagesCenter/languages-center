@@ -832,6 +832,11 @@ const CITY_FALLBACK_IMAGES: Record<string, string> = {
 // caption strip is the primary way we tie the lesson's current word
 // to the picture because Unsplash / Street View text pixel coords
 // aren't reliable.
+//
+// `pinned` switches the image into the compact variant used by the
+// sticky pinned-media region at the top of the runner during decode
+// steps: a wider 16:10 aspect that caps at ~30vh on mobile so the
+// exercise below stays visible.
 function LessonImage({
   src,
   alt,
@@ -839,6 +844,7 @@ function LessonImage({
   priority = false,
   imageSource,
   highlight,
+  pinned = false,
 }: {
   src: string | null | undefined;
   alt: string;
@@ -846,6 +852,7 @@ function LessonImage({
   priority?: boolean;
   imageSource?: "streetview" | "unsplash";
   highlight?: DecodeHighlight | null;
+  pinned?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
@@ -858,9 +865,18 @@ function LessonImage({
   const captionHighlight =
     highlight && highlight.kind === "caption" ? highlight : null;
 
+  // Pinned mode: smaller aspect ratio (16:10), hard-cap the height via
+  // max-h-[30vh] on mobile so a tall photo can't eat more than ~30%
+  // of the screen. object-fit stays "cover" so no letterboxing.
+  // Rounded only at the bottom because the sticky wrapper's top edge
+  // butts against the header.
+  const framing = pinned
+    ? "relative w-full aspect-[16/10] max-h-[30vh] sm:max-h-[36vh] overflow-hidden bg-navy"
+    : "relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl";
+
   return (
-    <div className="space-y-2">
-      <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl">
+    <div className={pinned ? "" : "space-y-2"}>
+      <div className={framing}>
         {loading && !showFallback && (
           <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-navy/70 via-navy/60 to-navy/80" />
         )}
@@ -976,6 +992,7 @@ function AudioPanel({
   lang,
   snippet,
   hintActiveIndex,
+  compact,
 }: {
   script: AudioLine[];
   lang: string;
@@ -987,6 +1004,9 @@ function AudioPanel({
   // waveform pulses on the snippet only while the hints are showing,
   // then calms once we're at the exercise.
   hintActiveIndex?: number | null;
+  // Shorter height when rendered in the pinned-media region at the
+  // top of a decode step — same controls, tighter padding.
+  compact?: boolean;
 }) {
   const fullScript = useAudioScript(script, lang);
   const [snippetPlaying, setSnippetPlaying] = useState(false);
@@ -1012,12 +1032,20 @@ function AudioPanel({
   const activeSegment = snippet ? Math.max(0, script.findIndex((l) => l.text.includes(snippet))) : -1;
 
   return (
-    <div className="relative rounded-3xl bg-gradient-to-br from-navy to-navy/80 text-white p-5 sm:p-7 shadow-2xl space-y-4">
+    <div
+      className={`relative bg-gradient-to-br from-navy to-navy/80 text-white ${
+        compact
+          ? "rounded-2xl p-3 sm:p-4 space-y-3 shadow-md"
+          : "rounded-3xl p-5 sm:p-7 shadow-2xl space-y-4"
+      }`}
+    >
       <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={fullScript.playing ? fullScript.stop : fullScript.play}
-          className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white text-navy shadow-xl hover:scale-105 transition-transform flex items-center justify-center"
+          className={`shrink-0 rounded-full bg-white text-navy shadow-xl hover:scale-105 transition-transform flex items-center justify-center ${
+            compact ? "w-11 h-11" : "w-14 h-14 sm:w-16 sm:h-16"
+          }`}
           aria-label={fullScript.playing ? "Stop" : "Play full recording"}
         >
           {fullScript.playing ? (
@@ -1050,7 +1078,7 @@ function AudioPanel({
       {/* Stylized waveform — purely decorative bars. The segment that
           contains the current decode snippet pulses in amber so the
           learner can see where in the clip they are. */}
-      <div className="flex items-end gap-[3px] h-14 justify-center">
+      <div className={`flex items-end gap-[3px] justify-center ${compact ? "h-8" : "h-14"}`}>
         {Array.from({ length: 28 }).map((_, i) => {
           const segmentIndex = Math.floor((i / 28) * totalSegments);
           const isActiveSegment = activeSegment >= 0 && segmentIndex === activeSegment;
@@ -1155,6 +1183,60 @@ function OpeningAudioStep({
   );
 }
 
+// Pinned media region — rendered at the runner level, sticky directly
+// below the header during decode steps. The image/audio stays visible
+// while the hints + exercise scroll underneath.
+function PinnedDecodeMedia({
+  step,
+  lesson,
+  lang,
+  hintActiveIndex,
+}: {
+  step: DecodeStep;
+  lesson: PreviewLesson;
+  lang: string;
+  hintActiveIndex: number | null;
+}) {
+  const highlight = useMemo(
+    () => stepHighlight(step, lesson.opening),
+    [step, lesson.opening],
+  );
+  const imageOpening =
+    lesson.opening.kind === "image"
+      ? (lesson.opening as Extract<PreviewLesson["opening"], { kind: "image" }>)
+      : null;
+  const audioOpening =
+    lesson.opening.kind === "audio"
+      ? (lesson.opening as Extract<PreviewLesson["opening"], { kind: "audio" }>)
+      : null;
+
+  return (
+    <div className="bg-background border-b border-border">
+      {imageOpening && (
+        <LessonImage
+          src={imageOpening.imageUrl}
+          alt={imageOpening.imageAlt}
+          city={lesson.city}
+          imageSource={imageOpening.imageSource}
+          highlight={highlight ?? undefined}
+          pinned
+        />
+      )}
+      {audioOpening && (
+        <div className="px-4 sm:px-6 py-3 max-w-3xl mx-auto">
+          <AudioPanel
+            script={audioOpening.script}
+            lang={lang}
+            snippet={step.audioSnippet}
+            hintActiveIndex={hintActiveIndex}
+            compact
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DecodeStepView({
   step,
   index,
@@ -1164,6 +1246,7 @@ function DecodeStepView({
   onContinue,
   onMiss,
   onSkipSpeaking,
+  onHintChange,
 }: {
   step: DecodeStep;
   index: number;
@@ -1173,6 +1256,9 @@ function DecodeStepView({
   onContinue: () => void;
   onMiss: (ref: string) => void;
   onSkipSpeaking?: (stepIndex: number) => void;
+  // Reports the current hint index (or null when the exercise is
+  // showing) so the parent can pulse the pinned-media waveform.
+  onHintChange: (idx: number | null) => void;
 }) {
   // Phase: -1..hints.length-1 for hints; hints.length for exercise.
   // The last Continue advances from hints → exercise. Tapping
@@ -1183,24 +1269,12 @@ function DecodeStepView({
   const [typingBypassKey, setTypingBypassKey] = useState(0);
   const typingRef = useRef<{ finish: () => void; done: boolean } | null>(null);
 
-  const highlight = useMemo(
-    () => stepHighlight(step, lesson.opening),
-    [step, lesson.opening],
-  );
-
-  const isAudio = lesson.opening.kind === "audio";
-  const imageOpening =
-    lesson.opening.kind === "image"
-      ? (lesson.opening as Extract<PreviewLesson["opening"], { kind: "image" }>)
-      : null;
-  const audioOpening =
-    lesson.opening.kind === "audio"
-      ? (lesson.opening as Extract<PreviewLesson["opening"], { kind: "audio" }>)
-      : null;
+  useEffect(() => {
+    onHintChange(showExercise ? null : hintIdx);
+  }, [showExercise, hintIdx, onHintChange]);
 
   function onContinueHints() {
     if (showExercise) return;
-    // If the current hint is still typing, finish it first.
     if (typingRef.current && !typingRef.current.done) {
       typingRef.current.finish();
       return;
@@ -1219,26 +1293,8 @@ function DecodeStepView({
         Decode · {index + 1} of {total}
       </div>
 
-      {/* Image or audio always stays on screen during a decode step */}
-      {imageOpening && (
-        <LessonImage
-          src={imageOpening.imageUrl}
-          alt={imageOpening.imageAlt}
-          city={lesson.city}
-          imageSource={imageOpening.imageSource}
-          highlight={highlight ?? undefined}
-        />
-      )}
-      {audioOpening && (
-        <AudioPanel
-          script={audioOpening.script}
-          lang={lang}
-          snippet={step.audioSnippet}
-          hintActiveIndex={showExercise ? null : hintIdx}
-        />
-      )}
-
-      {/* Word card — no translation shown */}
+      {/* Word card — no translation shown. The image/audio stays
+          pinned in the sticky region above this. */}
       <div className="rounded-2xl bg-white border-2 border-border shadow-md p-5 sm:p-6 text-center space-y-2">
         <div className="text-2xl sm:text-3xl font-black text-navy tracking-tight leading-tight break-words">
           {step.wordOrPhrase}
@@ -1930,83 +1986,148 @@ export default function PreviewLessonRunner({
 
   const progressPct = Math.min(100, Math.round((currentStep / totalSteps) * 100));
 
+  // The pinned media region is only meaningful on decode steps (image
+  // or audio stays visible while hints + exercise scroll underneath).
+  // Opening + buildup + quiz + complete are standalone screens with
+  // no pinned media.
+  const isDecode = phase.kind === "decode";
+  const activeDecodeStep = isDecode ? lesson.decodeSteps[phase.index] : null;
+  // Hint cursor relayed up from DecodeStepView so the pinned audio
+  // waveform knows when to pulse. Reset on step change via the
+  // `decode-{index}` key.
+  const [pinnedHintIdx, setPinnedHintIdx] = useState<number | null>(0);
+  useEffect(() => {
+    setPinnedHintIdx(0);
+  }, [phase]);
+
   return (
-    <div className="min-h-screen bg-background pb-16">
-      <div className="sticky top-16 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
-          <Link href={resolvedExitHref} className="text-xs text-navy/60 hover:text-navy shrink-0">
+    // 100dvh (NOT 100vh) so iOS Safari's collapsing address bar doesn't
+    // leave a gap below the content. The flex column stacks the sticky
+    // top region above the scrolling content.
+    <div
+      className="bg-background min-h-[100dvh]"
+      style={{
+        // Honour iOS/Android safe-area insets at the top so the
+        // header never sits under the status bar / notch.
+        paddingTop: "env(safe-area-inset-top, 0px)",
+      }}
+    >
+      {/* HEADER — fully opaque, no blur, at the very top. z-50 so
+          nothing from the lesson content can show above or behind it. */}
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4 h-14">
+          <Link
+            href={resolvedExitHref}
+            className="text-xs font-medium text-navy/60 hover:text-navy shrink-0"
+          >
             ← {isPreview ? "Exit preview" : "Exit lesson"}
           </Link>
           <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
-            <div className="h-full bg-teal transition-all duration-500" style={{ width: `${progressPct}%` }} />
+            <div
+              className="h-full bg-teal transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
           </div>
           <p className="text-xs text-navy/60 font-medium tabular-nums shrink-0">
             {phase.kind === "complete" ? "Done" : `${currentStep}/${totalSteps}`}
           </p>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-2 text-center">
-        <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-navy/50">
-          {lesson.city} · Lesson {lesson.orderIndex}
-        </p>
-        <h1 className="text-xl sm:text-2xl font-black text-navy mt-1">{lesson.title}</h1>
-      </div>
+      {/* PINNED MEDIA — image/audio stays directly below the header on
+          every decode step. The sticky `top-14` matches the header's
+          `h-14` so there's never a gap or overlap. z-40 = below the
+          header, above everything else in the scroll. */}
+      {isDecode && activeDecodeStep && (
+        <div className="sticky top-14 z-40">
+          <PinnedDecodeMedia
+            step={activeDecodeStep}
+            lesson={lesson}
+            lang={lang}
+            hintActiveIndex={pinnedHintIdx}
+          />
+        </div>
+      )}
 
-      {phase.kind === "opening" && lesson.opening.kind === "image" && (
-        <OpeningImageStep lesson={lesson} onContinue={advance} />
+      {/* LESSON-TITLE strip — only shown on the opening + complete
+          screens. Hidden on decode steps so the pinned image
+          dominates. */}
+      {(phase.kind === "opening" || phase.kind === "complete") && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-2 text-center">
+          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-navy/50">
+            {lesson.city} · Lesson {lesson.orderIndex}
+          </p>
+          <h1 className="text-xl sm:text-2xl font-black text-navy mt-1">
+            {lesson.title}
+          </h1>
+        </div>
       )}
-      {phase.kind === "opening" && lesson.opening.kind === "audio" && (
-        <OpeningAudioStep lesson={lesson} lang={lang} onContinue={advance} />
-      )}
-      {phase.kind === "decode" && (
-        <DecodeStepView
-          key={phase.index}
-          step={lesson.decodeSteps[phase.index]}
-          index={phase.index}
-          total={lesson.decodeSteps.length}
-          lesson={lesson}
-          lang={lang}
-          onContinue={advance}
-          onMiss={reportMiss}
-          onSkipSpeaking={skipSpeakingAt}
-        />
-      )}
-      {phase.kind === "buildup" && <BuildupStep lesson={lesson} lang={lang} onContinue={advance} />}
-      {phase.kind === "quiz" && (
-        <EndQuizStep
-          lesson={lesson}
-          lang={lang}
-          missedRefs={missedRefs}
-          onFinish={finish}
-          onSkipSpeaking={(ref) => {
-            if (!lessonId || !onSkipSpeaking) return;
-            // Map ref back to the quiz question to grab prompt/expected
-            const parts = ref.split(":");
-            const idx = parseInt(parts[1] ?? "0", 10);
-            const q = parts[0] === "endquiz" ? lesson.endQuiz[idx] : null;
-            if (q && q.kind === "speaking") {
-              onSkipSpeaking({
-                lessonId,
-                exerciseRef: ref,
-                prompt: q.prompt,
-                expected: q.expected,
-                translationCheck: q.translationCheck ?? null,
-              });
-            }
-          }}
-        />
-      )}
-      {phase.kind === "complete" && (
-        <CompleteStep
-          lesson={lesson}
-          score={phase.score}
-          isPreview={isPreview}
-          isPremium={!!isPremium}
-          exitHref={resolvedExitHref}
-          nextLessonHref={nextLessonHref}
-        />
-      )}
+
+      {/* SCROLLING CONTENT. scroll-pt gives focused form elements room
+          to clear the sticky header + pinned media. */}
+      <div
+        className="pb-16"
+        style={{
+          scrollPaddingTop: isDecode ? "calc(3.5rem + 32vh)" : "3.5rem",
+        }}
+      >
+        {phase.kind === "opening" && lesson.opening.kind === "image" && (
+          <OpeningImageStep lesson={lesson} onContinue={advance} />
+        )}
+        {phase.kind === "opening" && lesson.opening.kind === "audio" && (
+          <OpeningAudioStep lesson={lesson} lang={lang} onContinue={advance} />
+        )}
+        {phase.kind === "decode" && (
+          <DecodeStepView
+            key={phase.index}
+            step={lesson.decodeSteps[phase.index]}
+            index={phase.index}
+            total={lesson.decodeSteps.length}
+            lesson={lesson}
+            lang={lang}
+            onContinue={advance}
+            onMiss={reportMiss}
+            onSkipSpeaking={skipSpeakingAt}
+            onHintChange={setPinnedHintIdx}
+          />
+        )}
+        {phase.kind === "buildup" && (
+          <BuildupStep lesson={lesson} lang={lang} onContinue={advance} />
+        )}
+        {phase.kind === "quiz" && (
+          <EndQuizStep
+            lesson={lesson}
+            lang={lang}
+            missedRefs={missedRefs}
+            onFinish={finish}
+            onSkipSpeaking={(ref) => {
+              if (!lessonId || !onSkipSpeaking) return;
+              const parts = ref.split(":");
+              const idx = parseInt(parts[1] ?? "0", 10);
+              const q = parts[0] === "endquiz" ? lesson.endQuiz[idx] : null;
+              if (q && q.kind === "speaking") {
+                onSkipSpeaking({
+                  lessonId,
+                  exerciseRef: ref,
+                  prompt: q.prompt,
+                  expected: q.expected,
+                  translationCheck: q.translationCheck ?? null,
+                });
+              }
+            }}
+          />
+        )}
+        {phase.kind === "complete" && (
+          <CompleteStep
+            lesson={lesson}
+            score={phase.score}
+            isPreview={isPreview}
+            isPremium={!!isPremium}
+            exitHref={resolvedExitHref}
+            nextLessonHref={nextLessonHref}
+          />
+        )}
+      </div>
     </div>
   );
 }

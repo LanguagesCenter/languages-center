@@ -50,3 +50,4 @@ scripts/logs/
 scripts/.traveler-content-progress.json
 # Internal dry-run logs
 scripts/.barcelona-dryrun-*.log
+screenshots/

@@ -379,10 +379,18 @@ export default function TravelerLessonRunner({
   const progressPct = Math.round(((index + 1) / steps.length) * 100);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)]">
-      {/* Progress bar pinned to the top of the runner surface */}
-      <div className="sticky top-16 z-30 bg-white/85 backdrop-blur border-b border-border">
-        <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center gap-3">
+    // 100dvh so iOS Safari address-bar collapse doesn't leave a gap.
+    // safe-area inset at top so the header sits under the notch, not
+    // behind it.
+    <div
+      className="min-h-[100dvh] bg-background"
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
+      {/* Fully opaque sticky header at the very top. No blur, no
+          transparency — nothing from the lesson content may show
+          above or behind it. z-50 so it stays on top of everything. */}
+      <header className="sticky top-0 z-50 bg-background border-b border-border">
+        <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-3">
           <Link
             href={`/learn/${languageSlug}/travel/${citySlug}`}
             aria-label={`Exit to ${courseCity}`}
@@ -412,7 +420,7 @@ export default function TravelerLessonRunner({
             {index + 1} / {steps.length}
           </p>
         </div>
-      </div>
+      </header>
 
       {/* Every step gets a fresh key so React remounts on advance and
           our CSS fade-in plays. */}
