@@ -48,3 +48,5 @@ scripts/.regeneration-progress.json
 scripts/logs/
 # generate-traveler-content.mjs progress log
 scripts/.traveler-content-progress.json
+# Internal dry-run logs
+scripts/.barcelona-dryrun-*.log

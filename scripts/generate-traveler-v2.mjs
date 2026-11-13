@@ -165,6 +165,91 @@ const MADRID_CHARACTERS = {
 };
 
 // ============================================================
+// Barcelona 50-lesson plan
+//
+// Barcelona is officially bilingual — Catalan (català) is the civic,
+// transit, and signage default; Castilian Spanish (castellà/español)
+// is the spoken commerce language. The generator must teach BOTH on
+// the same image where both appear, labeling each word with its
+// language, and keep the Castilian spoken dialogue in overheard
+// lessons unless the scene is explicitly Catalan-only (football chant,
+// Catalan TV, etc.).
+//
+// Recurring characters:
+//   - Jordi: Barcelona taxi driver, early-30s, from Gràcia; Barça fan;
+//            casual, switches between Catalan and Castilian naturally.
+//   - Núria: Barri Gòtic landlady running your Airbnb near Plaça Reial;
+//            late 40s, warm, speaks mostly Catalan with you until you
+//            ask her to switch.
+//   - Marc:  Barceloneta waiter, 20s, bilingual, friendly with tourists.
+// ============================================================
+
+const BARCELONA_CHARACTERS = {
+  Jordi: { role: "Barcelona taxi driver from Gràcia, early 30s; Barça fan; switches between Catalan and Castilian casually; warm, direct", gender: "male", firstAppearance: 3 },
+  Nuria: { role: "Barri Gòtic Airbnb landlady late 40s; speaks mostly Catalan with you until asked to switch; patient and welcoming", gender: "female", firstAppearance: 4 },
+  Marc:  { role: "Barceloneta seaside bar waiter in his 20s, bilingual, chatty with tourists", gender: "male", firstAppearance: 14 },
+};
+
+const BARCELONA_LESSON_PLAN = {
+  1:  { type: "sign", image: { source: "unsplash", query: "barcelona el prat airport arrivals terminal sign", description: "The arrivals hall at Barcelona-El Prat Airport Terminal 1, with bilingual Catalan/Castilian signage directing travelers to passport control, baggage claim, and the exit. Note: Catalan ‘Sortida’ for Exit and ‘Arribades’ for Arrivals appear ABOVE the Castilian equivalents.", visibleText: ["ARRIBADES", "LLEGADAS", "CONTROL DE PASSAPORTS", "CONTROL DE PASAPORTES", "RECOLLIDA D'EQUIPATGES", "RECOGIDA DE EQUIPAJES", "SORTIDA", "SALIDA"] } },
+  2:  { type: "document", image: { source: "unsplash", query: "vueling boarding pass airline ticket", description: "A Vueling boarding pass for a flight into Barcelona-El Prat with passenger name, flight number, boarding gate, seat, and boarding time printed on it.", visibleText: ["EMBARCAMENT", "EMBARQUE", "PORTA", "PUERTA", "SEIENT", "ASIENTO", "NOM", "NOMBRE", "DESTÍ", "DESTINO", "VOL", "VUELO"] } },
+  3:  { type: "overheard", image: { source: "streetview", lat: 41.3011, lng: 2.0812, heading: 70, pitch: 5, description: "The taxi rank at Barcelona-El Prat Airport Terminal 1 — yellow-and-black Barcelona taxis queueing by the curb.", visibleText: ["TAXI", "PARADA DE TAXIS"] } },
+  4:  { type: "document", image: { source: "unsplash", query: "barcelona apartment keys house address guestbook welcome note", description: "A hand-written welcome note on the kitchen counter of a Barri Gòtic Airbnb apartment: Wi-Fi password, landlady's phone, and the nearest metro station, written in Catalan with Castilian translation underneath.", visibleText: ["BENVINGUTS", "BIENVENIDOS", "WIFI", "CONTRASENYA", "CONTRASEÑA", "TELÈFON", "TELÉFONO", "METRO JAUME I"] } },
+  5:  { type: "advertisement", image: { source: "unsplash", query: "barcelona rooftop terrace hotel bar skyline card", description: "A tabletop card at your Barri Gòtic Airbnb advertising the rooftop terrace bar run by the neighbors — opening hours and tapas prices in euros.", visibleText: ["TERRASSA", "TERRAZA", "OBERT", "ABIERTO", "TANCAT", "CERRADO", "HORARI", "HORARIO", "€"] } },
+  6:  { type: "sign", image: { source: "streetview", lat: 41.3870, lng: 2.1700, heading: 200, pitch: 10, description: "The entrance to Catalunya Metro station in Plaça Catalunya — a red diamond-shaped ‘M’ sign with directional arrows into the station and the bilingual ‘Sortida’/‘Salida’ exit marker beside it.", visibleText: ["METRO", "L1", "L3", "SORTIDA", "SALIDA", "ANDANA", "ANDÉN", "CORRESPONDÈNCIA", "CORRESPONDENCIA"] } },
+  7:  { type: "advertisement", image: { source: "streetview", lat: 41.3817, lng: 2.1733, heading: 180, pitch: 10, description: "La Rambla in Barcelona — the famous tree-lined pedestrian boulevard with souvenir kiosks, flower stalls, and painted street artists; the Mirador de Colom column is visible in the distance.", visibleText: ["LA RAMBLA", "VISITES GUIADES", "VISITAS GUIADAS", "GRÀTIS", "GRATIS", "FLORS", "FLORES", "SOUVENIRS"] } },
+  8:  { type: "overheard", image: { source: "streetview", lat: 41.3828, lng: 2.1770, heading: 100, pitch: 5, description: "A narrow medieval street in the Barri Gòtic near the Cathedral — a tourist asks a local pedestrian for directions to Plaça del Pi.", visibleText: ["CARRER", "CALLE", "PLAÇA", "PLAZA", "A LA DRETA", "A LA DERECHA", "A L'ESQUERRA", "A LA IZQUIERDA", "TOT RECTE", "TODO RECTO"] } },
+  9:  { type: "document", image: { source: "unsplash", query: "barcelona tmb metro card hola bcn transport ticket", description: "A Hola BCN! transport card and its paper sleeve showing days of validity, zones covered, and price in euros.", visibleText: ["HOLA BCN!", "TARGETA DE TRANSPORT", "TARJETA DE TRANSPORTE", "DIES", "DÍAS", "ZONA 1", "ADULT", "ADULTO"] } },
+  10: { type: "audio_announcement", image: null },
+  11: { type: "menu", image: { source: "unsplash", query: "barcelona cafe granja chocolate xocolata breakfast menu chalkboard", description: "A granja xocolateria chalkboard menu near Plaça del Pi listing xocolata amb melindros, suís, granja cafè, croissants — in Catalan with Castilian underneath.", visibleText: ["XOCOLATA", "CHOCOLATE", "MELINDROS", "SUÍS", "CROISSANT", "GRANJA", "ESMORZAR", "DESAYUNO", "€"] } },
+  12: { type: "overheard", image: { source: "unsplash", query: "la boqueria barcelona market stall fish ham fruit vendor", description: "The interior of La Boqueria market on La Rambla — a fishmonger calling out prices to shoppers, with iced display counters full of gambas, pulpo, and bacallà (salt cod).", visibleText: ["LA BOQUERIA", "PEIX", "PESCADO", "KILO", "GAMBES", "GAMBAS", "BACALLÀ", "BACALAO", "PRESSUPOST", "FRESH"] } },
+  13: { type: "menu", image: { source: "unsplash", query: "barcelona restaurant menu del dia tapas board paper", description: "A printed paper menú del dia from a Barri Gòtic restaurant listing primers, segons, postres, and pa i beguda inclosos at a fixed price.", visibleText: ["MENÚ DEL DIA", "MENÚ DEL DÍA", "PRIMERS", "PRIMEROS", "SEGONS", "SEGUNDOS", "POSTRES", "PA I BEGUDA", "PAN Y BEBIDA", "IVA INCLÒS", "IVA INCLUIDO"] } },
+  14: { type: "overheard", image: { source: "unsplash", query: "barcelona tapas bar counter beer caña vermut vermouth interior", description: "The crowded counter of a Barri Gòtic tapas bar — a waiter pouring a vermut (vermouth on the rocks with orange) and plates of bombes and pa amb tomàquet lined up on the bar.", visibleText: ["VERMUT", "CANYA", "CAÑA", "BOMBA", "PA AMB TOMÀQUET", "RACIÓ", "RACIÓN", "GRÀCIES", "GRACIAS"] } },
+  15: { type: "menu", image: { source: "unsplash", query: "spanish restaurant seafood paella menu board catalan barcelona", description: "A chalkboard seafood menu at a Barceloneta beach restaurant listing arròs negre, fideuà, paella de marisc, and the day's catch with prices in euros.", visibleText: ["ARRÒS", "ARROZ", "NEGRE", "NEGRO", "FIDEUÀ", "PAELLA", "MARISC", "MARISCO", "SUQUET", "€"] } },
+  16: { type: "sign", image: { source: "streetview", lat: 41.3918, lng: 2.1649, heading: 90, pitch: 5, description: "A corner of Passeig de Gràcia near Casa Batlló — luxury boutique windows with large REBAIXES / REBAJAS sale signs and percentages shown in both Catalan and Castilian.", visibleText: ["REBAIXES", "REBAJAS", "DESCOMPTE", "DESCUENTO", "FINS A", "HASTA", "%", "ÚLTIMES UNITATS", "ÚLTIMAS UNIDADES"] } },
+  17: { type: "document", image: { source: "unsplash", query: "pharmacy prescription receipt medication paper spanish green cross", description: "A Barcelona pharmacy receipt (recepta mèdica / receta médica) showing a bilingual label with medication, dosage, patient name, and the characteristic green neon cross of the Farmàcia.", visibleText: ["FARMÀCIA", "FARMACIA", "RECEPTA", "RECETA", "MEDICAMENT", "MEDICAMENTO", "DOSI", "DOSIS", "CADUCITAT", "CADUCIDAD"] } },
+  18: { type: "advertisement", image: { source: "streetview", lat: 41.4036, lng: 2.1744, heading: 180, pitch: 20, description: "The exterior of Antoni Gaudí's Sagrada Família basilica from the Nativity Façade side — ticket kiosks in the foreground with multi-language signage (Catalan, Castilian, English).", visibleText: ["SAGRADA FAMÍLIA", "ENTRADES", "ENTRADAS", "AUDIOGUIA", "AUDIOGUÍA", "VISITA", "GRÀCIES", "GRACIAS", "€"] } },
+  19: { type: "overheard", image: { source: "unsplash", query: "flea market vintage antiques encants barcelona stall negotiation", description: "A stall at Els Encants de Bellcaire flea market in Barcelona — the shopper and the vendor haggling over a vintage leather jacket.", visibleText: ["ELS ENCANTS", "QUANT COSTA?", "¿CUÁNTO CUESTA?", "REBAIXA", "REBAJA", "BARAT", "BARATO", "CAR", "CARO"] } },
+  20: { type: "document", image: { source: "unsplash", query: "store return receipt barcode paper refund", description: "A paper return slip from El Corte Inglés Plaça Catalunya with barcode, article numbers, date, and refund amount — field labels printed in both Catalan and Castilian.", visibleText: ["DEVOLUCIÓ", "DEVOLUCIÓN", "ARTICLE", "ARTÍCULO", "IMPORT", "IMPORTE", "DATA", "FECHA", "TIQUET", "TICKET"] } },
+  21: { type: "sign", image: { source: "unsplash", query: "barcelona museum ticket sign picasso mnac entrance price", description: "The ticket-office sign at the Museu Picasso in Barri Gòtic listing entry prices in euros, opening hours, and the free-admission time slot — label pairs in Catalan and Castilian.", visibleText: ["MUSEU PICASSO", "MUSEO PICASSO", "ENTRADA", "GENERAL", "REDUÏDA", "REDUCIDA", "GRATUÏTA", "GRATUITA", "HORARI", "HORARIO"] } },
+  22: { type: "audio_announcement", image: null },
+  23: { type: "sign", image: { source: "unsplash", query: "barcelona park guell gaudi mosaic bench sign interpretive", description: "An interpretive sign near the dragon mosaic at Park Güell explaining Gaudí's trencadís ceramic technique — a short paragraph in Catalan with a Castilian translation beneath.", visibleText: ["PARK GÜELL", "ANTONI GAUDÍ", "TRENCADÍS", "CERÀMICA", "CERÁMICA", "NO TOCAR", "SORTIDA", "SALIDA"] } },
+  24: { type: "audio_announcement", image: null },
+  25: { type: "advertisement", image: { source: "streetview", lat: 41.3755, lng: 2.1901, heading: 90, pitch: 0, description: "Barceloneta beach — the seaside promenade with golden sand, swimmers in the Mediterranean, and chiringuito beach bars with umbrellas. A sign advertises hourly beach-chair rental and paddleboard lessons.", visibleText: ["BARCELONETA", "PLATJA", "PLAYA", "LLOGUER", "ALQUILER", "HORA", "PADDLE SURF", "GANDULES", "TUMBONAS"] } },
+  26: { type: "sign", image: { source: "unsplash", query: "barcelona supermarket aisle sign condis bonpreu catalonian grocery", description: "The aisle markers inside a Barcelona Bonpreu supermarket listing bakery, frozen, drinks, dairy — all signage in Catalan with Castilian printed smaller underneath.", visibleText: ["FORN", "PANADERÍA", "CONGELATS", "CONGELADOS", "BEGUDES", "BEBIDAS", "LÀCTICS", "LÁCTEOS", "CARNISSERIA", "CARNICERÍA", "CAIXA", "CAJA"] } },
+  27: { type: "document", image: { source: "unsplash", query: "correos post office parcel shipping form spain paper", description: "A Correos parcel-shipping form at the Barcelona Via Laietana post office, half filled in with sender, recipient, weight, destination, and declared value.", visibleText: ["CORREUS", "CORREOS", "REMITENT", "REMITENTE", "DESTINATARI", "DESTINATARIO", "PES", "PESO", "ORDINARI", "ORDINARIO", "CERTIFICAT", "CERTIFICADO"] } },
+  28: { type: "sign", image: { source: "unsplash", query: "caixabank atm barcelona cash withdrawal screen bilingual", description: "The touchscreen of a CaixaBank ATM in Barcelona showing the language selection and cash-withdrawal menu with amount options in Catalan.", visibleText: ["IDIOMA", "RETIRAR EFECTIU", "RETIRAR EFECTIVO", "SALDO", "IMPORT", "IMPORTE", "CONTINUAR", "CANCEL·LAR", "CANCELAR", "INTRODUÏU EL PIN", "INTRODUZCA EL PIN"] } },
+  29: { type: "document", image: { source: "unsplash", query: "laundromat self service ticket printed receipt bilingual", description: "A printed self-service laundromat ticket from a Gràcia bugaderia with machine number, cycle, estimated end time, and price.", visibleText: ["BUGADERIA", "LAVANDERÍA", "MÀQUINA", "MÁQUINA", "RENTAT", "LAVADO", "ASSECAT", "SECADO", "FINALITZA", "FINALIZA", "IMPORT", "IMPORTE", "€"] } },
+  30: { type: "advertisement", image: { source: "unsplash", query: "spanish gym fitness poster barcelona membership classes flyer", description: "A printed gym membership flyer for a Gràcia gimnàs with monthly plans, included classes (ioga, spinning), and a sign-up CTA — printed bilingually.", visibleText: ["GIMNÀS", "GIMNASIO", "MATRÍCULA GRATUÏTA", "MATRÍCULA GRATIS", "QUOTA MENSUAL", "CUOTA MENSUAL", "CLASSES INCLOSES", "CLASES INCLUIDAS", "IOGA", "YOGA", "APUNTA'T", "APÚNTATE"] } },
+  31: { type: "overheard", image: { source: "unsplash", query: "barcelona bar interior friends drinks evening gracia", description: "The crowded interior of a Gràcia neighborhood bar at night — two Barcelonins in their 20s are chatting with a tourist over drinks and inviting them to the next round.", visibleText: ["T'AGRADA?", "¿TE APETECE?", "RONDA", "CONVIDO JO", "INVITO YO", "SALUT", "SALUD"] } },
+  32: { type: "audio_announcement", image: null },
+  33: { type: "overheard", image: null },
+  34: { type: "menu", image: { source: "unsplash", query: "barri gotic barcelona tapas chalkboard menu specials", description: "A chalkboard tapas menu at a Barri Gòtic restaurant listing the day's specials — bombes, truita de patates, patates braves, esqueixada — with prices in Catalan.", visibleText: ["PLATS DEL DIA", "ESPECIALIDADES DEL DÍA", "BOMBES", "TRUITA DE PATATES", "TORTILLA DE PATATAS", "PATATES BRAVES", "PATATAS BRAVAS", "ESQUEIXADA", "RACIÓ", "RACIÓN", "€"] } },
+  35: { type: "overheard", image: { source: "unsplash", query: "barcelona mercat fruit vendor customer dispute mistake catalan", description: "A vendor and customer at the Mercat de Santa Caterina in Barcelona trying to sort out a mistaken order at the produce stall.", visibleText: ["PERDONI", "PERDONE", "NO ÉS EL QUE VAIG DEMANAR", "NO ES LO QUE PEDÍ", "S'HA EQUIVOCAT", "SE HA EQUIVOCADO", "DISCULPI", "DISCULPE"] } },
+  36: { type: "menu", image: { source: "unsplash", query: "catalan cava wine bar menu barcelona chalkboard list", description: "The chalkboard cava and vermut list at a Barri Gòtic wine bar listing brut, brut nature, reserva, gran reserva, and house vermouth with prices per copa.", visibleText: ["CAVA", "BRUT", "BRUT NATURE", "RESERVA", "GRAN RESERVA", "VERMUT CASOLÀ", "VERMUT CASA", "COPA", "AMPOLLA", "BOTELLA", "€"] } },
+  37: { type: "advertisement", image: { source: "unsplash", query: "spanish nightclub flyer razzmatazz barcelona neon dj poster", description: "A Razzmatazz / Opium Barcelona nightclub flyer for the weekend's DJ line-up — neon type on a dark background with dates, rooms, and door times.", visibleText: ["RAZZMATAZZ", "DJ", "DIVENDRES", "VIERNES", "DISSABTE", "SÁBADO", "OBERTURA", "APERTURA", "ENTRADA", "LLISTA", "LISTA"] } },
+  38: { type: "sign", image: { source: "unsplash", query: "flamenco venue sign tablao cordobes barcelona exterior", description: "The exterior venue sign at Tablao Cordobés on La Rambla — Catalan/Castilian labels for the evening flamenco show, artist names, and ticket price.", visibleText: ["TABLAO", "FLAMENC", "FLAMENCO", "ESPECTACLE", "ESPECTÁCULO", "ARTISTES", "ARTISTAS", "FUNCIÓ", "FUNCIÓN", "RESERVA"] } },
+  39: { type: "audio_announcement", image: null },
+  40: { type: "sign", image: { source: "unsplash", query: "cinema marquee movie theater sign night cines verdi gracia barcelona", description: "The marquee at Cines Verdi in Gràcia showing three film titles in version original subtitled, screening times, and ticket prices in Catalan.", visibleText: ["CINEMA", "CINE", "SESSIÓ", "SESIÓN", "ENTRADA", "SALA", "V.O.S.", "V.O.S.E.", "APTA PER A TOTS ELS PÚBLICS", "APTA PARA TODOS LOS PÚBLICOS"] } },
+  41: { type: "document", image: { source: "unsplash", query: "handwritten form paperwork pen desk lost and found claim", description: "A TMB Barcelona lost-and-found (objectes perduts) claim form filled in with the description of a lost wallet, date, line and station.", visibleText: ["OBJECTES PERDUTS", "OBJETOS PERDIDOS", "DESCRIPCIÓ", "DESCRIPCIÓN", "DATA DE PÈRDUA", "FECHA DE PÉRDIDA", "LÍNIA", "LÍNEA", "ESTACIÓ", "ESTACIÓN"] } },
+  42: { type: "overheard", image: { source: "unsplash", query: "spanish doctor patient clinic consultation office barcelona", description: "A general-practice doctor at a CAP Gòtic in Barcelona speaking across a desk to a foreign patient about symptoms.", visibleText: ["QUÈ LI PASSA?", "¿QUÉ LE OCURRE?", "EM FA MAL", "ME DUELE", "DES DE QUAN?", "DESDE CUÁNDO", "RECEPTA", "RECETA", "FEBRE", "FIEBRE", "CAP", "CABEZA", "GOLA", "GARGANTA"] } },
+  43: { type: "document", image: { source: "unsplash", query: "spanish police report form denuncia theft paper mossos esquadra", description: "A Mossos d'Esquadra denuncia form in Barcelona, partially completed, for a stolen wallet with description, time, and place of the incident.", visibleText: ["DENÚNCIA", "DENUNCIA", "ROBATORI", "ROBO", "LLOC DELS FETS", "LUGAR DE LOS HECHOS", "DATA", "FECHA", "DESCRIPCIÓ", "DESCRIPCIÓN"] } },
+  44: { type: "sign", image: { source: "unsplash", query: "spanish phone store service ticket queue number sign barcelona", description: "The in-store queuing signage at a Movistar shop on Plaça Catalunya — a 'Demani el torn' numbered-ticket dispenser with the current turno displayed.", visibleText: ["DEMANI EL TORN", "PIDA EL TURNO", "TORN", "TURNO", "ESPEREU EL VOSTRE TORN", "ESPERE SU TURNO", "ATENCIÓ AL CLIENT", "ATENCIÓN AL CLIENTE"] } },
+  45: { type: "document", image: { source: "unsplash", query: "bus stop schedule timetable printed barcelona tmb night bus", description: "A TMB Barcelona night-bus (NitBus) printed timetable stuck to a Plaça Catalunya stop, listing route N3, intermediate stops, and arrival times.", visibleText: ["TMB", "NITBUS", "LÍNIA N3", "LÍNEA N3", "PARADA", "SORTIDA", "SALIDA", "ARRIBADA", "LLEGADA", "LABORABLES", "FESTIUS", "FESTIVOS"] } },
+  46: { type: "audio_announcement", image: null },
+  47: { type: "overheard", image: null },
+  48: { type: "sign", image: { source: "streetview", lat: 41.2971, lng: 2.0785, heading: 60, pitch: 10, description: "The exterior of Barcelona-El Prat Airport Terminal 1 departures at the drop-off curb — travelers heading inside with luggage trolleys, bilingual departure signage visible.", visibleText: ["SORTIDES", "SALIDAS", "FACTURACIÓ", "FACTURACIÓN", "EMBARCAMENT", "EMBARQUE", "SEGURETAT", "SEGURIDAD", "PORTA", "PUERTA", "T1"] } },
+  49: { type: "advertisement", image: { source: "unsplash", query: "duty free airport display sign price promotion ham wine catalunya", description: "A duty-free promotional display at El Prat Terminal 1 — gift sets of cava, torró (turrón), and Iberian ham with ‘Duty Free’ and ‘Promoció’ signage and euro prices.", visibleText: ["DUTY FREE", "PROMOCIÓ", "PROMOCIÓN", "ESTALVIA", "AHORRA", "DES DE", "DESDE", "CAVA", "TORRÓ", "TURRÓN", "€"] } },
+  50: { type: "audio_announcement", image: null },
+};
+
+// Which lesson plan + character set to use for a given city.
+const CITY_PLANS = {
+  Madrid:    { plan: MADRID_LESSON_PLAN,    characters: MADRID_CHARACTERS,    bilingualContext: null },
+  Barcelona: { plan: BARCELONA_LESSON_PLAN, characters: BARCELONA_CHARACTERS, bilingualContext: "Barcelona is bilingual. Catalan (català) is the civic + transit + signage default; Castilian Spanish (castellà/español) is the spoken commerce language. Every sign in this city shows BOTH; most locals your age switch fluidly. When the visible image contains Catalan words paired with their Castilian equivalents, teach BOTH in the decodeSteps (label each wordOrPhrase with its language in parentheses, e.g. ‘Sortida (Catalan)’ / ‘Salida (Castilian)’). In overheard audio, default to Castilian unless the plan or vision explicitly says Catalan-only; sprinkle one Catalan phrase per audio lesson where natural (greetings, bon dia, moltes gràcies)." },
+};
+
+// ============================================================
 // CLI
 // ============================================================
 
@@ -373,23 +458,24 @@ function bytesToBase64(bytes) {
   return Buffer.from(binary, "binary").toString("base64");
 }
 
-async function describeImageWithClaude({ apiKey, bytes, mediaType, planHint }) {
+async function describeImageWithClaude({ apiKey, bytes, mediaType, planHint, city }) {
+  const cityLabel = city ?? "the lesson's city";
   const hintBlock = planHint
     ? `Planning hint (may or may not match the actual image you're looking at):
   Lesson scenario: ${planHint.description}
-  Suggested Spanish words to look for (ignore if they aren't actually visible): ${(planHint.visibleText ?? []).join(", ") || "(none)"}`
+  Suggested words to look for (ignore if they aren't actually visible): ${(planHint.visibleText ?? []).join(", ") || "(none)"}`
     : "";
-  const userText = `Look at this photo and describe exactly what is in it, for an immersive Spanish-learning lesson set in Madrid.
+  const userText = `Look at this photo and describe exactly what is in it, for an immersive traveler's language-learning lesson set in ${cityLabel}.
 
 ${hintBlock}
 
 Respond with ONE JSON object:
 {
   "sceneDescription": "A 1-2 sentence description of what the photo actually shows. Be literal — if the planning hint said 'metro sign' but the photo shows a street scene, describe the street scene.",
-  "visibleText": ["<every piece of Spanish or multilingual text / signage / branding you can read in the image, verbatim>"],
+  "visibleText": ["<every piece of visible text / signage / branding you can read in the image, verbatim, in whatever language it appears>"],
   "visibleObjects": ["<up to 6 notable objects or elements a traveler would notice>"],
-  "suitableForMadridLesson": true | false,
-  "unsuitableReason": "<if false: 1 sentence why — e.g., 'photo is clearly not Spain / not Madrid / off-topic'. omit if true.>"
+  "suitable": true | false,
+  "unsuitableReason": "<if false: 1 sentence why — e.g., 'off-topic / unreadable / clearly wrong city'. Note: the photo being set in ${cityLabel} or the correct country is GOOD, not a reason to reject. Only reject if the scene is unusable for the lesson type (e.g., stock art rather than a real location, blurry, wrong country entirely). omit if true.>"
 }
 
 Return only JSON. No prose. No code fences.`;
@@ -513,11 +599,12 @@ async function resolveAndStashImage({
     const url = candidates[i];
     const bytes = await fetchImageBytes(url);
     const vision = await describeImageWithClaude({
-      apiKey: anthropicKey, bytes, mediaType: "image/jpeg", planHint: img,
+      apiKey: anthropicKey, bytes, mediaType: "image/jpeg", planHint: img, city,
     });
     const attempt = { url, bytes, vision, candidateIndex: i };
     if (!fallback) fallback = attempt;
-    if (vision.suitableForMadridLesson !== false) {
+    const suitable = vision.suitable !== false && vision.suitableForMadridLesson !== false;
+    if (suitable) {
       chosen = attempt;
       break;
     }
@@ -542,29 +629,30 @@ const SYSTEM_PROMPT = `You are an expert Spanish-language lesson author for an i
 
 You always respond with a single JSON object matching the schema the user gives you. Use the EXACT field names given — do not rename them. Never wrap the response in markdown code fences. Never add prose before or after the JSON.`;
 
-const EXERCISE_SCHEMA = `Each gatedExercise MUST be one of these FOUR shapes, using the EXACT field names shown:
+const EXERCISE_SCHEMA = `Each gatedExercise MUST be one of these FOUR shapes, using the EXACT field names shown. EVERY shape MUST include an "explanation" string (1-2 sentences, revealed AFTER the learner answers — for correct answers reinforce the hints; for incorrect names the right answer and ties it back to the image/hints):
   Multiple choice:
-    { "kind": "multiple_choice", "question": "<English question>", "correct": "<the right option>", "wrong": ["<distractor>", "<distractor>", "<distractor>"] }
+    { "kind": "multiple_choice", "question": "<English question — phrased as a guess / recognition prompt. DO NOT state the translation in the question.>", "correct": "<the right option>", "wrong": ["<distractor>", "<distractor>", "<distractor>"], "explanation": "<1-2 sentences revealing the meaning + why>" }
   Tap the correct word:
-    { "kind": "tap_word", "prompt": "<English prompt>", "correct": "<the right Spanish/English token>", "distractors": ["<other>", "<other>", "<other>"] }
+    { "kind": "tap_word", "prompt": "<English prompt pointing at a CLUE, not the translation — e.g. 'Tap the word that fits the cognate hint.'>", "correct": "<the right Spanish/Catalan token>", "distractors": ["<other>", "<other>", "<other>"], "explanation": "<1-2 sentences>" }
   Speaking aloud:
-    { "kind": "speaking", "prompt": "<English prompt e.g. 'Say it aloud'>", "expected": "<Spanish text the learner must say>", "translation": "<English of the expected Spanish>" }
+    { "kind": "speaking", "prompt": "<English prompt e.g. 'Say it aloud'>", "expected": "<Spanish/Catalan text the learner must say>", "translation": "<English of the expected>", "explanation": "<1-2 sentences>" }
   Fill in the blank:
-    { "kind": "fill_blank", "prompt": "<English or Spanish sentence with ______ for the blank>", "correct": "<answer that fills the blank>", "hint": "<optional short hint>" }
+    { "kind": "fill_blank", "prompt": "<Spanish/Catalan sentence with ______ for the blank>", "correct": "<answer that fills the blank>", "hint": "<optional short hint — NOT the translation>", "explanation": "<1-2 sentences>" }
 Do not use any other kind values. Do not rename question/correct/wrong to prompt/options/answer.`;
 
-const QUIZ_SCHEMA = `Each endQuiz item MUST be one of these four shapes, using the EXACT field names shown:
-  { "kind": "multiple_choice", "question": "<English>", "correct": "<right option>", "wrong": ["<d>", "<d>", "<d>"] }
-  { "kind": "fill_blank", "prompt": "<English sentence with ______ for the blank>", "correct": "<Spanish or English answer that fills the blank>", "hint": "<optional short hint>" }
-  { "kind": "listening", "audio": "<Spanish text the learner will hear via TTS>", "question": "<English question about the audio>", "correct": "<right option>", "wrong": ["<d>", "<d>", "<d>"] }
-  { "kind": "speaking", "prompt": "<English prompt>", "expected": "<Spanish to say>", "translation": "<English of expected>" }`;
+const QUIZ_SCHEMA = `Each endQuiz item MUST be one of these four shapes, using the EXACT field names shown. EVERY shape MUST include an "explanation" string (1-2 sentences revealed after the learner answers):
+  { "kind": "multiple_choice", "question": "<English>", "correct": "<right option>", "wrong": ["<d>", "<d>", "<d>"], "explanation": "<1-2 sentences>" }
+  { "kind": "fill_blank", "prompt": "<English sentence with ______ for the blank>", "correct": "<answer that fills the blank>", "hint": "<optional short hint>", "explanation": "<1-2 sentences>" }
+  { "kind": "listening", "audio": "<Spanish/Catalan text the learner will hear via TTS>", "question": "<English question about the audio>", "correct": "<right option>", "wrong": ["<d>", "<d>", "<d>"], "explanation": "<1-2 sentences>" }
+  { "kind": "speaking", "prompt": "<English prompt>", "expected": "<Spanish/Catalan to say>", "translation": "<English of expected>", "explanation": "<1-2 sentences>" }`;
 
-function buildContextBlock(prior) {
-  const chars = Object.entries(MADRID_CHARACTERS).map(([n, c]) => `  - ${n} (${c.role}) [first appears L${c.firstAppearance}]`).join("\n");
+function buildContextBlock(prior, characters, bilingualContext) {
+  const chars = Object.entries(characters).map(([n, c]) => `  - ${n} (${c.role}) [first appears L${c.firstAppearance}]`).join("\n");
   const vocab = prior.recentVocab.length
     ? prior.recentVocab.map((v) => `  - ${v.word} = ${v.english} (introduced L${v.firstLesson})`).join("\n")
     : "  (none yet — this is early in the trip)";
   const recap = prior.priorRecap ?? "(no prior lesson — this is the trip's opening moment)";
+  const bilingual = bilingualContext ? `\nBILINGUAL CONTEXT:\n${bilingualContext}\n` : "";
   return `Trip so far — one-sentence recap of the previous lesson to open this one:
 ${recap}
 
@@ -573,7 +661,7 @@ ${chars}
 
 Recent vocab introduced (recycle at least 2 items where natural):
 ${vocab}
-`;
+${bilingual}`;
 }
 
 // Build an "IMAGE CONTEXT" block that pins Claude's content to what the
@@ -600,8 +688,8 @@ CRITICAL — the lesson MUST be built around THIS specific photo. Every decodeSt
 `;
 }
 
-function visualPrompt({ orderIndex, title, location, type, image, vision, priorCtx }) {
-  return `You are writing Lesson ${orderIndex} of a 50-lesson Madrid traveler course.
+function visualPrompt({ orderIndex, title, location, type, image, vision, priorCtx, city, characters, bilingualContext }) {
+  return `You are writing Lesson ${orderIndex} of a 50-lesson ${city} traveler course.
 
 LESSON META
 - Title: "${title}"
@@ -609,31 +697,41 @@ LESSON META
 - Type: ${type}  (image-based — the learner sees ONE real photo of this scene and decodes it)
 
 ${imageContextBlock({ source: image?.source, vision })}
-${buildContextBlock(priorCtx)}
+${buildContextBlock(priorCtx, characters, bilingualContext)}
 
 Write ONE JSON object with EXACTLY this shape:
 
 {
-  "scene": "A 1-2 sentence second-person scene-setter that references what the learner sees in the photo. E.g., 'You step off the escalator at Sol Metro. You see this wayfinding sign overhead.'",
-  "storyRecap": "One sentence that will open the NEXT lesson, referring back to what happened here.",
+  "scene": "A 1-2 sentence second-person scene-setter that references what the learner sees in the photo.",
+  "storyRecap": "One sentence that will open the NEXT lesson.",
   "opening": {
     "kind": "image",
-    "fullSignText": "The Spanish text/words visible in the image, formatted for humans (· separators are fine for a sign; line breaks for a menu/document).",
+    "fullSignText": "The target-language text visible in the image, formatted for humans (· separators for a sign; line breaks for a menu/document).",
     "imageAlt": "One sentence of accessibility alt text describing the image."
   },
   "decodeSteps": [
     {
-      "wordOrPhrase": "Spanish word or short phrase visible in / implied by the image",
-      "phonetic": "[phonetic guide in brackets, English speaker friendly]",
-      "english": "English translation",
-      "mnemonic": "A one-sentence memory hook — sound-alike or English cognate connection.",
-      "culturalNote": "A one-sentence Madrid-specific tip. Optional — omit the field if not relevant.",
+      "wordOrPhrase": "Target-language word or short phrase visible in the image. In bilingual Barcelona, label the language in parentheses when a Catalan/Castilian pair is on the sign (e.g. 'Sortida (Catalan)').",
+      "phonetic": "[phonetic guide, English-speaker friendly]",
+      "english": "English translation (used ONLY at the quiz/buildup reveal; the runner does NOT render this during the decode step)",
+      "mnemonic": "One-sentence memory hook. Must NOT contain the English translation word itself.",
+      "culturalNote": "Optional one-sentence local tip.",
+      "hints": [
+        "Hint 1 — a strong clue (sound-alike / English cognate / word-root). MUST NOT contain the English translation of this word.",
+        "Hint 2 — a further clue leaning on the image context or grammar (optional; may be omitted).",
+        "Hint 3 — one more clue that nearly gives it away but still doesn't state the translation (optional; may be omitted)."
+      ],
+      "highlight": {
+        "kind": "caption",
+        "fullText": "The full visible-text string from opening.fullSignText (the whole sign line / caption).",
+        "highlightWord": "The exact substring of fullText that this decodeStep's wordOrPhrase corresponds to (case + accents matching so the runner can find it)."
+      },
       "gatedExercise": { …see EXERCISE SCHEMA below… }
     }
   ],
   "buildup": {
-    "fullEnglish": "The full English translation of the Spanish visible in the image.",
-    "celebrationMessage": "One warm sentence celebrating that the learner just read authentic Spanish from a real photo."
+    "fullEnglish": "The full English translation of the target-language visible in the image.",
+    "celebrationMessage": "One warm sentence celebrating that the learner just read authentic target-language from a real photo."
   },
   "endQuiz": [ …see QUIZ SCHEMA below… ]
 }
@@ -646,42 +744,51 @@ ${QUIZ_SCHEMA}
 
 REQUIREMENTS:
 - decodeSteps: 5 to 7 items drawn from the IMAGE CONTEXT visible-text list. Vary gatedExercise.kind across steps. NEVER put the same kind twice in a row. Include at least one "speaking" step.
+- hints: array of 2-3 strings. CRITICAL: The hints must NEVER contain the English translation of this wordOrPhrase as a whole word — not even as part of a pun or compound. If the word means "fair", DON'T write "funfair" or "trade fair" (both contain "fair"). If it means "exit", DON'T write "exit sign" or "exit route". Instead, go sideways: an etymological link whose surface word is different (e.g. for "fair" → "the Latin ancestor 'feria' meant a holiday market"), a sound-alike that isn't the meaning (e.g. "sounds like the English word for a device that heats your home" when the answer is "fan"), or a situational clue ("this is the sign you follow when you're done shopping"). The learner must still be able to guess — the hints just can't type the answer out.
+- highlight: required on every decodeStep (use kind="caption" with fullText = the whole opening.fullSignText and highlightWord = the substring).
+- Every gatedExercise and every endQuiz question MUST carry an "explanation" field.
+- Early gatedExercise questions should frame themselves as GUESSES ('Based on where this sign sits, what do you think LLEGADAS means?') rather than 'What does X mean?'.
 - endQuiz: exactly 5 items covering ONLY vocab from THIS lesson's image. Include at least three different kinds.
-- All Spanish text must be authentic Madrileño register.
+- All target-language text must be authentic register for the city. In bilingual Barcelona, teach BOTH Catalan and Castilian when both appear.
 - Return only the JSON. No prose, no code fences.`;
 }
 
-function audioPrompt({ orderIndex, title, location, type, subject, priorCtx }) {
-  return `You are writing Lesson ${orderIndex} of a 50-lesson Madrid traveler course.
+function audioPrompt({ orderIndex, title, location, type, subject, priorCtx, city, characters, bilingualContext }) {
+  return `You are writing Lesson ${orderIndex} of a 50-lesson ${city} traveler course.
 
 LESSON META
 - Title: "${title}"
 - Location: "${location}"
-- Type: ${type}  (audio-based — the learner hears a Spanish clip with NO transcript, then decodes it word-by-word)
+- Type: ${type}  (audio-based — the learner hears a target-language clip with NO transcript, then decodes it word-by-word)
 - Audio subject: ${subject}
 
-${buildContextBlock(priorCtx)}
+${buildContextBlock(priorCtx, characters, bilingualContext)}
 
 Write ONE JSON object with EXACTLY this shape:
 
 {
-  "scene": "A 1-2 sentence second-person scene-setter. E.g., 'You slide into a taxi at Barajas. Listen — no transcript.'",
+  "scene": "A 1-2 sentence second-person scene-setter.",
   "storyRecap": "One sentence that will open the NEXT lesson.",
   "opening": {
     "kind": "audio",
     "durationHint": "~15 seconds",
     "script": [
-      { "speaker": "Driver" | "Carlos" | "Announcer" | "Vendor" | ..., "gender": "male" | "female", "text": "<Spanish line>", "pauseAfterMs": 1200 }
+      { "speaker": "Driver" | "Jordi" | "Núria" | "Announcer" | ..., "gender": "male" | "female", "text": "<target-language line>", "pauseAfterMs": 1200 }
     ]
   },
   "decodeSteps": [
     {
-      "wordOrPhrase": "Spanish word or short phrase pulled from the script",
+      "wordOrPhrase": "Target-language word or short phrase pulled from the script",
       "phonetic": "[phonetic guide]",
-      "english": "English translation",
-      "mnemonic": "One-sentence memory hook.",
-      "culturalNote": "Optional one-sentence Madrid tip — omit if not relevant.",
-      "audioSnippet": "The exact substring from opening.script[].text that this word/phrase appears in. Required for audio lessons — used to replay that portion.",
+      "english": "English translation (used ONLY at the quiz/buildup reveal; the runner does NOT render this during the decode step)",
+      "mnemonic": "One-sentence memory hook. Must NOT contain the English translation word.",
+      "culturalNote": "Optional one-sentence local tip.",
+      "hints": [
+        "Hint 1 — a strong clue. MUST NOT contain the English translation.",
+        "Hint 2 — further clue (optional).",
+        "Hint 3 — near-giveaway without stating the translation (optional)."
+      ],
+      "audioSnippet": "The exact substring from opening.script[].text that this word/phrase appears in. Required for audio lessons — used to replay that portion and highlight the matching waveform segment.",
       "gatedExercise": { …see EXERCISE SCHEMA below… }
     }
   ],
@@ -700,10 +807,13 @@ ${QUIZ_SCHEMA}
 
 REQUIREMENTS:
 - opening.script: 2 to 5 lines totalling 12-25 seconds of speech.
-- For overheard lessons where the location fits a recurring character (Carlos / María / Ana), USE that character as a speaker and keep the voice consistent with the profile.
+- For overheard lessons where the location fits a recurring character, USE that character as a speaker and keep the voice consistent with the profile.
 - decodeSteps: 5 to 7 items, each with an audioSnippet drawn verbatim from opening.script[].text. Vary gatedExercise.kind; never same kind twice in a row; include at least one "speaking" step.
+- hints: 2-3 strings per step, MUST NEVER contain the English translation as a whole word — not even as part of a pun or compound. Same rule as the image prompt: go sideways (etymology, sound-alike that isn't the meaning, situational clue).
+- Every gatedExercise and every endQuiz question MUST carry an "explanation" field.
+- Early exercise questions should frame themselves as GUESSES.
 - endQuiz: exactly 5 items. Include at least one "listening" question and at least three different kinds overall.
-- All Spanish must be authentic Madrileño register.
+- All target-language must be authentic register for the city.
 - Return only the JSON. No prose, no code fences.`;
 }
 
@@ -713,6 +823,44 @@ REQUIREMENTS:
 
 const EXERCISE_KINDS = new Set(["multiple_choice", "tap_word", "speaking", "fill_blank"]);
 const QUIZ_KINDS = new Set(["multiple_choice", "fill_blank", "listening", "speaking"]);
+
+// Returns an array of whole-word tokens from `english` that count as
+// "the translation" — used to catch hints that leak the meaning. We:
+//   - strip parentheticals like "(Spanish given name)" so metadata
+//     language labels don't bleed into the ban list;
+//   - split on separators ("Fair / Exhibition centre" → tokens from
+//     both sides, because EITHER side is the translation);
+//   - drop stopwords + language-metadata words that commonly appear
+//     as contextual labels, not as the meaning.
+const STOPWORDS = new Set([
+  "a", "an", "the", "of", "to", "in", "on", "at", "or", "and", "is", "are", "be", "for",
+  "spanish", "castilian", "catalan", "english", "name", "surname", "given", "proper", "noun", "verb",
+  "depicted", "fruit", "shown", "pictured", "city", "place", "landmark",
+]);
+function translationTokens(english) {
+  if (!english) return [];
+  const stripped = english.replace(/\([^)]*\)/g, " ");
+  return stripped
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((t) => t && t.length >= 3 && !STOPWORDS.has(t));
+}
+
+// True when any `englishTokens` word appears as a whole word inside
+// the hints[] array. We intentionally allow substring misses (e.g.
+// "arrival" vs "arrive") because the goal is to catch exact leaks,
+// not creative paraphrases.
+function hintsLeakTranslation(hints, englishTokens) {
+  if (!Array.isArray(hints) || englishTokens.length === 0) return null;
+  for (const h of hints) {
+    const lower = String(h).toLowerCase();
+    for (const t of englishTokens) {
+      const re = new RegExp(`\\b${t}\\b`, "i");
+      if (re.test(lower)) return { hint: h, leak: t };
+    }
+  }
+  return null;
+}
 
 function assertShape(v2, mediumExpected) {
   if (!v2 || typeof v2 !== "object") throw new Error("root is not an object");
@@ -728,8 +876,34 @@ function assertShape(v2, mediumExpected) {
   }
   if (!Array.isArray(v2.decodeSteps) || v2.decodeSteps.length < 3) throw new Error("decodeSteps missing / too few");
   for (const [i, s] of v2.decodeSteps.entries()) {
-    if (!s.wordOrPhrase || !s.english || !s.mnemonic) throw new Error(`decodeSteps[${i}] missing fields`);
+    if (!s.wordOrPhrase || !s.english || !s.mnemonic) throw new Error(`decodeSteps[${i}] missing fields (wordOrPhrase/english/mnemonic)`);
+    if (!Array.isArray(s.hints) || s.hints.length < 1 || s.hints.length > 3) {
+      throw new Error(`decodeSteps[${i}].hints must be an array of 1-3 strings (got ${JSON.stringify(s.hints).slice(0, 40)})`);
+    }
+    for (const [hi, h] of s.hints.entries()) {
+      if (typeof h !== "string" || h.length < 10) {
+        throw new Error(`decodeSteps[${i}].hints[${hi}] is empty or too short`);
+      }
+    }
+    const leak = hintsLeakTranslation(s.hints, translationTokens(s.english));
+    if (leak) {
+      throw new Error(`decodeSteps[${i}].hints leak the translation ("${leak.leak}" found in: "${String(leak.hint).slice(0, 80)}")`);
+    }
+    if (mediumExpected === "image") {
+      if (!s.highlight || typeof s.highlight !== "object") {
+        throw new Error(`decodeSteps[${i}].highlight missing (required for image lessons)`);
+      }
+      if (s.highlight.kind !== "caption" && s.highlight.kind !== "region") {
+        throw new Error(`decodeSteps[${i}].highlight.kind must be 'caption' or 'region'`);
+      }
+      if (s.highlight.kind === "caption" && (!s.highlight.fullText || !s.highlight.highlightWord)) {
+        throw new Error(`decodeSteps[${i}].highlight (caption) needs fullText + highlightWord`);
+      }
+    }
     if (!s.gatedExercise || !EXERCISE_KINDS.has(s.gatedExercise.kind)) throw new Error(`decodeSteps[${i}].gatedExercise invalid`);
+    if (!s.gatedExercise.explanation || typeof s.gatedExercise.explanation !== "string") {
+      throw new Error(`decodeSteps[${i}].gatedExercise.explanation missing`);
+    }
     if (mediumExpected === "audio" && !s.audioSnippet) throw new Error(`decodeSteps[${i}].audioSnippet missing (required for audio)`);
   }
   for (let i = 1; i < v2.decodeSteps.length; i++) {
@@ -741,6 +915,9 @@ function assertShape(v2, mediumExpected) {
   if (!Array.isArray(v2.endQuiz) || v2.endQuiz.length < 3) throw new Error("endQuiz missing / too few");
   for (const [i, q] of v2.endQuiz.entries()) {
     if (!QUIZ_KINDS.has(q.kind)) throw new Error(`endQuiz[${i}].kind invalid: ${q.kind}`);
+    if (!q.explanation || typeof q.explanation !== "string") {
+      throw new Error(`endQuiz[${i}].explanation missing`);
+    }
   }
 }
 
@@ -820,10 +997,14 @@ async function main() {
     ? lessons.filter((l) => l.order_index === flags.lesson)
     : lessons;
 
-  if (course.city !== "Madrid") {
-    console.error(`Only Madrid has a lesson plan defined in this script. Add ${course.city}_LESSON_PLAN before running.`);
+  const cityPlan = CITY_PLANS[course.city];
+  if (!cityPlan) {
+    console.error(`No lesson plan defined for ${course.city}. Add ${course.city.toUpperCase()}_LESSON_PLAN to CITY_PLANS before running.`);
     process.exit(1);
   }
+  const LESSON_PLAN = cityPlan.plan;
+  const CHARACTERS = cityPlan.characters;
+  const BILINGUAL = cityPlan.bilingualContext;
 
   const progress = await loadProgress(flags.reset);
   let processed = 0, succeeded = 0, failed = 0;
@@ -836,7 +1017,7 @@ async function main() {
       console.log(`\nlimit ${flags.limit} reached, stopping`);
       break;
     }
-    const plan = MADRID_LESSON_PLAN[lesson.order_index];
+    const plan = LESSON_PLAN[lesson.order_index];
     if (!plan) { failed++; failures.push({ order: lesson.order_index, title: lesson.title, error: "no plan entry" }); continue; }
 
     const key = `${course.city}:${lesson.order_index}`;
@@ -871,12 +1052,14 @@ async function main() {
         ? visualPrompt({
             orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name,
             type: plan.type, image: plan.image, vision: imageInfo?.vision, priorCtx,
+            city: course.city, characters: CHARACTERS, bilingualContext: BILINGUAL,
           })
         : audioPrompt({
             orderIndex: lesson.order_index, title: lesson.title, location: lesson.location_name,
             type: plan.type,
-            subject: lesson.title, // audio lessons: title gives the setup; priorCtx carries recap
+            subject: lesson.title,
             priorCtx,
+            city: course.city, characters: CHARACTERS, bilingualContext: BILINGUAL,
           });
 
       let v2, usage;

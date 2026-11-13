@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isCurrentUserPremium } from "@/lib/learn";
 import {
   getTravelerCourseByCitySlug,
+  getOpenSkippedSpeakingCountForCity,
   type TravelerLessonSummary,
 } from "@/lib/traveler";
 
@@ -56,6 +57,10 @@ export default async function TravelerCityPage(
   const { course, lessons } = data;
 
   const isPremium = await isCurrentUserPremium();
+  const skippedSpeakingCount = await getOpenSkippedSpeakingCountForCity({
+    languageSlug: langSlug,
+    citySlug,
+  }).catch(() => 0);
 
   const completedCount = lessons.filter((l) => l.completed).length;
   const totalCount = lessons.length;
@@ -106,32 +111,68 @@ export default async function TravelerCityPage(
           </div>
         </section>
 
-        {/* Progress summary */}
+        {/* Progress summary + Speaking practice badge */}
         <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-          <div className="bg-white border border-border rounded-2xl p-4 sm:p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-teal-dark">
-                Journey progress
-              </p>
-              <p className="text-xs tabular-nums text-navy/60">
-                {completedCount} / {totalCount} · {progressPct}%
-              </p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 bg-white border border-border rounded-2xl p-4 sm:p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold uppercase tracking-wider text-teal-dark">
+                  Journey progress
+                </p>
+                <p className="text-xs tabular-nums text-navy/60">
+                  {completedCount} / {totalCount} · {progressPct}%
+                </p>
+              </div>
+              <div className="w-full h-2 bg-navy/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-teal to-teal-dark rounded-full transition-all duration-500"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              {!isPremium && (
+                <p className="mt-3 text-xs text-navy/60">
+                  Free preview:{" "}
+                  <span className="font-semibold text-navy">
+                    first {course.freePreviewCount} lessons
+                  </span>
+                  . Upgrade to Premium for the full trip.
+                </p>
+              )}
             </div>
-            <div className="w-full h-2 bg-navy/5 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-teal to-teal-dark rounded-full transition-all duration-500"
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-            {!isPremium && (
-              <p className="mt-3 text-xs text-navy/60">
-                Free preview:{" "}
-                <span className="font-semibold text-navy">
-                  first {course.freePreviewCount} lessons
-                </span>
-                . Upgrade to Premium for the full trip.
-              </p>
-            )}
+            {/* Speaking practice badge — only renders when the learner
+                has at least one open skipped speaking exercise in this
+                city. Tap to open the practice panel. */}
+            <Link
+              href={`/learn/${langSlug}/travel/${citySlug}/speaking-practice`}
+              aria-label={`Speaking practice (${skippedSpeakingCount} to go)`}
+              className={`group relative inline-flex sm:flex-col items-center justify-center gap-2 sm:gap-1 shrink-0 bg-white border border-border rounded-2xl p-4 sm:py-5 sm:px-6 shadow-sm hover:border-amber-300 hover:shadow-md transition-all min-h-[64px] sm:min-w-[120px]`}
+            >
+              <span className="relative inline-flex items-center justify-center w-10 h-10 rounded-full bg-amber-100 text-amber-700 group-hover:bg-amber-200 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                </svg>
+                {skippedSpeakingCount > 0 && (
+                  <span
+                    aria-hidden
+                    className="absolute -top-1 -right-1 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold ring-2 ring-white"
+                  >
+                    {skippedSpeakingCount > 99 ? "99+" : skippedSpeakingCount}
+                  </span>
+                )}
+              </span>
+              <div className="text-start sm:text-center">
+                <p className="text-sm font-semibold text-navy leading-tight">
+                  Speaking practice
+                </p>
+                <p className="text-xs text-navy/60 leading-tight mt-0.5">
+                  {skippedSpeakingCount === 0
+                    ? "All caught up"
+                    : skippedSpeakingCount === 1
+                      ? "1 to go"
+                      : `${skippedSpeakingCount} to go`}
+                </p>
+              </div>
+            </Link>
           </div>
         </section>
 

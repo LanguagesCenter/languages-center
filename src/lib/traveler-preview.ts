@@ -18,6 +18,34 @@ export type OpeningImage = {
   imageSource?: "streetview" | "unsplash";
 };
 
+// A highlight region overlaid on the image during a decode step. For
+// Street View / Unsplash photos the exact text pixel coordinates are
+// usually unknown, so the generator prefers the "caption" fallback:
+// a strip rendered below the image reproducing the sign text in the
+// original Spanish, with the current word highlighted.
+//
+// - kind="region": a box overlay in normalized (0..1) coordinates
+//   relative to the image frame. x/y point to the top-left corner.
+// - kind="caption": a caption strip below the image showing
+//   `fullText`, with `highlightWord` wrapped in a glowing span.
+export type DecodeHighlight =
+  | {
+      kind: "region";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      // The verbatim Spanish text inside the region. Also rendered in
+      // the caption strip as a safety net (not every browser's Image
+      // layout exactly matches the authored pixel coords).
+      text: string;
+    }
+  | {
+      kind: "caption";
+      fullText: string;
+      highlightWord: string;
+    };
+
 export type AudioLine = {
   speaker: string;
   gender?: "male" | "female";
@@ -31,38 +59,67 @@ export type OpeningAudio = {
   durationHint: string;
 };
 
+// Every exercise now carries an `explanation` field — a 1-2 sentence
+// note revealed after the learner answers. For a correct answer it
+// reinforces the hint chain; for an incorrect answer it names the
+// right choice and ties it back to the image / hints so the learner
+// understands WHY. Optional on legacy content; required by the new
+// generator.
 export type GatedExercise =
   | {
       kind: "multiple_choice";
       question: string;
       correct: string;
       wrong: string[];
+      explanation?: string;
     }
   | {
       kind: "tap_word";
       prompt: string;
       correct: string;
       distractors: string[];
+      explanation?: string;
     }
   | {
       kind: "speaking";
       prompt: string;
       expected: string;
+      // The meaning of the expected phrase. Kept on speaking
+      // exercises because the learner cannot answer without knowing
+      // what to say — it's not a "guess the translation" moment.
       translation: string;
+      explanation?: string;
     }
   | {
       kind: "fill_blank";
       prompt: string;
       correct: string;
       hint?: string;
+      explanation?: string;
     };
 
 export type DecodeStep = {
   wordOrPhrase: string;
   phonetic: string;
+  // English translation. The new runner does NOT render this during
+  // the decode step — the meaning is withheld until the end-of-lesson
+  // quiz / buildup reveal. Kept on the data structure because the
+  // quiz, feedback explanations, and legacy renderers need it.
   english: string;
+  // Legacy single-string tip. Still populated by the generator for
+  // backward compat, but the new runner reads `hints[]` instead.
   mnemonic: string;
+  // Second legacy tip bucket — folded into `hints[]` on the new path.
   culturalNote?: string;
+  // Up to 3 progressive hints the learner uncovers one at a time by
+  // tapping Continue. The LAST Continue advances from hints → the
+  // step's gated exercise. The new generator MUST emit this array
+  // without ever including the English translation of the word.
+  hints?: string[];
+  // Highlights the word being decoded on the opening image or audio
+  // player. For audio, use `audioSnippet` + the pulsing waveform
+  // segment; for images, use this `highlight` shape.
+  highlight?: DecodeHighlight;
   audioSnippet?: string;
   gatedExercise: GatedExercise;
 };
@@ -73,20 +130,29 @@ export type EndQuizQuestion =
       question: string;
       correct: string;
       wrong: string[];
+      explanation?: string;
     }
-  | { kind: "fill_blank"; prompt: string; correct: string; hint?: string }
+  | {
+      kind: "fill_blank";
+      prompt: string;
+      correct: string;
+      hint?: string;
+      explanation?: string;
+    }
   | {
       kind: "listening";
       audio: string;
       question: string;
       correct: string;
       wrong: string[];
+      explanation?: string;
     }
   | {
       kind: "speaking";
       prompt: string;
       expected: string;
       translation: string;
+      explanation?: string;
     };
 
 export type PreviewLesson = {
@@ -140,13 +206,24 @@ const lesson1: PreviewLesson = {
       english: "arrivals",
       mnemonic:
         "LLEGADAS sounds like ‘yeh-gathers’ — picture a crowd gathering after they arrive.",
-      culturalNote:
-        "Every Spanish airport pairs LLEGADAS (arrivals) with SALIDAS (departures). If you see SALIDAS you're on the wrong floor.",
+      highlight: {
+        kind: "caption",
+        fullText:
+          "LLEGADAS INTERNACIONALES · CONTROL DE PASAPORTES · RECOGIDA DE EQUIPAJES · SALIDA",
+        highlightWord: "LLEGADAS",
+      },
+      hints: [
+        "Say it: yeh-GAH-dahs. Comes from llegar — related to ‘allegiance’ and ‘legate’ in English, both from Latin ligare, to bind / arrive at.",
+        "This sign is overhead immediately after you leave the plane. Think about what that first word has to describe: everyone around you just did it.",
+        "It pairs with SALIDAS (going out). One tells you what just happened to you, one tells you what the people on the other side of the building are about to do.",
+      ],
       gatedExercise: {
         kind: "multiple_choice",
-        question: "What does LLEGADAS mean?",
+        question: "Based on where this sign sits (the first thing you see leaving the plane), what do you think LLEGADAS means?",
         correct: "Arrivals",
         wrong: ["Departures", "Gates", "Delays"],
+        explanation:
+          "LLEGADAS = ARRIVALS. The word is from llegar (to arrive). SALIDAS on the other side of the terminal is Departures.",
       },
     },
     {
@@ -155,11 +232,23 @@ const lesson1: PreviewLesson = {
       english: "international",
       mnemonic:
         "Same word as English — just the Spanish -ES plural ending. Trust the cognate.",
+      highlight: {
+        kind: "caption",
+        fullText:
+          "LLEGADAS INTERNACIONALES · CONTROL DE PASAPORTES · RECOGIDA DE EQUIPAJES · SALIDA",
+        highlightWord: "INTERNACIONALES",
+      },
+      hints: [
+        "This is one of those words that's almost spelled the same in English — just rearrange the ending.",
+        "The -ES on the end is Spanish plural. Drop it and you've got a word you use every day.",
+      ],
       gatedExercise: {
         kind: "tap_word",
-        prompt: "Tap the word that means ‘international’.",
+        prompt: "Tap the word that fits with the English cognate hint.",
         correct: "INTERNACIONALES",
         distractors: ["NACIONALES", "REGIONALES", "PERSONALES"],
+        explanation:
+          "INTERNACIONALES = INTERNATIONAL. The three distractors are also real cognates (national, regional, personal) — each flipped by its prefix.",
       },
     },
     {
@@ -168,13 +257,24 @@ const lesson1: PreviewLesson = {
       english: "passport control",
       mnemonic:
         "CONTROL = control. PASAPORTES = passports. Almost identical to English — the only trick is stress on the second-to-last syllable.",
-      culturalNote:
-        "Non-EU travelers queue at ‘Todos Pasaportes’. EU passport holders can use the automated eGates.",
+      highlight: {
+        kind: "caption",
+        fullText:
+          "LLEGADAS INTERNACIONALES · CONTROL DE PASAPORTES · RECOGIDA DE EQUIPAJES · SALIDA",
+        highlightWord: "CONTROL DE PASAPORTES",
+      },
+      hints: [
+        "Say it: kohn-TROHL deh pah-sah-POR-tess. Both halves are near-identical to their English cognates.",
+        "‘DE’ in Spanish connects two nouns and means ‘of’ — like ‘Casa de Juan’ (Juan’s house). So this is ‘control OF ______’.",
+        "You're about to show your blue or burgundy booklet to an officer. What's this checkpoint for?",
+      ],
       gatedExercise: {
         kind: "speaking",
         prompt: "Say it aloud.",
         expected: "control de pasaportes",
         translation: "passport control",
+        explanation:
+          "CONTROL DE PASAPORTES = PASSPORT CONTROL. Stress lands on the second-to-last syllable in both halves (konTROL · pasaPORtes).",
       },
     },
     {
@@ -183,28 +283,49 @@ const lesson1: PreviewLesson = {
       english: "baggage claim",
       mnemonic:
         "RECOGIDA = pick-up (from recoger, to collect). EQUIPAJES = luggage — think ‘equipment’ you travel with.",
-      culturalNote:
-        "The belt number is announced overhead and on the flight-info displays — look for your flight code (e.g. ‘IB6252’).",
+      highlight: {
+        kind: "caption",
+        fullText:
+          "LLEGADAS INTERNACIONALES · CONTROL DE PASAPORTES · RECOGIDA DE EQUIPAJES · SALIDA",
+        highlightWord: "RECOGIDA DE EQUIPAJES",
+      },
+      hints: [
+        "RECOGIDA comes from recoger — ‘to collect, pick up’. Think ‘recollect’.",
+        "EQUIPAJES is close to the English word for travel gear — what you bring with you.",
+        "After passport control, every traveler heads to the same place. What are they going to pick up?",
+      ],
       gatedExercise: {
         kind: "multiple_choice",
-        question: "Which of these means ‘baggage claim’?",
+        question: "Which of these do you think means ‘baggage claim’?",
         correct: "RECOGIDA DE EQUIPAJES",
         wrong: ["SALA DE EMBARQUE", "PUERTA DE SALIDA", "FACTURACIÓN"],
+        explanation:
+          "RECOGIDA DE EQUIPAJES = BAGGAGE CLAIM, literally ‘collection of luggage’. The distractors mean boarding hall, departure gate, and check-in.",
       },
     },
     {
       wordOrPhrase: "SALIDA",
       phonetic: "[sah-LEE-dah]",
-      english: "exit / way out",
+      english: "exit",
       mnemonic:
-        "SALIDA — think ‘sally forth’, to go out. SALIDA = exit.",
-      culturalNote:
-        "In Madrid metros and airports, SALIDA signs are green (like an EU emergency-exit sign). Follow the green arrow.",
+        "SALIDA — think ‘sally forth’, to go out.",
+      highlight: {
+        kind: "caption",
+        fullText:
+          "LLEGADAS INTERNACIONALES · CONTROL DE PASAPORTES · RECOGIDA DE EQUIPAJES · SALIDA",
+        highlightWord: "SALIDA",
+      },
+      hints: [
+        "Sounds like ‘sally’ — to ‘sally forth’ means to go out. English owes that word to the same root (Latin salire, to spring out).",
+        "This is the very last word on the sign. Everything else leads you here.",
+      ],
       gatedExercise: {
         kind: "speaking",
         prompt: "Say it aloud.",
         expected: "salida",
         translation: "exit",
+        explanation:
+          "SALIDA = EXIT / WAY OUT. In Madrid, SALIDA signs are green — follow the green arrow.",
       },
     },
   ],
@@ -220,12 +341,16 @@ const lesson1: PreviewLesson = {
       question: "What does SALIDA mean?",
       correct: "Exit",
       wrong: ["Entrance", "Baggage claim", "Passport"],
+      explanation:
+        "SALIDA = EXIT. Spanish verb salir means to leave; the English ‘sally forth’ shares the same Latin root.",
     },
     {
       kind: "fill_blank",
       prompt: "Passport control is CONTROL DE ______",
       correct: "PASAPORTES",
       hint: "Same word as English, plural.",
+      explanation:
+        "PASAPORTES = PASSPORTS. ‘DE’ connects the two nouns, making ‘control OF passports’.",
     },
     {
       kind: "listening",
@@ -233,18 +358,24 @@ const lesson1: PreviewLesson = {
       question: "You just heard the announcer say this word. What does it mean?",
       correct: "Arrivals",
       wrong: ["Departures", "Delays", "Gate change"],
+      explanation:
+        "LLEGADAS = ARRIVALS, from llegar (to arrive). SALIDAS would be departures — opposite side of the terminal.",
     },
     {
       kind: "multiple_choice",
       question: "Which sign points to baggage claim?",
       correct: "RECOGIDA DE EQUIPAJES",
       wrong: ["LLEGADAS", "SALIDA", "CONTROL DE PASAPORTES"],
+      explanation:
+        "RECOGIDA DE EQUIPAJES = ‘collection of luggage’. The others are arrivals, exit, and passport control.",
     },
     {
       kind: "speaking",
       prompt: "Say the word for ‘exit’.",
       expected: "salida",
       translation: "exit",
+      explanation:
+        "SALIDA = EXIT. Sa-LEE-dah. In Madrid airports and metros, SALIDA signs are green.",
     },
   ],
   xpReward: 20,
@@ -301,14 +432,19 @@ const lesson3: PreviewLesson = {
       english: "Hello, good afternoon",
       mnemonic:
         "BUENAS = ‘goods’. TARDES = ‘tardy / late’. Together: the good late-part of the day.",
-      culturalNote:
-        "‘Buenas tardes’ kicks in around 2pm after lunch. Before that it's ‘buenos días’. After sunset, ‘buenas noches’.",
+      hints: [
+        "You've heard HOLA a thousand times — it's the Spanish you already know.",
+        "BUENAS is the feminine plural of BUENO (good). TARDES is close to the English ‘tardy’ — late in the day.",
+        "In Spain, this greeting kicks in right after lunch, around 2pm. Before that it's BUENOS DÍAS; after sunset, BUENAS NOCHES.",
+      ],
       audioSnippet: "Hola, buenas tardes.",
       gatedExercise: {
         kind: "multiple_choice",
         question: "What did the driver just say?",
         correct: "Hello, good afternoon",
         wrong: ["Hello, good morning", "Welcome, good evening", "Goodbye, safe travels"],
+        explanation:
+          "HOLA, BUENAS TARDES = HELLO, GOOD AFTERNOON. BUENAS DÍAS is good morning; BUENAS NOCHES is good evening/night.",
       },
     },
     {

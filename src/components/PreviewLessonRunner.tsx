@@ -6,6 +6,7 @@ import Link from "next/link";
 import type {
   PreviewLesson,
   DecodeStep,
+  DecodeHighlight,
   GatedExercise,
   EndQuizQuestion,
   AudioLine,
@@ -58,7 +59,6 @@ function useSpeechVoice(lang: string, gender?: "male" | "female"): SpeechSynthes
   return voice;
 }
 
-// Play a single utterance. Returns a controller with stop().
 function speakOnce(
   text: string,
   lang: string,
@@ -142,7 +142,7 @@ function useAudioScript(script: AudioLine[], lang: string) {
   const femaleVoice = useSpeechVoice(lang, "female");
   const defaultVoice = useSpeechVoice(lang);
   const [playing, setPlaying] = useState(false);
-  const [cursor, setCursor] = useState(-1); // -1 = idle
+  const [cursor, setCursor] = useState(-1);
   const cancelledRef = useRef(false);
 
   const stop = useCallback(() => {
@@ -194,7 +194,70 @@ function useAudioScript(script: AudioLine[], lang: string) {
 }
 
 // ============================================================
-// Speech recognition (Web Speech API)
+// prefers-reduced-motion & typing animation
+// ============================================================
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const onChange = () => setReduced(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return reduced;
+}
+
+// Types-out `text` one character at a time. Caller can call `finish()`
+// to snap to the final string instantly. Respects reduced motion.
+function useTypedText(text: string, msPerChar = 28): {
+  shown: string;
+  done: boolean;
+  finish: () => void;
+} {
+  const reducedMotion = usePrefersReducedMotion();
+  const [shown, setShown] = useState<string>(reducedMotion ? text : "");
+  const [done, setDone] = useState<boolean>(reducedMotion);
+  const timerRef = useRef<number | null>(null);
+  const idxRef = useRef(0);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setShown(text);
+      setDone(true);
+      return;
+    }
+    setShown("");
+    setDone(false);
+    idxRef.current = 0;
+    const tick = () => {
+      idxRef.current += 1;
+      setShown(text.slice(0, idxRef.current));
+      if (idxRef.current >= text.length) {
+        setDone(true);
+        return;
+      }
+      timerRef.current = window.setTimeout(tick, msPerChar);
+    };
+    timerRef.current = window.setTimeout(tick, msPerChar);
+    return () => {
+      if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    };
+  }, [text, msPerChar, reducedMotion]);
+
+  const finish = useCallback(() => {
+    if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    setShown(text);
+    setDone(true);
+  }, [text]);
+
+  return { shown, done, finish };
+}
+
+// ============================================================
+// Speech recognition
 // ============================================================
 
 interface ISpeechRecognition extends EventTarget {
@@ -238,7 +301,6 @@ function pronunciationMatches(heard: string, expected: string): boolean {
   const e = normalize(expected);
   if (h === e) return true;
   if (h.includes(e) || e.includes(h)) return true;
-  // Loose: at least 70% of expected words present
   const expectedWords = e.split(" ");
   const heardWords = new Set(h.split(" "));
   const hit = expectedWords.filter((w) => heardWords.has(w)).length;
@@ -246,10 +308,109 @@ function pronunciationMatches(heard: string, expected: string): boolean {
 }
 
 // ============================================================
-// Exercises (gated — Continue is blocked until answered correctly)
+// Backward-compat: derive hints[] and highlight when the lesson row
+// only has the old schema (single `mnemonic` + optional `culturalNote`).
 // ============================================================
 
-type ExerciseResult = { correct: boolean; heard?: string };
+function stepHints(step: DecodeStep): string[] {
+  if (step.hints && step.hints.length > 0) return step.hints.slice(0, 3);
+  const out: string[] = [];
+  if (step.mnemonic) out.push(step.mnemonic);
+  if (step.culturalNote) out.push(step.culturalNote);
+  if (out.length === 0) {
+    out.push("Say the word aloud and let the sound carry the meaning.");
+  }
+  return out.slice(0, 3);
+}
+
+// Fallback highlight when the generator didn't emit one. Caption strip
+// always renders the full sign text and glows the current word if we
+// can find it.
+function stepHighlight(step: DecodeStep, opening: PreviewLesson["opening"]): DecodeHighlight | null {
+  if (step.highlight) return step.highlight;
+  if (opening.kind !== "image") return null;
+  const fullText = opening.fullSignText ?? "";
+  if (!fullText) return null;
+  return {
+    kind: "caption",
+    fullText,
+    highlightWord: step.wordOrPhrase,
+  };
+}
+
+// ============================================================
+// Correct / Incorrect feedback card
+// ============================================================
+
+function FeedbackCard({
+  correct,
+  expected,
+  explanation,
+  onContinue,
+}: {
+  correct: boolean;
+  expected: string;
+  explanation: string | null;
+  onContinue: () => void;
+}) {
+  return (
+    <div
+      className={`mt-3 rounded-2xl border-2 p-5 animate-in fade-in slide-in-from-bottom-2 duration-300 ${
+        correct
+          ? "border-teal/40 bg-teal-light"
+          : "border-red-300 bg-red-50"
+      }`}
+      role="status"
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-3 mb-2">
+        <span
+          className={`inline-flex items-center justify-center w-10 h-10 rounded-full ${
+            correct ? "bg-teal text-white" : "bg-red-500 text-white"
+          }`}
+        >
+          {correct ? (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          )}
+        </span>
+        <p
+          className={`text-lg font-bold ${
+            correct ? "text-teal-dark" : "text-red-700"
+          }`}
+        >
+          {correct ? "Correct" : "Not quite"}
+        </p>
+      </div>
+      {!correct && expected && (
+        <p className="text-sm text-navy/80 mb-1">
+          Correct answer: <span className="font-bold text-navy">{expected}</span>
+        </p>
+      )}
+      {explanation && (
+        <p className="text-sm text-navy/80 leading-relaxed">{explanation}</p>
+      )}
+      <button
+        type="button"
+        onClick={onContinue}
+        className="mt-4 w-full py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors"
+      >
+        Continue →
+      </button>
+    </div>
+  );
+}
+
+// ============================================================
+// Exercises (ungated — answers now reveal feedback inline)
+// ============================================================
+
+type AnswerResult = { correct: boolean; heard?: string; skipped?: boolean };
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -262,21 +423,18 @@ function shuffle<T>(arr: T[]): T[] {
 
 function MultipleChoiceExercise({
   ex,
-  onResult,
-  passed,
+  onAnswered,
 }: {
   ex: Extract<GatedExercise, { kind: "multiple_choice" }>;
-  onResult: (r: ExerciseResult) => void;
-  passed: boolean;
+  onAnswered: (r: AnswerResult) => void;
 }) {
   const options = useMemo(() => shuffle([ex.correct, ...ex.wrong]), [ex]);
   const [picked, setPicked] = useState<string | null>(null);
 
   function pick(opt: string) {
-    if (passed) return;
+    if (picked) return;
     setPicked(opt);
-    const correct = opt === ex.correct;
-    onResult({ correct });
+    onAnswered({ correct: opt === ex.correct });
   }
 
   return (
@@ -287,13 +445,15 @@ function MultipleChoiceExercise({
           const isPicked = picked === opt;
           const isCorrect = opt === ex.correct;
           let cls = "border-border bg-white text-navy hover:border-teal hover:bg-teal-light";
-          if (passed && isCorrect) cls = "border-teal bg-teal-light text-teal-dark";
+          if (picked && isCorrect) cls = "border-teal bg-teal-light text-teal-dark";
           else if (isPicked && !isCorrect) cls = "border-red-300 bg-red-50 text-red-700";
+          else if (picked && !isCorrect) cls = "border-border bg-white text-navy/40";
           return (
             <button
               key={opt}
               type="button"
               onClick={() => pick(opt)}
+              disabled={!!picked}
               className={`w-full py-3 px-4 rounded-xl border-2 text-start text-sm font-medium transition-all ${cls}`}
             >
               {opt}
@@ -301,29 +461,24 @@ function MultipleChoiceExercise({
           );
         })}
       </div>
-      {picked && picked !== ex.correct && !passed && (
-        <p className="text-xs text-red-600">Not quite — try again.</p>
-      )}
     </div>
   );
 }
 
 function TapWordExercise({
   ex,
-  onResult,
-  passed,
+  onAnswered,
 }: {
   ex: Extract<GatedExercise, { kind: "tap_word" }>;
-  onResult: (r: ExerciseResult) => void;
-  passed: boolean;
+  onAnswered: (r: AnswerResult) => void;
 }) {
   const options = useMemo(() => shuffle([ex.correct, ...ex.distractors]), [ex]);
   const [picked, setPicked] = useState<string | null>(null);
 
   function pick(opt: string) {
-    if (passed) return;
+    if (picked) return;
     setPicked(opt);
-    onResult({ correct: opt === ex.correct });
+    onAnswered({ correct: opt === ex.correct });
   }
 
   return (
@@ -334,13 +489,15 @@ function TapWordExercise({
           const isPicked = picked === opt;
           const isCorrect = opt === ex.correct;
           let cls = "border-border bg-white text-navy hover:border-teal hover:bg-teal-light";
-          if (passed && isCorrect) cls = "border-teal bg-teal-light text-teal-dark";
+          if (picked && isCorrect) cls = "border-teal bg-teal-light text-teal-dark";
           else if (isPicked && !isCorrect) cls = "border-red-300 bg-red-50 text-red-700";
+          else if (picked && !isCorrect) cls = "border-border bg-white text-navy/40";
           return (
             <button
               key={opt}
               type="button"
               onClick={() => pick(opt)}
+              disabled={!!picked}
               className={`py-3 px-5 rounded-xl border-2 text-sm font-semibold tracking-wide transition-all ${cls}`}
             >
               {opt}
@@ -348,9 +505,6 @@ function TapWordExercise({
           );
         })}
       </div>
-      {picked && picked !== ex.correct && !passed && (
-        <p className="text-xs text-red-600">Not that one — try again.</p>
-      )}
     </div>
   );
 }
@@ -358,24 +512,29 @@ function TapWordExercise({
 function SpeakingExercise({
   ex,
   lang,
-  onResult,
-  passed,
+  onAnswered,
+  onSkip,
+  skipLabel = "I can't speak now",
 }: {
   ex: Extract<GatedExercise, { kind: "speaking" }>;
   lang: string;
-  onResult: (r: ExerciseResult) => void;
-  passed: boolean;
+  onAnswered: (r: AnswerResult) => void;
+  // Called when the learner taps "I can't speak now". Parent is
+  // responsible for recording the skip and moving on.
+  onSkip?: () => void;
+  skipLabel?: string;
 }) {
   const [transcript, setTranscript] = useState("");
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastCorrect, setLastCorrect] = useState<boolean | null>(null);
+  const [locked, setLocked] = useState(false);
   const recRef = useRef<ISpeechRecognition | null>(null);
   const SR = getSpeechRecognition();
   const supported = SR !== null;
 
   function start() {
-    if (!SR || passed) return;
+    if (!SR || locked) return;
     setError(null);
     setTranscript("");
     setLastCorrect(null);
@@ -400,7 +559,8 @@ function SpeakingExercise({
         if (cur.trim()) {
           const ok = pronunciationMatches(cur, ex.expected);
           setLastCorrect(ok);
-          onResult({ correct: ok, heard: cur });
+          setLocked(true);
+          onAnswered({ correct: ok, heard: cur });
         }
         return cur;
       });
@@ -417,7 +577,8 @@ function SpeakingExercise({
 
   function markManualPass() {
     setLastCorrect(true);
-    onResult({ correct: true, heard: "(marked as said)" });
+    setLocked(true);
+    onAnswered({ correct: true, heard: "(marked as said)" });
   }
 
   return (
@@ -439,33 +600,47 @@ function SpeakingExercise({
           {transcript || (listening ? <span className="text-navy/50">Listening…</span> : <span className="text-navy/30">Press the mic and say it aloud.</span>)}
         </p>
         {lastCorrect === false && (
-          <p className="text-xs text-red-600 mt-1.5">Close, but not quite. Try again — press the mic.</p>
+          <p className="text-xs text-red-600 mt-1.5">Close, but not quite. Try again — or skip for now.</p>
         )}
         {lastCorrect === true && (
           <p className="text-xs text-teal-dark font-semibold mt-1.5">✓ Nice — that's it.</p>
         )}
       </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         {supported ? (
           listening ? (
-            <button type="button" onClick={stop} className="flex-1 py-2.5 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors">
+            <button type="button" onClick={stop} className="flex-1 py-3 text-sm font-semibold text-white bg-red-500 rounded-xl hover:bg-red-600 transition-colors min-h-[44px]">
               Stop
             </button>
           ) : (
-            <button type="button" onClick={start} className="flex-1 py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors" disabled={passed}>
-              {passed ? "✓ Passed" : "🎤 Speak"}
+            <button
+              type="button"
+              onClick={start}
+              className="flex-1 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors min-h-[44px] disabled:opacity-60"
+              disabled={locked}
+            >
+              {locked && lastCorrect ? "✓ Nice work" : locked ? "Try again" : "🎤 Speak"}
             </button>
           )
         ) : (
           <>
             <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex-1">
-              Speech recognition not supported in this browser. Tap the button to advance after saying it.
+              Speech recognition not supported in this browser. Tap “I said it” after saying it aloud.
             </p>
-            <button type="button" onClick={markManualPass} className="py-2.5 px-4 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors">
+            <button type="button" onClick={markManualPass} className="py-3 px-4 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors min-h-[44px]">
               I said it
             </button>
           </>
+        )}
+        {onSkip && (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="py-3 px-4 text-sm font-semibold text-navy/70 bg-white border-2 border-border rounded-xl hover:border-navy/30 hover:bg-navy/5 transition-colors min-h-[44px]"
+          >
+            {skipLabel}
+          </button>
         )}
       </div>
     </div>
@@ -474,22 +649,20 @@ function SpeakingExercise({
 
 function FillBlankExercise({
   ex,
-  onResult,
-  passed,
+  onAnswered,
 }: {
   ex: Extract<GatedExercise, { kind: "fill_blank" }>;
-  onResult: (r: ExerciseResult) => void;
-  passed: boolean;
+  onAnswered: (r: AnswerResult) => void;
 }) {
   const [value, setValue] = useState("");
-  const [wrongAttempt, setWrongAttempt] = useState(false);
+  const [locked, setLocked] = useState(false);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (passed || !value.trim()) return;
+    if (locked || !value.trim()) return;
     const ok = normalize(value) === normalize(ex.correct);
-    setWrongAttempt(!ok);
-    onResult({ correct: ok });
+    setLocked(true);
+    onAnswered({ correct: ok });
   }
 
   return (
@@ -499,213 +672,96 @@ function FillBlankExercise({
       <input
         type="text"
         value={value}
-        onChange={(e) => { setValue(e.target.value); setWrongAttempt(false); }}
-        disabled={passed}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={locked}
         autoFocus
         placeholder="Type your answer"
-        className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-navy font-medium text-lg placeholder:text-navy/30 focus:outline-none transition-colors ${
-          passed
-            ? "border-teal bg-teal-light"
-            : wrongAttempt
-              ? "border-red-300 bg-red-50"
-              : "border-border focus:border-teal focus:ring-2 focus:ring-teal/20"
-        }`}
+        className="w-full px-4 py-3 rounded-xl border-2 bg-white text-navy font-medium text-lg placeholder:text-navy/30 focus:outline-none transition-colors border-border focus:border-teal focus:ring-2 focus:ring-teal/20 disabled:opacity-80"
       />
-      {!passed && (
+      {!locked && (
         <button type="submit" disabled={!value.trim()} className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50">
           Check
         </button>
-      )}
-      {wrongAttempt && !passed && (
-        <p className="text-xs text-red-600">Not quite — try again.</p>
       )}
     </form>
   );
 }
 
+// Wraps a gated exercise with inline feedback (correct/incorrect
+// state, explanation, Continue button). Fires `onPassed` once the
+// learner has moved past the feedback. Misses are reported via
+// `onMiss` so the runner can re-ask the item at the end of the
+// lesson quiz.
 function GatedExerciseView({
   exercise,
   lang,
-  onResult,
-  passed,
+  stepRef,
+  onPassed,
+  onMiss,
+  onSkipSpeaking,
 }: {
   exercise: GatedExercise;
   lang: string;
-  onResult: (r: ExerciseResult) => void;
-  passed: boolean;
+  // Stable identifier for logging the miss — keyed by phase + index
+  // in the parent so the same item can be re-shown later.
+  stepRef: string;
+  onPassed: () => void;
+  onMiss: (ref: string) => void;
+  onSkipSpeaking?: () => void;
 }) {
+  const [answered, setAnswered] = useState<null | AnswerResult>(null);
+
+  const expectedLabel =
+    exercise.kind === "multiple_choice"
+      ? exercise.correct
+      : exercise.kind === "tap_word"
+        ? exercise.correct
+        : exercise.kind === "fill_blank"
+          ? exercise.correct
+          : exercise.expected;
+  const explanation = exercise.explanation ?? null;
+
+  function handle(r: AnswerResult) {
+    setAnswered(r);
+    if (!r.correct && !r.skipped) onMiss(stepRef);
+  }
+
+  if (answered) {
+    return (
+      <FeedbackCard
+        correct={answered.correct || !!answered.skipped}
+        expected={expectedLabel}
+        explanation={explanation}
+        onContinue={onPassed}
+      />
+    );
+  }
+
   if (exercise.kind === "multiple_choice")
-    return <MultipleChoiceExercise ex={exercise} onResult={onResult} passed={passed} />;
+    return <MultipleChoiceExercise ex={exercise} onAnswered={handle} />;
   if (exercise.kind === "tap_word")
-    return <TapWordExercise ex={exercise} onResult={onResult} passed={passed} />;
+    return <TapWordExercise ex={exercise} onAnswered={handle} />;
   if (exercise.kind === "fill_blank")
-    return <FillBlankExercise ex={exercise} onResult={onResult} passed={passed} />;
-  return <SpeakingExercise ex={exercise} lang={lang} onResult={onResult} passed={passed} />;
-}
-
-// ============================================================
-// End-of-lesson quiz question view (one at a time)
-// ============================================================
-
-function EndQuizQuestionView({
-  q,
-  lang,
-  onAnswered,
-}: {
-  q: EndQuizQuestion;
-  lang: string;
-  onAnswered: (correct: boolean) => void;
-}) {
-  const [answered, setAnswered] = useState(false);
-  const [correct, setCorrect] = useState(false);
-  const [value, setValue] = useState("");
-  const options = useMemo(() => {
-    if (q.kind === "multiple_choice" || q.kind === "listening")
-      return shuffle([q.correct, ...q.wrong]);
-    return [];
-  }, [q]);
-
-  function submitOption(opt: string) {
-    if (answered) return;
-    const ok = opt === (q as { correct: string }).correct;
-    setAnswered(true);
-    setCorrect(ok);
-    onAnswered(ok);
-  }
-
-  function submitFill(e: React.FormEvent) {
-    e.preventDefault();
-    if (answered || !value.trim()) return;
-    const ok = normalize(value) === normalize((q as { correct: string }).correct);
-    setAnswered(true);
-    setCorrect(ok);
-    onAnswered(ok);
-  }
-
-  if (q.kind === "multiple_choice") {
-    return (
-      <div className="space-y-3">
-        <p className="text-base font-semibold text-navy">{q.question}</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {options.map((opt) => {
-            const isCorrectOpt = opt === q.correct;
-            let cls = "border-border bg-white text-navy hover:border-teal";
-            if (answered && isCorrectOpt) cls = "border-teal bg-teal-light text-teal-dark";
-            else if (answered && !isCorrectOpt) cls = "border-border bg-white text-navy/40";
-            return (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => submitOption(opt)}
-                disabled={answered}
-                className={`py-3 px-4 rounded-xl border-2 text-start text-sm font-medium transition-all ${cls}`}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-        {answered && (
-          <p className={`text-xs font-semibold ${correct ? "text-teal-dark" : "text-red-600"}`}>
-            {correct ? "✓ Correct" : `✗ Correct answer: ${q.correct}`}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  if (q.kind === "listening") {
-    return (
-      <div className="space-y-3">
-        <p className="text-base font-semibold text-navy">{q.question}</p>
-        <div className="flex items-center gap-3 rounded-xl bg-navy/5 p-4">
-          <PlayWordButton text={q.audio} lang={lang} size="md" />
-          <span className="text-sm text-navy/70">Listen carefully.</span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {options.map((opt) => {
-            const isCorrectOpt = opt === q.correct;
-            let cls = "border-border bg-white text-navy hover:border-teal";
-            if (answered && isCorrectOpt) cls = "border-teal bg-teal-light text-teal-dark";
-            else if (answered && !isCorrectOpt) cls = "border-border bg-white text-navy/40";
-            return (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => submitOption(opt)}
-                disabled={answered}
-                className={`py-3 px-4 rounded-xl border-2 text-start text-sm font-medium transition-all ${cls}`}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-        {answered && (
-          <p className={`text-xs font-semibold ${correct ? "text-teal-dark" : "text-red-600"}`}>
-            {correct ? "✓ Correct" : `✗ Correct answer: ${q.correct}`}
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  if (q.kind === "fill_blank") {
-    return (
-      <form onSubmit={submitFill} className="space-y-3">
-        <p className="text-base font-semibold text-navy">{q.prompt}</p>
-        {q.hint && <p className="text-xs text-navy/60 italic">Hint: {q.hint}</p>}
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          disabled={answered}
-          autoFocus
-          placeholder="Type your answer"
-          className={`w-full px-4 py-3 rounded-xl border-2 bg-white text-navy font-medium text-lg placeholder:text-navy/30 focus:outline-none transition-colors ${
-            answered
-              ? correct
-                ? "border-teal bg-teal-light"
-                : "border-red-300 bg-red-50"
-              : "border-border focus:border-teal focus:ring-2 focus:ring-teal/20"
-          }`}
-        />
-        {!answered && (
-          <button type="submit" disabled={!value.trim()} className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50">
-            Check
-          </button>
-        )}
-        {answered && (
-          <p className={`text-xs font-semibold ${correct ? "text-teal-dark" : "text-red-600"}`}>
-            {correct ? "✓ Correct" : `✗ Correct answer: ${q.correct}`}
-          </p>
-        )}
-      </form>
-    );
-  }
-
-  // speaking
+    return <FillBlankExercise ex={exercise} onAnswered={handle} />;
   return (
     <SpeakingExercise
-      ex={q}
+      ex={exercise}
       lang={lang}
-      onResult={(r) => {
-        if (answered) return;
-        setAnswered(true);
-        setCorrect(r.correct);
-        onAnswered(r.correct);
-      }}
-      passed={answered}
+      onAnswered={handle}
+      onSkip={
+        onSkipSpeaking
+          ? () => {
+              onSkipSpeaking();
+              handle({ correct: true, skipped: true });
+            }
+          : undefined
+      }
     />
   );
 }
 
 // ============================================================
-// LessonImage — shared opening/buildup image component.
-// - Shows a shimmer placeholder while the image loads.
-// - On load error (broken URL, network fail, expired CDN), swaps
-//   in a per-city Unsplash fallback with a soft "image unavailable"
-//   caption instead of the browser's default broken-image glyph.
+// Image + highlight overlay
 // ============================================================
 
 const CITY_FALLBACK_IMAGES: Record<string, string> = {
@@ -718,18 +774,25 @@ const CITY_FALLBACK_IMAGES: Record<string, string> = {
   Montreal:       "https://images.unsplash.com/photo-1519178614-68673b201f36?w=1600&h=1200&fit=crop&q=80",
 };
 
+// Shared opening/decode image. `highlight` optionally overlays a
+// glowing pulse box + renders a caption strip beneath the image. The
+// caption strip is the primary way we tie the lesson's current word
+// to the picture because Unsplash / Street View text pixel coords
+// aren't reliable.
 function LessonImage({
   src,
   alt,
   city,
   priority = false,
   imageSource,
+  highlight,
 }: {
   src: string | null | undefined;
   alt: string;
   city: string;
   priority?: boolean;
   imageSource?: "streetview" | "unsplash";
+  highlight?: DecodeHighlight | null;
 }) {
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
@@ -737,45 +800,238 @@ function LessonImage({
   const showFallback = !src || errored;
   const url = showFallback ? fallback : src;
 
+  const regionHighlight =
+    highlight && highlight.kind === "region" ? highlight : null;
+  const captionHighlight =
+    highlight && highlight.kind === "caption" ? highlight : null;
+
   return (
-    <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl">
-      {loading && !showFallback && (
-        <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-navy/70 via-navy/60 to-navy/80" />
-      )}
-      <Image
-        src={url}
-        alt={alt}
-        fill
-        sizes="(max-width: 768px) 100vw, 100vw"
-        className={`object-cover transition-opacity duration-500 ${loading && !showFallback ? "opacity-0" : "opacity-100"}`}
-        priority={priority}
-        unoptimized
-        onLoad={() => setLoading(false)}
-        onError={() => {
-          setErrored(true);
-          setLoading(false);
-        }}
-      />
-      {!showFallback && imageSource === "streetview" && (
-        <div className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur px-2.5 py-1 text-[10px] font-semibold text-white shadow-md">
-          <span aria-hidden>📍</span>
-          <span>Real {city} street view</span>
-        </div>
-      )}
-      {showFallback && (
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/90 via-navy/60 to-transparent px-5 pt-8 pb-4">
-          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">
-            {city} · reference photo
-          </p>
-          <p className="text-sm text-white/85 leading-snug mt-1">{alt}</p>
-        </div>
+    <div className="space-y-2">
+      <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl">
+        {loading && !showFallback && (
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-navy/70 via-navy/60 to-navy/80" />
+        )}
+        <Image
+          src={url}
+          alt={alt}
+          fill
+          sizes="(max-width: 768px) 100vw, 100vw"
+          className={`object-cover transition-opacity duration-500 ${loading && !showFallback ? "opacity-0" : "opacity-100"}`}
+          priority={priority}
+          unoptimized
+          onLoad={() => setLoading(false)}
+          onError={() => {
+            setErrored(true);
+            setLoading(false);
+          }}
+        />
+        {regionHighlight && !showFallback && (
+          <div
+            className="absolute pointer-events-none animate-pulse"
+            style={{
+              left: `${regionHighlight.x * 100}%`,
+              top: `${regionHighlight.y * 100}%`,
+              width: `${regionHighlight.width * 100}%`,
+              height: `${regionHighlight.height * 100}%`,
+            }}
+          >
+            <div className="w-full h-full rounded-xl ring-4 ring-amber-300/90 shadow-[0_0_30px_rgba(252,211,77,0.9)] bg-amber-200/10" />
+          </div>
+        )}
+        {!showFallback && imageSource === "streetview" && (
+          <div className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur px-2.5 py-1 text-[10px] font-semibold text-white shadow-md">
+            <span aria-hidden>📍</span>
+            <span>Real {city} street view</span>
+          </div>
+        )}
+        {showFallback && (
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-navy/90 via-navy/60 to-transparent px-5 pt-8 pb-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/70">
+              {city} · reference photo
+            </p>
+            <p className="text-sm text-white/85 leading-snug mt-1">{alt}</p>
+          </div>
+        )}
+      </div>
+      {/* Caption strip — always renders when a highlight has fullText.
+          For region highlights we still show it, because the overlay
+          box isn't meaningful without seeing the word. */}
+      {(captionHighlight || regionHighlight) && (
+        <CaptionStrip
+          fullText={
+            captionHighlight?.fullText ??
+            regionHighlight?.text ??
+            ""
+          }
+          highlightWord={
+            captionHighlight?.highlightWord ??
+            regionHighlight?.text ??
+            ""
+          }
+        />
       )}
     </div>
   );
 }
 
+function CaptionStrip({
+  fullText,
+  highlightWord,
+}: {
+  fullText: string;
+  highlightWord: string;
+}) {
+  // Case-insensitive, accent-insensitive substring match for the
+  // highlighted segment. Rendering uses the original casing from
+  // fullText so the sign looks like itself.
+  const normalizedFull = fullText.normalize("NFC");
+  const normalizedTarget = highlightWord.normalize("NFC");
+  const i = normalizedFull.toLowerCase().indexOf(normalizedTarget.toLowerCase());
+  if (!fullText) return null;
+  if (i === -1) {
+    return (
+      <div className="rounded-xl bg-navy/90 px-4 py-2.5 text-center">
+        <span className="text-sm sm:text-base font-bold text-white/90 tracking-wide">
+          {fullText}
+        </span>
+      </div>
+    );
+  }
+  const before = fullText.slice(0, i);
+  const match = fullText.slice(i, i + highlightWord.length);
+  const after = fullText.slice(i + highlightWord.length);
+  return (
+    <div className="rounded-xl bg-navy/90 px-4 py-2.5 text-center">
+      <span className="text-sm sm:text-base font-bold text-white/70 tracking-wide">
+        {before}
+        <span className="relative inline-block px-1 mx-0.5 rounded bg-amber-300 text-navy animate-pulse shadow-[0_0_18px_rgba(252,211,77,0.7)]">
+          {match}
+        </span>
+        {after}
+      </span>
+    </div>
+  );
+}
+
 // ============================================================
-// Step components
+// Audio player with a stylized "waveform" that highlights the
+// currently-replaying snippet for a decode step.
+// ============================================================
+
+function AudioPanel({
+  script,
+  lang,
+  snippet,
+  hintActiveIndex,
+}: {
+  script: AudioLine[];
+  lang: string;
+  // When present, replaying this exercise step should play just the
+  // snippet. We render it as the "highlighted segment" in the fake
+  // waveform below the main player.
+  snippet?: string;
+  // Which hint step we're on (0-indexed). Null = at the exercise. The
+  // waveform pulses on the snippet only while the hints are showing,
+  // then calms once we're at the exercise.
+  hintActiveIndex?: number | null;
+}) {
+  const fullScript = useAudioScript(script, lang);
+  const [snippetPlaying, setSnippetPlaying] = useState(false);
+  const voice = useSpeechVoice(lang);
+  const stopRef = useRef<(() => void) | null>(null);
+
+  function replaySnippet() {
+    if (!snippet) return;
+    if (snippetPlaying) {
+      stopRef.current?.();
+      setSnippetPlaying(false);
+      return;
+    }
+    setSnippetPlaying(true);
+    stopRef.current = speakOnce(snippet, lang, voice, 0.85, () => setSnippetPlaying(false));
+  }
+
+  useEffect(() => () => {
+    if (stopRef.current) window.speechSynthesis?.cancel();
+  }, []);
+
+  const totalSegments = Math.max(script.length, 1);
+  const activeSegment = snippet ? Math.max(0, script.findIndex((l) => l.text.includes(snippet))) : -1;
+
+  return (
+    <div className="relative rounded-3xl bg-gradient-to-br from-navy to-navy/80 text-white p-5 sm:p-7 shadow-2xl space-y-4">
+      <div className="flex items-center gap-4">
+        <button
+          type="button"
+          onClick={fullScript.playing ? fullScript.stop : fullScript.play}
+          className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white text-navy shadow-xl hover:scale-105 transition-transform flex items-center justify-center"
+          aria-label={fullScript.playing ? "Stop" : "Play full recording"}
+        >
+          {fullScript.playing ? (
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
+          ) : (
+            <svg className="w-6 h-6 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-white/60 font-bold">Recording</p>
+          <p className="text-sm text-white/80 mt-0.5">Replay the whole clip, or just this moment.</p>
+        </div>
+        {snippet && (
+          <button
+            type="button"
+            onClick={replaySnippet}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-amber-300 text-navy px-4 py-2 text-xs font-bold shadow-md hover:bg-amber-200 transition-colors"
+            aria-label={snippetPlaying ? "Stop snippet" : "Replay this bit"}
+          >
+            {snippetPlaying ? (
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+            )}
+            Replay bit
+          </button>
+        )}
+      </div>
+
+      {/* Stylized waveform — purely decorative bars. The segment that
+          contains the current decode snippet pulses in amber so the
+          learner can see where in the clip they are. */}
+      <div className="flex items-end gap-[3px] h-14 justify-center">
+        {Array.from({ length: 28 }).map((_, i) => {
+          const segmentIndex = Math.floor((i / 28) * totalSegments);
+          const isActiveSegment = activeSegment >= 0 && segmentIndex === activeSegment;
+          const playing = fullScript.cursor === segmentIndex;
+          const pulseThis =
+            isActiveSegment && (snippetPlaying || hintActiveIndex !== null);
+          const seeded =
+            (Math.sin(i * 1.7) + 1) / 2 * 0.6 + 0.3; // 0.3..0.9
+          return (
+            <div
+              key={i}
+              className={`w-1.5 rounded-full transition-colors ${
+                isActiveSegment
+                  ? pulseThis
+                    ? "bg-amber-300 animate-pulse"
+                    : "bg-amber-300/70"
+                  : playing
+                    ? "bg-white"
+                    : "bg-white/25"
+              }`}
+              style={{ height: `${seeded * 100}%` }}
+            />
+          );
+        })}
+      </div>
+      <p className="text-[10px] text-center uppercase tracking-wider text-white/40">
+        No transcript. Train your ear.
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
+// Step views
 // ============================================================
 
 function OpeningImageStep({
@@ -804,7 +1060,7 @@ function OpeningImageStep({
         <button
           type="button"
           onClick={onContinue}
-          className="inline-flex items-center gap-2 px-8 py-3 bg-teal text-white text-sm font-semibold rounded-full hover:bg-teal-dark transition-colors shadow-lg"
+          className="inline-flex items-center gap-2 px-8 py-3 bg-teal text-white text-sm font-semibold rounded-full hover:bg-teal-dark transition-colors shadow-lg min-h-[44px]"
         >
           Start decoding
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -824,52 +1080,19 @@ function OpeningAudioStep({
   onContinue: () => void;
 }) {
   const opening = lesson.opening as Extract<PreviewLesson["opening"], { kind: "audio" }>;
-  const { play, stop, playing, cursor } = useAudioScript(opening.script, lang);
-
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <p className="text-sm sm:text-base text-navy/80 leading-relaxed bg-peach-light border border-peach-dark/40 rounded-2xl px-5 py-4">
         <span className="text-xs uppercase tracking-wider font-bold text-peach-dark block mb-1">Scene</span>
         {lesson.scene}
       </p>
-      <div className="relative rounded-3xl bg-gradient-to-br from-navy to-navy/80 text-white p-8 sm:p-10 shadow-2xl">
-        <div className="flex flex-col items-center text-center gap-5">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-white/60 font-bold">Recording</div>
-          <p className="text-lg sm:text-xl font-medium text-white/90">
-            Press play. No transcript — just listen and try to catch what you can.
-          </p>
-          <button
-            type="button"
-            onClick={playing ? stop : play}
-            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white text-navy shadow-2xl hover:scale-105 transition-transform flex items-center justify-center"
-            aria-label={playing ? "Stop" : "Play"}
-          >
-            {playing ? (
-              <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
-            ) : (
-              <svg className="w-10 h-10 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-            )}
-          </button>
-          <p className="text-xs text-white/50">{opening.durationHint} · {opening.script.length} lines</p>
-          {playing && (
-            <div className="flex items-center gap-1.5">
-              {opening.script.map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1.5 w-6 rounded-full transition-colors ${
-                    cursor > i ? "bg-teal" : cursor === i ? "bg-white animate-pulse" : "bg-white/20"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      <AudioPanel script={opening.script} lang={lang} />
+      <p className="text-xs text-white/0 text-center">{opening.durationHint}</p>
       <div className="text-center">
         <button
           type="button"
           onClick={onContinue}
-          className="inline-flex items-center gap-2 px-8 py-3 bg-teal text-white text-sm font-semibold rounded-full hover:bg-teal-dark transition-colors shadow-lg"
+          className="inline-flex items-center gap-2 px-8 py-3 bg-teal text-white text-sm font-semibold rounded-full hover:bg-teal-dark transition-colors shadow-lg min-h-[44px]"
         >
           Start decoding
           <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -883,73 +1106,166 @@ function DecodeStepView({
   step,
   index,
   total,
+  lesson,
   lang,
   onContinue,
+  onMiss,
+  onSkipSpeaking,
 }: {
   step: DecodeStep;
   index: number;
   total: number;
+  lesson: PreviewLesson;
   lang: string;
   onContinue: () => void;
+  onMiss: (ref: string) => void;
+  onSkipSpeaking?: (stepIndex: number) => void;
 }) {
-  const [passed, setPassed] = useState(false);
+  // Phase: -1..hints.length-1 for hints; hints.length for exercise.
+  // The last Continue advances from hints → exercise. Tapping
+  // Continue while the hint is still typing snaps it to done.
+  const hints = useMemo(() => stepHints(step), [step]);
+  const [hintIdx, setHintIdx] = useState(0);
+  const [showExercise, setShowExercise] = useState(false);
+  const [typingBypassKey, setTypingBypassKey] = useState(0);
+  const typingRef = useRef<{ finish: () => void; done: boolean } | null>(null);
 
-  function handleResult(r: ExerciseResult) {
-    if (r.correct) setPassed(true);
+  const highlight = useMemo(
+    () => stepHighlight(step, lesson.opening),
+    [step, lesson.opening],
+  );
+
+  const isAudio = lesson.opening.kind === "audio";
+  const imageOpening =
+    lesson.opening.kind === "image"
+      ? (lesson.opening as Extract<PreviewLesson["opening"], { kind: "image" }>)
+      : null;
+  const audioOpening =
+    lesson.opening.kind === "audio"
+      ? (lesson.opening as Extract<PreviewLesson["opening"], { kind: "audio" }>)
+      : null;
+
+  function onContinueHints() {
+    if (showExercise) return;
+    // If the current hint is still typing, finish it first.
+    if (typingRef.current && !typingRef.current.done) {
+      typingRef.current.finish();
+      return;
+    }
+    if (hintIdx + 1 < hints.length) {
+      setHintIdx((h) => h + 1);
+      setTypingBypassKey((k) => k + 1);
+      return;
+    }
+    setShowExercise(true);
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
       <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-teal-dark text-center">
         Decode · {index + 1} of {total}
       </div>
 
-      <div className="rounded-3xl bg-white border-2 border-border shadow-lg p-6 sm:p-8 text-center space-y-3">
-        <div className="text-2xl sm:text-4xl font-black text-navy tracking-tight leading-tight break-words">
+      {/* Image or audio always stays on screen during a decode step */}
+      {imageOpening && (
+        <LessonImage
+          src={imageOpening.imageUrl}
+          alt={imageOpening.imageAlt}
+          city={lesson.city}
+          imageSource={imageOpening.imageSource}
+          highlight={highlight ?? undefined}
+        />
+      )}
+      {audioOpening && (
+        <AudioPanel
+          script={audioOpening.script}
+          lang={lang}
+          snippet={step.audioSnippet}
+          hintActiveIndex={showExercise ? null : hintIdx}
+        />
+      )}
+
+      {/* Word card — no translation shown */}
+      <div className="rounded-2xl bg-white border-2 border-border shadow-md p-5 sm:p-6 text-center space-y-2">
+        <div className="text-2xl sm:text-3xl font-black text-navy tracking-tight leading-tight break-words">
           {step.wordOrPhrase}
         </div>
         <div className="text-sm text-navy/60 font-mono">{step.phonetic}</div>
         <div className="flex justify-center pt-1">
           <PlayWordButton text={step.wordOrPhrase} lang={lang} size="md" />
         </div>
-        <div className="pt-2 text-lg font-semibold text-teal-dark">{step.english}</div>
       </div>
 
-      <div className="rounded-2xl bg-teal-light border border-teal/30 p-4">
-        <p className="text-[10px] uppercase tracking-wider font-bold text-teal-dark mb-1">Memory hook</p>
-        <p className="text-sm text-navy/85 leading-relaxed">{step.mnemonic}</p>
-      </div>
-
-      {step.culturalNote && (
-        <div className="rounded-2xl bg-peach-light border border-peach-dark/40 p-4">
-          <p className="text-[10px] uppercase tracking-wider font-bold text-peach-dark mb-1">Local tip</p>
-          <p className="text-sm text-navy/85 leading-relaxed">{step.culturalNote}</p>
-        </div>
-      )}
-
-      {step.audioSnippet && (
-        <div className="rounded-2xl bg-navy/5 border border-navy/10 p-4 flex items-center gap-3">
-          <PlayWordButton text={step.audioSnippet} lang={lang} size="sm" />
-          <p className="text-xs text-navy/70">Replay this part of the recording.</p>
-        </div>
-      )}
-
-      <div className="rounded-2xl bg-white border-2 border-border p-5">
-        <p className="text-[10px] uppercase tracking-wider font-bold text-navy/50 mb-3">Quick check</p>
-        <GatedExerciseView exercise={step.gatedExercise} lang={lang} onResult={handleResult} passed={passed} />
-      </div>
-
-      <div className="pt-2">
-        <button
-          type="button"
-          onClick={onContinue}
-          disabled={!passed}
-          className="w-full py-3.5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+      {/* Progressive hints — typed out, big text, one per Continue */}
+      {!showExercise && (
+        <div
+          className="rounded-2xl bg-teal-light border border-teal/30 p-5 sm:p-6 space-y-4 min-h-[140px]"
+          aria-live="polite"
         >
-          {passed ? "Continue →" : "Answer the check first"}
-        </button>
-      </div>
+          <p className="text-[10px] uppercase tracking-wider font-bold text-teal-dark">
+            Hint {hintIdx + 1} of {hints.length}
+          </p>
+          <TypedHint
+            key={`${index}-${hintIdx}-${typingBypassKey}`}
+            text={hints[hintIdx] ?? ""}
+            onRefReady={(ref) => { typingRef.current = ref; }}
+          />
+        </div>
+      )}
+
+      {/* Exercise after the final Continue */}
+      {showExercise && (
+        <div className="rounded-2xl bg-white border-2 border-border p-5 sm:p-6 space-y-3">
+          <p className="text-[10px] uppercase tracking-wider font-bold text-navy/50">Quick check</p>
+          <GatedExerciseView
+            exercise={step.gatedExercise}
+            lang={lang}
+            stepRef={`decode:${index}`}
+            onPassed={onContinue}
+            onMiss={onMiss}
+            onSkipSpeaking={
+              onSkipSpeaking ? () => onSkipSpeaking(index) : undefined
+            }
+          />
+        </div>
+      )}
+
+      {/* The hint-advance Continue button — hidden once the exercise is live */}
+      {!showExercise && (
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={onContinueHints}
+            className="w-full py-4 text-base font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors shadow-md min-h-[48px]"
+          >
+            {hintIdx + 1 < hints.length
+              ? "Continue →"
+              : "Show the check →"}
+          </button>
+        </div>
+      )}
     </div>
+  );
+}
+
+// Thin wrapper so the parent can hold onto the typed-text controller
+// and finish the animation when the user taps Continue early.
+function TypedHint({
+  text,
+  onRefReady,
+}: {
+  text: string;
+  onRefReady: (ref: { finish: () => void; done: boolean }) => void;
+}) {
+  const typed = useTypedText(text, 30);
+  useEffect(() => {
+    onRefReady({ finish: typed.finish, done: typed.done });
+  }, [typed.finish, typed.done, onRefReady]);
+  return (
+    <p className="text-xl sm:text-2xl text-navy leading-relaxed">
+      {typed.shown}
+      {!typed.done && <span className="inline-block w-[2px] h-5 bg-navy/70 ml-1 animate-pulse align-middle" />}
+    </p>
   );
 }
 
@@ -965,30 +1281,19 @@ function BuildupStep({
   const opening = lesson.opening;
   const [revealed, setRevealed] = useState(false);
   const isAudio = opening.kind === "audio";
-  const audioCtrl = useAudioScript(isAudio ? (opening as Extract<PreviewLesson["opening"], { kind: "audio" }>).script : [], lang);
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 space-y-6 text-center">
       <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-teal-dark">You decoded it</div>
       <h2 className="text-2xl sm:text-3xl font-black text-navy leading-tight">
-        Now hear/see the whole thing again — this time it'll make sense.
+        Now hear/see the whole thing again — this time it&apos;ll make sense.
       </h2>
 
       {isAudio ? (
-        <div className="rounded-3xl bg-gradient-to-br from-navy to-navy/80 text-white p-8 shadow-xl">
-          <button
-            type="button"
-            onClick={audioCtrl.playing ? audioCtrl.stop : audioCtrl.play}
-            className="w-20 h-20 rounded-full bg-white text-navy shadow-2xl hover:scale-105 transition-transform flex items-center justify-center mx-auto"
-          >
-            {audioCtrl.playing ? (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
-            ) : (
-              <svg className="w-8 h-8 translate-x-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-            )}
-          </button>
-          <p className="text-xs text-white/60 mt-4">Replay the whole recording</p>
-        </div>
+        <AudioPanel
+          script={(opening as Extract<PreviewLesson["opening"], { kind: "audio" }>).script}
+          lang={lang}
+        />
       ) : (
         <LessonImage
           src={(opening as Extract<PreviewLesson["opening"], { kind: "image" }>).imageUrl}
@@ -1002,7 +1307,7 @@ function BuildupStep({
         <button
           type="button"
           onClick={() => setRevealed(true)}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-white border-2 border-teal text-teal-dark text-sm font-semibold rounded-full hover:bg-teal-light transition-colors"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-teal text-teal-dark text-sm font-semibold rounded-full hover:bg-teal-light transition-colors min-h-[44px]"
         >
           Reveal the full meaning
         </button>
@@ -1020,7 +1325,7 @@ function BuildupStep({
           <button
             type="button"
             onClick={onContinue}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-teal text-white text-sm font-semibold rounded-full hover:bg-teal-dark transition-colors shadow-lg"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-teal text-white text-sm font-semibold rounded-full hover:bg-teal-dark transition-colors shadow-lg min-h-[44px]"
           >
             Take the quiz →
           </button>
@@ -1030,63 +1335,296 @@ function BuildupStep({
   );
 }
 
+// ============================================================
+// End-of-lesson quiz (now with missed items re-appended)
+// ============================================================
+
+function EndQuizQuestionView({
+  q,
+  lang,
+  onAnswered,
+  onSkipSpeaking,
+}: {
+  q: EndQuizQuestion;
+  lang: string;
+  onAnswered: (r: AnswerResult) => void;
+  onSkipSpeaking?: () => void;
+}) {
+  const [picked, setPicked] = useState<string | null>(null);
+  const [value, setValue] = useState("");
+  const [answered, setAnswered] = useState<null | AnswerResult>(null);
+  const options = useMemo(() => {
+    if (q.kind === "multiple_choice" || q.kind === "listening")
+      return shuffle([q.correct, ...q.wrong]);
+    return [];
+  }, [q]);
+
+  function submitOption(opt: string) {
+    if (answered) return;
+    const ok = opt === (q as { correct: string }).correct;
+    setPicked(opt);
+    const r = { correct: ok };
+    setAnswered(r);
+    onAnswered(r);
+  }
+
+  function submitFill(e: React.FormEvent) {
+    e.preventDefault();
+    if (answered || !value.trim()) return;
+    const ok = normalize(value) === normalize((q as { correct: string }).correct);
+    const r = { correct: ok };
+    setAnswered(r);
+    onAnswered(r);
+  }
+
+  if (q.kind === "multiple_choice") {
+    return (
+      <div className="space-y-3">
+        <p className="text-base font-semibold text-navy">{q.question}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {options.map((opt) => {
+            const isCorrectOpt = opt === q.correct;
+            let cls = "border-border bg-white text-navy hover:border-teal";
+            if (answered && isCorrectOpt) cls = "border-teal bg-teal-light text-teal-dark";
+            else if (answered && picked === opt && !isCorrectOpt) cls = "border-red-300 bg-red-50 text-red-700";
+            else if (answered) cls = "border-border bg-white text-navy/40";
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => submitOption(opt)}
+                disabled={!!answered}
+                className={`py-3 px-4 rounded-xl border-2 text-start text-sm font-medium transition-all min-h-[44px] ${cls}`}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+        {answered && (
+          <FeedbackCard
+            correct={answered.correct}
+            expected={q.correct}
+            explanation={q.explanation ?? null}
+            onContinue={() => onAnswered({ ...answered, skipped: true })}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (q.kind === "listening") {
+    return (
+      <div className="space-y-3">
+        <p className="text-base font-semibold text-navy">{q.question}</p>
+        <div className="flex items-center gap-3 rounded-xl bg-navy/5 p-4">
+          <PlayWordButton text={q.audio} lang={lang} size="md" />
+          <span className="text-sm text-navy/70">Listen carefully.</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          {options.map((opt) => {
+            const isCorrectOpt = opt === q.correct;
+            let cls = "border-border bg-white text-navy hover:border-teal";
+            if (answered && isCorrectOpt) cls = "border-teal bg-teal-light text-teal-dark";
+            else if (answered && picked === opt && !isCorrectOpt) cls = "border-red-300 bg-red-50 text-red-700";
+            else if (answered) cls = "border-border bg-white text-navy/40";
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => submitOption(opt)}
+                disabled={!!answered}
+                className={`py-3 px-4 rounded-xl border-2 text-start text-sm font-medium transition-all min-h-[44px] ${cls}`}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+        {answered && (
+          <FeedbackCard
+            correct={answered.correct}
+            expected={q.correct}
+            explanation={q.explanation ?? null}
+            onContinue={() => onAnswered({ ...answered, skipped: true })}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (q.kind === "fill_blank") {
+    return (
+      <form onSubmit={submitFill} className="space-y-3">
+        <p className="text-base font-semibold text-navy">{q.prompt}</p>
+        {q.hint && <p className="text-xs text-navy/60 italic">Hint: {q.hint}</p>}
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={!!answered}
+          autoFocus
+          placeholder="Type your answer"
+          className="w-full px-4 py-3 rounded-xl border-2 bg-white text-navy font-medium text-lg placeholder:text-navy/30 focus:outline-none transition-colors border-border focus:border-teal focus:ring-2 focus:ring-teal/20 disabled:opacity-80"
+        />
+        {!answered && (
+          <button type="submit" disabled={!value.trim()} className="w-full py-2.5 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors disabled:opacity-50 min-h-[44px]">
+            Check
+          </button>
+        )}
+        {answered && (
+          <FeedbackCard
+            correct={answered.correct}
+            expected={q.correct}
+            explanation={q.explanation ?? null}
+            onContinue={() => onAnswered({ ...answered, skipped: true })}
+          />
+        )}
+      </form>
+    );
+  }
+
+  // speaking
+  return (
+    <SpeakingExercise
+      ex={q}
+      lang={lang}
+      onAnswered={(r) => {
+        if (answered) return;
+        setAnswered(r);
+        onAnswered(r);
+      }}
+      onSkip={
+        onSkipSpeaking
+          ? () => {
+              onSkipSpeaking();
+              const r = { correct: true, skipped: true };
+              setAnswered(r);
+              onAnswered(r);
+            }
+          : undefined
+      }
+    />
+  );
+}
+
 function EndQuizStep({
   lesson,
   lang,
+  missedRefs,
   onFinish,
+  onSkipSpeaking,
 }: {
   lesson: PreviewLesson;
   lang: string;
+  // Step refs the learner missed during the decoding exercises. Any
+  // decodeStep[i].gatedExercise matching one of these gets re-asked
+  // after the regular endQuiz questions.
+  missedRefs: Set<string>;
   onFinish: (score: { correct: number; total: number }) => void;
+  onSkipSpeaking?: (ref: string) => void;
 }) {
+  // Build the full question queue: author-provided endQuiz + any
+  // missed decode exercises (converted to quiz questions by re-use).
+  const questions = useMemo<
+    Array<{ ref: string; q: EndQuizQuestion }>
+  >(() => {
+    const base: Array<{ ref: string; q: EndQuizQuestion }> = lesson.endQuiz.map(
+      (q, i) => ({ ref: `endquiz:${i}`, q }),
+    );
+    const makeups: Array<{ ref: string; q: EndQuizQuestion }> = [];
+    lesson.decodeSteps.forEach((step, i) => {
+      const ref = `decode:${i}`;
+      if (!missedRefs.has(ref)) return;
+      const ex = step.gatedExercise;
+      // Convert the decode exercise into the matching EndQuizQuestion
+      // shape. The runtime shapes are compatible (the only missing
+      // field on decode exercises is `audio` for listening, which
+      // doesn't apply here).
+      if (ex.kind === "multiple_choice" || ex.kind === "fill_blank" || ex.kind === "speaking") {
+        makeups.push({ ref: `makeup:${i}`, q: ex as EndQuizQuestion });
+      } else {
+        // tap_word has no EndQuizQuestion equivalent; convert it to a
+        // multiple_choice question in place.
+        makeups.push({
+          ref: `makeup:${i}`,
+          q: {
+            kind: "multiple_choice",
+            question: ex.prompt,
+            correct: ex.correct,
+            wrong: ex.distractors,
+            explanation: ex.explanation,
+          },
+        });
+      }
+    });
+    return [...base, ...makeups];
+  }, [lesson.endQuiz, lesson.decodeSteps, missedRefs]);
+
   const [cursor, setCursor] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
-  const [lastAnswered, setLastAnswered] = useState(false);
+  const [committed, setCommitted] = useState(false);
+  const skippedOnThisQuestionRef = useRef(false);
 
-  // Scroll back to top when advancing to the next quiz question. The
-  // parent runner's scroll effect only fires on phase changes, not on
-  // cursor changes within a single phase.
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [cursor]);
 
-  const total = lesson.endQuiz.length;
-  const q = lesson.endQuiz[cursor];
+  const total = questions.length;
+  const entry = questions[cursor];
 
-  function handleAnswered(correct: boolean) {
-    if (lastAnswered) return;
-    setLastAnswered(true);
-    if (correct) setCorrectCount((c) => c + 1);
+  function handleAnswered(r: AnswerResult) {
+    // First call records the result + flips `committed` so the
+    // Feedback card can render. Second call (from Feedback's
+    // Continue) advances to the next question.
+    if (!committed) {
+      setCommitted(true);
+      if (r.correct) setCorrectCount((c) => c + 1);
+      skippedOnThisQuestionRef.current = !!r.skipped;
+      return;
+    }
+    advance();
   }
 
-  function next() {
-    if (!lastAnswered) return;
+  function advance() {
     const nextIdx = cursor + 1;
     if (nextIdx >= total) {
       onFinish({ correct: correctCount, total });
       return;
     }
     setCursor(nextIdx);
-    setLastAnswered(false);
+    setCommitted(false);
+    skippedOnThisQuestionRef.current = false;
   }
+
+  // Edge case: endQuiz empty AND no misses — finish immediately.
+  // Fire from an effect so we don't call onFinish during render.
+  useEffect(() => {
+    if (!entry) onFinish({ correct: 0, total: 0 });
+    // Intentionally only depends on entry — onFinish is stable enough.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry]);
+
+  if (!entry) return null;
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
       <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-peach-dark text-center">
         Quiz · {cursor + 1} of {total}
+        {entry.ref.startsWith("makeup:") && " · make-up"}
       </div>
-      <div className="rounded-3xl bg-white border-2 border-border shadow-md p-6">
-        <EndQuizQuestionView key={cursor} q={q} lang={lang} onAnswered={handleAnswered} />
+      <div className="rounded-3xl bg-white border-2 border-border shadow-md p-5 sm:p-6">
+        <EndQuizQuestionView
+          key={cursor}
+          q={entry.q}
+          lang={lang}
+          onAnswered={handleAnswered}
+          onSkipSpeaking={
+            onSkipSpeaking ? () => onSkipSpeaking(entry.ref) : undefined
+          }
+        />
       </div>
-      <button
-        type="button"
-        onClick={next}
-        disabled={!lastAnswered}
-        className="w-full py-3.5 text-sm font-semibold text-white bg-teal rounded-full hover:bg-teal-dark transition-colors shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
-      >
-        {cursor + 1 === total ? "Finish lesson" : "Next question →"}
-      </button>
     </div>
   );
 }
@@ -1106,7 +1644,7 @@ function CompleteStep({
   exitHref: string;
   nextLessonHref?: string;
 }) {
-  const pct = Math.round((score.correct / score.total) * 100);
+  const pct = score.total === 0 ? 100 : Math.round((score.correct / score.total) * 100);
   const xpEarned = Math.round(lesson.xpReward * (pct / 100));
   const next = lesson.nextLesson;
   const nextLocked = !!(next && next.isPremium && !isPremium);
@@ -1156,14 +1694,7 @@ function CompleteStep({
             >
               Continue journey →
             </Link>
-          ) : (
-            <button
-              type="button"
-              className="mt-2 w-full py-3 bg-white text-navy font-semibold text-sm rounded-full hover:bg-teal-light transition-colors"
-            >
-              Continue journey →
-            </button>
-          )}
+          ) : null}
         </div>
       )}
       <Link href={exitHref} className="inline-block text-sm text-teal-dark hover:underline">
@@ -1192,35 +1723,38 @@ export default function PreviewLessonRunner({
   exitHref,
   nextLessonHref,
   isPremium,
+  // Called when the learner taps "I can't speak now". The parent
+  // (route handler for /learn/[language]/travel/[city]/[lesson])
+  // writes a row to traveler_skipped_speaking. In preview mode this
+  // is a no-op.
+  onSkipSpeaking,
 }: {
   lesson: PreviewLesson;
   lang: string;
-  // Real-lesson wiring. When lessonId + markComplete are provided the
-  // runner reports the final score to Supabase via the server action;
-  // otherwise it stays in preview mode (no writes).
   lessonId?: number;
   markComplete?: (lessonId: number) => Promise<number>;
   exitHref?: string;
   nextLessonHref?: string;
   isPremium?: boolean;
+  onSkipSpeaking?: (ref: {
+    lessonId: number;
+    exerciseRef: string;
+    prompt: string;
+    expected: string;
+  }) => Promise<void> | void;
 }) {
   const [phase, setPhase] = useState<Phase>({ kind: "opening" });
+  const [missedRefs, setMissedRefs] = useState<Set<string>>(new Set());
   const isPreview = !lessonId || !markComplete;
   const resolvedExitHref = exitHref ?? "/preview/madrid";
 
-  // Whenever the step changes (opening → decode[i] → buildup → quiz →
-  // complete), scroll back to the top of the viewport. Without this
-  // the user ends their current step at the bottom (where the Continue
-  // button sits) and the next step mounts off-screen.
-  // Keyed on both phase.kind and phase.index so each decode-step jump
-  // and quiz-question jump re-triggers the scroll.
   const phaseKey = phase.kind === "decode" ? `decode:${phase.index}` : phase.kind;
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [phaseKey]);
 
-  const totalSteps = 1 + lesson.decodeSteps.length + 1 + 1; // opening + decodes + buildup + quiz
+  const totalSteps = 1 + lesson.decodeSteps.length + 1 + 1;
   const currentStep = useMemo(() => {
     if (phase.kind === "opening") return 1;
     if (phase.kind === "decode") return 1 + phase.index + 1;
@@ -1241,11 +1775,26 @@ export default function PreviewLessonRunner({
     });
   }
 
+  function reportMiss(ref: string) {
+    setMissedRefs((s) => new Set([...s, ref]));
+  }
+
+  function skipSpeakingAt(stepIndex: number) {
+    const step = lesson.decodeSteps[stepIndex];
+    if (!step || step.gatedExercise.kind !== "speaking") return;
+    if (onSkipSpeaking && lessonId) {
+      onSkipSpeaking({
+        lessonId,
+        exerciseRef: `decode:${stepIndex}`,
+        prompt: step.gatedExercise.prompt,
+        expected: step.gatedExercise.expected,
+      });
+    }
+  }
+
   async function finish(score: { correct: number; total: number }) {
     setPhase({ kind: "complete", score });
     if (!isPreview && lessonId && markComplete) {
-      // Fire-and-forget; the completion screen doesn't wait on the write.
-      // Any error is logged but doesn't block the celebration.
       try { await markComplete(lessonId); }
       catch (err) { console.error("markLessonComplete failed:", err); }
     }
@@ -1255,7 +1804,6 @@ export default function PreviewLessonRunner({
 
   return (
     <div className="min-h-screen bg-background pb-16">
-      {/* Progress bar */}
       <div className="sticky top-16 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4">
           <Link href={resolvedExitHref} className="text-xs text-navy/60 hover:text-navy shrink-0">
@@ -1270,7 +1818,6 @@ export default function PreviewLessonRunner({
         </div>
       </div>
 
-      {/* Header */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-2 text-center">
         <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-navy/50">
           {lesson.city} · Lesson {lesson.orderIndex}
@@ -1290,8 +1837,11 @@ export default function PreviewLessonRunner({
           step={lesson.decodeSteps[phase.index]}
           index={phase.index}
           total={lesson.decodeSteps.length}
+          lesson={lesson}
           lang={lang}
           onContinue={advance}
+          onMiss={reportMiss}
+          onSkipSpeaking={skipSpeakingAt}
         />
       )}
       {phase.kind === "buildup" && <BuildupStep lesson={lesson} lang={lang} onContinue={advance} />}
@@ -1299,7 +1849,23 @@ export default function PreviewLessonRunner({
         <EndQuizStep
           lesson={lesson}
           lang={lang}
+          missedRefs={missedRefs}
           onFinish={finish}
+          onSkipSpeaking={(ref) => {
+            if (!lessonId || !onSkipSpeaking) return;
+            // Map ref back to the quiz question to grab prompt/expected
+            const parts = ref.split(":");
+            const idx = parseInt(parts[1] ?? "0", 10);
+            const q = parts[0] === "endquiz" ? lesson.endQuiz[idx] : null;
+            if (q && q.kind === "speaking") {
+              onSkipSpeaking({
+                lessonId,
+                exerciseRef: ref,
+                prompt: q.prompt,
+                expected: q.expected,
+              });
+            }
+          }}
         />
       )}
       {phase.kind === "complete" && (

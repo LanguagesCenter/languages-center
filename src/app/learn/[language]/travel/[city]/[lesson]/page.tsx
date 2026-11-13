@@ -5,7 +5,7 @@ import { isCurrentUserPremium } from "@/lib/learn";
 import { getTravelerLessonWithContent } from "@/lib/traveler";
 import TravelerLessonRunner from "@/components/TravelerLessonRunner";
 import PreviewLessonRunner from "@/components/PreviewLessonRunner";
-import { markLessonComplete } from "./actions";
+import { markLessonComplete, recordSkip } from "./actions";
 
 const SUPPORTED_LANGS = new Set(["spanish", "french"]);
 
@@ -86,6 +86,7 @@ export default async function TravelerLessonPage(
                 : undefined
             }
             isPremium={isPremium}
+            onSkipSpeaking={recordSkip}
           />
         </main>
       </>

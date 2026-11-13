@@ -828,6 +828,133 @@ export async function getStartedTravelerCourses(): Promise<
   return result;
 }
 
+// ============================================================
+// Skipped speaking exercises — powers the "I can't speak now" flow.
+// Stored in the traveler_skipped_speaking table (migration 058).
+// ============================================================
+
+export interface SkippedSpeakingRow {
+  id: string;
+  lessonId: number;
+  lessonTitle: string;
+  lessonLocation: string;
+  lessonOrderIndex: number;
+  exerciseRef: string;
+  prompt: string;
+  expected: string;
+  createdAt: string;
+}
+
+export async function recordSkippedSpeaking(args: {
+  lessonId: number;
+  exerciseRef: string;
+  prompt: string;
+  expected: string;
+}): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  // Upsert by (user_id, traveler_lesson_id, exercise_ref) so repeated
+  // skips of the same exercise don't duplicate rows. Clearing
+  // completed_at on the way back in resets a previously-completed
+  // skip to pending so it reappears in the practice list.
+  await supabase
+    .from("traveler_skipped_speaking")
+    .upsert(
+      {
+        user_id: user.id,
+        traveler_lesson_id: args.lessonId,
+        exercise_ref: args.exerciseRef,
+        prompt: args.prompt,
+        expected: args.expected,
+        completed_at: null,
+      },
+      { onConflict: "user_id,traveler_lesson_id,exercise_ref" },
+    );
+}
+
+export async function completeSkippedSpeaking(rowId: string): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from("traveler_skipped_speaking")
+    .update({ completed_at: new Date().toISOString() })
+    .eq("id", rowId)
+    .eq("user_id", user.id);
+}
+
+// Returns all OPEN (not-yet-completed) skipped speaking rows for the
+// signed-in user that belong to the given city. Grouped flat here; the
+// UI groups by lesson via lesson_order_index + lesson_title.
+export async function getOpenSkippedSpeakingForCity(args: {
+  languageSlug: string;
+  citySlug: string;
+}): Promise<SkippedSpeakingRow[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const bundle = await getTravelerCourseByCitySlug(
+    args.languageSlug,
+    args.citySlug,
+  );
+  if (!bundle) return [];
+  const lessonIds = bundle.lessons.map((l) => l.id);
+  if (lessonIds.length === 0) return [];
+
+  const { data } = await supabase
+    .from("traveler_skipped_speaking")
+    .select("id, traveler_lesson_id, exercise_ref, prompt, expected, created_at")
+    .eq("user_id", user.id)
+    .is("completed_at", null)
+    .in("traveler_lesson_id", lessonIds)
+    .order("created_at", { ascending: false });
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    traveler_lesson_id: number;
+    exercise_ref: string;
+    prompt: string;
+    expected: string;
+    created_at: string;
+  }>;
+
+  const lessonMap = new Map(bundle.lessons.map((l) => [l.id, l]));
+  return rows
+    .map((r) => {
+      const lesson = lessonMap.get(r.traveler_lesson_id);
+      if (!lesson) return null;
+      return {
+        id: r.id,
+        lessonId: r.traveler_lesson_id,
+        lessonTitle: lesson.title,
+        lessonLocation: lesson.locationName,
+        lessonOrderIndex: lesson.orderIndex,
+        exerciseRef: r.exercise_ref,
+        prompt: r.prompt,
+        expected: r.expected,
+        createdAt: r.created_at,
+      };
+    })
+    .filter((x): x is SkippedSpeakingRow => x !== null)
+    .sort((a, b) => a.lessonOrderIndex - b.lessonOrderIndex);
+}
+
+export async function getOpenSkippedSpeakingCountForCity(args: {
+  languageSlug: string;
+  citySlug: string;
+}): Promise<number> {
+  const rows = await getOpenSkippedSpeakingForCity(args);
+  return rows.length;
+}
+
 // Per-language count of completed traveler lessons for the current user.
 // Returns `{}` if the user is signed out. Used by the homepage language
 // cards to decide whether the Traveler's Course CTA says "Start Journey"
