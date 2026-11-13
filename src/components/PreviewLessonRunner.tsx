@@ -10,78 +10,22 @@ import type {
   GatedExercise,
   EndQuizQuestion,
   AudioLine,
+  TranslationCheck,
 } from "@/lib/traveler-preview";
+import {
+  speak,
+  playScript,
+  warmUpSpeech,
+  isAudioAvailable,
+  type PlayHandle,
+} from "@/lib/speech";
 
 // ============================================================
-// Speech / TTS primitives
+// Play buttons — thin wrappers over lib/speech.ts.
+//
+// Critical rule: speak() is called SYNCHRONOUSLY inside the click
+// handler. Safari/iOS drop the utterance otherwise.
 // ============================================================
-
-function useSpeechVoice(lang: string, gender?: "male" | "female"): SpeechSynthesisVoice | null {
-  const [voice, setVoice] = useState<SpeechSynthesisVoice | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-
-    function pick(): SpeechSynthesisVoice | null {
-      const all = window.speechSynthesis.getVoices();
-      if (all.length === 0) return null;
-      const target = lang.toLowerCase();
-      const prefix = target.split("-")[0];
-      const inLang = all.filter(
-        (v) =>
-          v.lang.toLowerCase() === target ||
-          v.lang.toLowerCase().startsWith(target) ||
-          v.lang.toLowerCase().startsWith(prefix + "-"),
-      );
-      if (inLang.length === 0) return null;
-      if (gender) {
-        const genderHint = gender === "male"
-          ? /jorge|diego|carlos|paul|alex|male/i
-          : /monica|paulina|marisol|female|helena/i;
-        const match = inLang.find((v) => genderHint.test(v.name));
-        if (match) return match;
-      }
-      return inLang[0];
-    }
-
-    function refresh() {
-      const v = pick();
-      if (v) setVoice(v);
-    }
-    refresh();
-    const handler = () => refresh();
-    window.speechSynthesis.addEventListener("voiceschanged", handler);
-    return () => {
-      window.speechSynthesis.removeEventListener("voiceschanged", handler);
-    };
-  }, [lang, gender]);
-
-  return voice;
-}
-
-function speakOnce(
-  text: string,
-  lang: string,
-  voice: SpeechSynthesisVoice | null,
-  rate = 0.9,
-  onend?: () => void,
-): () => void {
-  if (typeof window === "undefined" || !window.speechSynthesis) {
-    onend?.();
-    return () => {};
-  }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang;
-  if (voice) u.voice = voice;
-  u.rate = rate;
-  u.onend = () => onend?.();
-  u.onerror = () => onend?.();
-  window.speechSynthesis.speak(u);
-  return () => {
-    window.speechSynthesis.cancel();
-  };
-}
 
 function PlayWordButton({
   text,
@@ -94,23 +38,44 @@ function PlayWordButton({
   size?: "sm" | "md" | "lg";
   onDark?: boolean;
 }) {
-  const voice = useSpeechVoice(lang);
   const [playing, setPlaying] = useState(false);
-  const stopRef = useRef<(() => void) | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const handleRef = useRef<PlayHandle | null>(null);
+
+  // Warm up voices on first mount so the first click doesn't fire
+  // before getVoices() has returned anything.
+  useEffect(() => {
+    warmUpSpeech();
+  }, []);
 
   const toggle = useCallback(() => {
     if (playing) {
-      stopRef.current?.();
+      handleRef.current?.stop();
       setPlaying(false);
       return;
     }
+    // Synchronous speak() — do NOT wrap in setTimeout or await.
+    const handle = speak(text, lang, {
+      rate: 0.9,
+      onstart: () => setPlaying(true),
+      onend: () => setPlaying(false),
+      onerror: (reason) => {
+        setPlaying(false);
+        if (reason === "speech-synthesis-unavailable") setUnavailable(true);
+      },
+    });
+    handleRef.current = handle;
+    // Fire the state update too, in case onstart never fires
+    // (some engines go straight to onend without onstart).
     setPlaying(true);
-    stopRef.current = speakOnce(text, lang, voice, 0.9, () => setPlaying(false));
-  }, [playing, text, lang, voice]);
+    // Safety net: if nothing starts within 2s and no voices exist,
+    // flip to the unavailable state so the UI can message the user.
+    setTimeout(() => {
+      if (!isAudioAvailable()) setUnavailable(true);
+    }, 2000);
+  }, [playing, text, lang]);
 
-  useEffect(() => () => {
-    if (stopRef.current) window.speechSynthesis?.cancel();
-  }, []);
+  useEffect(() => () => handleRef.current?.stop(), []);
 
   const sizeClass =
     size === "sm" ? "w-9 h-9" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
@@ -120,12 +85,25 @@ function PlayWordButton({
     ? "bg-white/20 text-white hover:bg-white/30 backdrop-blur"
     : "bg-teal text-white hover:bg-teal-dark";
 
+  if (unavailable) {
+    return (
+      <span
+        title="Audio isn't available on this device"
+        className={`inline-flex items-center justify-center rounded-full ${sizeClass} bg-navy/10 text-navy/40 cursor-not-allowed`}
+      >
+        <svg className={iconSize} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+        </svg>
+      </span>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={toggle}
       aria-label={playing ? "Stop" : "Play"}
-      className={`inline-flex items-center justify-center rounded-full transition-colors shadow-md ${sizeClass} ${toneClass}`}
+      className={`inline-flex items-center justify-center rounded-full transition-colors shadow-md ${sizeClass} ${toneClass} ${playing ? "animate-pulse" : ""}`}
     >
       {playing ? (
         <svg className={iconSize} fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
@@ -136,57 +114,34 @@ function PlayWordButton({
   );
 }
 
-// Sequential playback of an audio script (opening / buildup replay).
+// Thin hook over playScript for the opening / buildup audio panel.
 function useAudioScript(script: AudioLine[], lang: string) {
-  const maleVoice = useSpeechVoice(lang, "male");
-  const femaleVoice = useSpeechVoice(lang, "female");
-  const defaultVoice = useSpeechVoice(lang);
   const [playing, setPlaying] = useState(false);
   const [cursor, setCursor] = useState(-1);
-  const cancelledRef = useRef(false);
+  const handleRef = useRef<PlayHandle | null>(null);
+
+  useEffect(() => {
+    warmUpSpeech();
+  }, []);
 
   const stop = useCallback(() => {
-    cancelledRef.current = true;
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    handleRef.current?.stop();
     setPlaying(false);
     setCursor(-1);
   }, []);
 
   const play = useCallback(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    cancelledRef.current = false;
     setPlaying(true);
-
-    const runLine = (i: number) => {
-      if (cancelledRef.current || i >= script.length) {
+    // Synchronous call from the click handler.
+    const handle = playScript(script, lang, {
+      onCursor: (i) => setCursor(i),
+      onDone: () => {
         setPlaying(false);
         setCursor(-1);
-        return;
-      }
-      const line = script[i];
-      setCursor(i);
-      const voice =
-        line.gender === "male"
-          ? maleVoice ?? defaultVoice
-          : line.gender === "female"
-            ? femaleVoice ?? defaultVoice
-            : defaultVoice;
-      const u = new SpeechSynthesisUtterance(line.text);
-      u.lang = lang;
-      if (voice) u.voice = voice;
-      u.rate = 0.9;
-      u.onend = () => {
-        if (cancelledRef.current) return;
-        const pause = line.pauseAfterMs ?? 300;
-        setTimeout(() => runLine(i + 1), pause);
-      };
-      u.onerror = () => runLine(i + 1);
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    };
-
-    runLine(0);
-  }, [script, lang, maleVoice, femaleVoice, defaultVoice]);
+      },
+    });
+    handleRef.current = handle;
+  }, [script, lang]);
 
   useEffect(() => () => stop(), [stop]);
 
@@ -709,7 +664,13 @@ function GatedExerciseView({
   onMiss: (ref: string) => void;
   onSkipSpeaking?: () => void;
 }) {
+  // Three possible sub-states for a speaking exercise:
+  //   1. idle — show the SpeakingExercise UI
+  //   2. feedback — show FeedbackCard; then on Continue
+  //   3. translation-check — only if exercise has translationCheck
+  // Non-speaking exercises go idle → feedback → onPassed.
   const [answered, setAnswered] = useState<null | AnswerResult>(null);
+  const [phase, setPhase] = useState<"primary" | "feedback" | "xcheck">("primary");
 
   const expectedLabel =
     exercise.kind === "multiple_choice"
@@ -723,16 +684,43 @@ function GatedExerciseView({
 
   function handle(r: AnswerResult) {
     setAnswered(r);
+    setPhase("feedback");
     if (!r.correct && !r.skipped) onMiss(stepRef);
   }
 
-  if (answered) {
+  function dismissFeedback() {
+    // After feedback, if this is a speaking exercise with a
+    // translationCheck, show it before advancing. Otherwise finish.
+    if (
+      exercise.kind === "speaking" &&
+      exercise.translationCheck
+    ) {
+      setPhase("xcheck");
+      return;
+    }
+    onPassed();
+  }
+
+  if (phase === "xcheck" && exercise.kind === "speaking" && exercise.translationCheck) {
+    return (
+      <TranslationCheckView
+        check={exercise.translationCheck}
+        phrase={exercise.expected}
+        onDone={(correct) => {
+          if (!correct) onMiss(`${stepRef}:xcheck`);
+          onPassed();
+        }}
+      />
+    );
+  }
+
+  if (phase === "feedback" && answered) {
     return (
       <FeedbackCard
         correct={answered.correct || !!answered.skipped}
         expected={expectedLabel}
         explanation={explanation}
-        onContinue={onPassed}
+        onContinue={dismissFeedback}
       />
     );
   }
@@ -757,6 +745,71 @@ function GatedExerciseView({
           : undefined
       }
     />
+  );
+}
+
+// Translation-check follow-up rendered after every speaking exercise.
+// The learner picks one of 4 English options. We give correct/
+// incorrect feedback with an explanation, same look as the other
+// exercises, then call onDone so the runner advances.
+function TranslationCheckView({
+  check,
+  phrase,
+  onDone,
+}: {
+  check: TranslationCheck;
+  phrase: string;
+  onDone: (correct: boolean) => void;
+}) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const correctOption = check.options[check.correctIndex];
+
+  function pick(i: number) {
+    if (picked !== null) return;
+    setPicked(i);
+    setShowFeedback(true);
+  }
+
+  if (showFeedback && picked !== null) {
+    const ok = picked === check.correctIndex;
+    return (
+      <FeedbackCard
+        correct={ok}
+        expected={correctOption}
+        explanation={check.explanation}
+        onContinue={() => onDone(ok)}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-base font-semibold text-navy">
+        You just said <span className="font-black text-teal-dark">“{phrase}”</span>. What does it mean?
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        {check.options.map((opt, i) => {
+          const isCorrectOpt = i === check.correctIndex;
+          const isPicked = picked === i;
+          let cls = "border-border bg-white text-navy hover:border-teal hover:bg-teal-light";
+          if (picked !== null && isCorrectOpt) cls = "border-teal bg-teal-light text-teal-dark";
+          else if (isPicked && !isCorrectOpt) cls = "border-red-300 bg-red-50 text-red-700";
+          else if (picked !== null) cls = "border-border bg-white text-navy/40";
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => pick(i)}
+              disabled={picked !== null}
+              className={`w-full py-3 px-4 rounded-xl border-2 text-start text-sm font-medium transition-all min-h-[44px] ${cls}`}
+            >
+              {opt}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -937,23 +990,23 @@ function AudioPanel({
 }) {
   const fullScript = useAudioScript(script, lang);
   const [snippetPlaying, setSnippetPlaying] = useState(false);
-  const voice = useSpeechVoice(lang);
-  const stopRef = useRef<(() => void) | null>(null);
+  const handleRef = useRef<PlayHandle | null>(null);
 
   function replaySnippet() {
     if (!snippet) return;
     if (snippetPlaying) {
-      stopRef.current?.();
+      handleRef.current?.stop();
       setSnippetPlaying(false);
       return;
     }
     setSnippetPlaying(true);
-    stopRef.current = speakOnce(snippet, lang, voice, 0.85, () => setSnippetPlaying(false));
+    handleRef.current = speak(snippet, lang, {
+      rate: 0.85,
+      onend: () => setSnippetPlaying(false),
+    });
   }
 
-  useEffect(() => () => {
-    if (stopRef.current) window.speechSynthesis?.cancel();
-  }, []);
+  useEffect(() => () => handleRef.current?.stop(), []);
 
   const totalSegments = Math.max(script.length, 1);
   const activeSegment = snippet ? Math.max(0, script.findIndex((l) => l.text.includes(snippet))) : -1;
@@ -1484,23 +1537,96 @@ function EndQuizQuestionView({
     );
   }
 
-  // speaking
+  // speaking — after the mic result (or skip), route through the
+  // FeedbackCard, then TranslationCheckView (if present), then
+  // finally bubble the result up. Local phase tracker because the
+  // EndQuizQuestionView doesn't share GatedExerciseView's state.
+  if (q.kind === "speaking") {
+    return (
+      <SpeakingWithCheck
+        q={q}
+        lang={lang}
+        onDone={(r) => onAnswered(r)}
+        onSkipSpeaking={onSkipSpeaking}
+      />
+    );
+  }
+
+  return null;
+}
+
+// Wraps a speaking end-quiz question with its mandatory translation
+// check follow-up. Mirrors the shape of GatedExerciseView's speaking
+// path so behaviour is consistent across decode steps + end quiz.
+function SpeakingWithCheck({
+  q,
+  lang,
+  onDone,
+  onSkipSpeaking,
+}: {
+  q: Extract<EndQuizQuestion, { kind: "speaking" }>;
+  lang: string;
+  onDone: (r: AnswerResult) => void;
+  onSkipSpeaking?: () => void;
+}) {
+  const [primary, setPrimary] = useState<null | AnswerResult>(null);
+  const [phase, setPhase] = useState<"ask" | "feedback" | "xcheck">("ask");
+
+  function finishPrimary(r: AnswerResult) {
+    setPrimary(r);
+    setPhase("feedback");
+  }
+
+  // Terminal path for both xcheck + no-xcheck: fire onDone TWICE
+  // back-to-back because the parent EndQuizStep uses a two-call
+  // protocol (first call commits, second call advances). This
+  // mirrors how MCQ/listening/fill render FeedbackCard inline and
+  // then fire onAnswered again on Continue.
+  function finishAll() {
+    if (!primary) return;
+    onDone(primary);
+    // Second call defers so parent sees the "committed" state flip
+    // first before we ask it to advance.
+    setTimeout(() => onDone(primary), 0);
+  }
+
+  if (phase === "xcheck" && primary && q.translationCheck) {
+    return (
+      <TranslationCheckView
+        check={q.translationCheck}
+        phrase={q.expected}
+        onDone={() => finishAll()}
+      />
+    );
+  }
+
+  if (phase === "feedback" && primary) {
+    return (
+      <FeedbackCard
+        correct={primary.correct || !!primary.skipped}
+        expected={q.expected}
+        explanation={q.explanation ?? null}
+        onContinue={() => {
+          if (q.translationCheck) {
+            setPhase("xcheck");
+          } else {
+            finishAll();
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <SpeakingExercise
       ex={q}
       lang={lang}
-      onAnswered={(r) => {
-        if (answered) return;
-        setAnswered(r);
-        onAnswered(r);
-      }}
+      onAnswered={finishPrimary}
       onSkip={
         onSkipSpeaking
           ? () => {
               onSkipSpeaking();
-              const r = { correct: true, skipped: true };
-              setAnswered(r);
-              onAnswered(r);
+              finishPrimary({ correct: true, skipped: true });
             }
           : undefined
       }
@@ -1741,6 +1867,7 @@ export default function PreviewLessonRunner({
     exerciseRef: string;
     prompt: string;
     expected: string;
+    translationCheck?: TranslationCheck | null;
   }) => Promise<void> | void;
 }) {
   const [phase, setPhase] = useState<Phase>({ kind: "opening" });
@@ -1788,6 +1915,7 @@ export default function PreviewLessonRunner({
         exerciseRef: `decode:${stepIndex}`,
         prompt: step.gatedExercise.prompt,
         expected: step.gatedExercise.expected,
+        translationCheck: step.gatedExercise.translationCheck ?? null,
       });
     }
   }
@@ -1863,6 +1991,7 @@ export default function PreviewLessonRunner({
                 exerciseRef: ref,
                 prompt: q.prompt,
                 expected: q.expected,
+                translationCheck: q.translationCheck ?? null,
               });
             }
           }}

@@ -59,6 +59,17 @@ export type OpeningAudio = {
   durationHint: string;
 };
 
+// Translation-check follow-up appended to every speaking exercise.
+// After the learner speaks (or taps "I can't speak now"), the runner
+// shows this as a second question with 4 English options so the
+// learner has to prove they also know what the phrase means. Also
+// used on the Speaking Practice page.
+export type TranslationCheck = {
+  options: string[];        // 4 English strings
+  correctIndex: number;     // index into options
+  explanation: string;      // 1-2 sentences revealed after answering
+};
+
 // Every exercise now carries an `explanation` field — a 1-2 sentence
 // note revealed after the learner answers. For a correct answer it
 // reinforces the hint chain; for an incorrect answer it names the
@@ -89,6 +100,10 @@ export type GatedExercise =
       // what to say — it's not a "guess the translation" moment.
       translation: string;
       explanation?: string;
+      // Required by the new generator (optional for legacy content).
+      // Runner shows this as a second question after the speaking
+      // attempt so the learner proves they ALSO know the meaning.
+      translationCheck?: TranslationCheck;
     }
   | {
       kind: "fill_blank";
@@ -153,6 +168,7 @@ export type EndQuizQuestion =
       expected: string;
       translation: string;
       explanation?: string;
+      translationCheck?: TranslationCheck;
     };
 
 export type PreviewLesson = {
@@ -219,9 +235,9 @@ const lesson1: PreviewLesson = {
       ],
       gatedExercise: {
         kind: "multiple_choice",
-        question: "Based on where this sign sits (the first thing you see leaving the plane), what do you think LLEGADAS means?",
+        question: "LLEGADAS — what does this word on the sign mean?",
         correct: "Arrivals",
-        wrong: ["Departures", "Gates", "Delays"],
+        wrong: ["Departures", "Baggage claim", "Passport control"],
         explanation:
           "LLEGADAS = ARRIVALS. The word is from llegar (to arrive). SALIDAS on the other side of the terminal is Departures.",
       },
@@ -243,12 +259,16 @@ const lesson1: PreviewLesson = {
         "The -ES on the end is Spanish plural. Drop it and you've got a word you use every day.",
       ],
       gatedExercise: {
-        kind: "tap_word",
-        prompt: "Tap the word that fits with the English cognate hint.",
-        correct: "INTERNACIONALES",
-        distractors: ["NACIONALES", "REGIONALES", "PERSONALES"],
+        kind: "multiple_choice",
+        question: "INTERNACIONALES — what does this word tell you about your arrivals hall?",
+        correct: "This hall is for international flights",
+        wrong: [
+          "This hall is for domestic flights only",
+          "This hall is temporarily closed",
+          "This hall is for crew members",
+        ],
         explanation:
-          "INTERNACIONALES = INTERNATIONAL. The three distractors are also real cognates (national, regional, personal) — each flipped by its prefix.",
+          "INTERNACIONALES = INTERNATIONAL (plural). The -ES ending is Spanish plural; drop it and you get the English word.",
       },
     },
     {
@@ -275,6 +295,17 @@ const lesson1: PreviewLesson = {
         translation: "passport control",
         explanation:
           "CONTROL DE PASAPORTES = PASSPORT CONTROL. Stress lands on the second-to-last syllable in both halves (konTROL · pasaPORtes).",
+        translationCheck: {
+          options: [
+            "Passport control",
+            "Passport renewal office",
+            "Lost and found",
+            "Customs declaration",
+          ],
+          correctIndex: 0,
+          explanation:
+            "CONTROL DE PASAPORTES is where an officer checks your passport before you enter the country.",
+        },
       },
     },
     {
@@ -296,11 +327,15 @@ const lesson1: PreviewLesson = {
       ],
       gatedExercise: {
         kind: "multiple_choice",
-        question: "Which of these do you think means ‘baggage claim’?",
-        correct: "RECOGIDA DE EQUIPAJES",
-        wrong: ["SALA DE EMBARQUE", "PUERTA DE SALIDA", "FACTURACIÓN"],
+        question: "RECOGIDA DE EQUIPAJES — what does this sign tell you?",
+        correct: "Where to pick up your checked luggage",
+        wrong: [
+          "Where to board your flight",
+          "Where to check in your luggage",
+          "Where to report lost luggage",
+        ],
         explanation:
-          "RECOGIDA DE EQUIPAJES = BAGGAGE CLAIM, literally ‘collection of luggage’. The distractors mean boarding hall, departure gate, and check-in.",
+          "RECOGIDA DE EQUIPAJES = BAGGAGE CLAIM, literally ‘collection of luggage’. The wrong answers would be SALA DE EMBARQUE, FACTURACIÓN, and OBJETOS PERDIDOS respectively.",
       },
     },
     {
@@ -326,6 +361,12 @@ const lesson1: PreviewLesson = {
         translation: "exit",
         explanation:
           "SALIDA = EXIT / WAY OUT. In Madrid, SALIDA signs are green — follow the green arrow.",
+        translationCheck: {
+          options: ["Exit", "Entrance", "Information", "Taxi rank"],
+          correctIndex: 0,
+          explanation:
+            "SALIDA = EXIT. You'll see it everywhere in airports and metro stations, always pointing toward the way out.",
+        },
       },
     },
   ],
@@ -338,9 +379,9 @@ const lesson1: PreviewLesson = {
   endQuiz: [
     {
       kind: "multiple_choice",
-      question: "What does SALIDA mean?",
+      question: "SALIDA — what does this word mean?",
       correct: "Exit",
-      wrong: ["Entrance", "Baggage claim", "Passport"],
+      wrong: ["Entrance", "Baggage claim", "Passport control"],
       explanation:
         "SALIDA = EXIT. Spanish verb salir means to leave; the English ‘sally forth’ shares the same Latin root.",
     },
@@ -363,11 +404,15 @@ const lesson1: PreviewLesson = {
     },
     {
       kind: "multiple_choice",
-      question: "Which sign points to baggage claim?",
-      correct: "RECOGIDA DE EQUIPAJES",
-      wrong: ["LLEGADAS", "SALIDA", "CONTROL DE PASAPORTES"],
+      question: "RECOGIDA DE EQUIPAJES — what does this sign tell you?",
+      correct: "Where to pick up your checked bags",
+      wrong: [
+        "Where to check in your bags",
+        "Where to report lost bags",
+        "Where to board the plane",
+      ],
       explanation:
-        "RECOGIDA DE EQUIPAJES = ‘collection of luggage’. The others are arrivals, exit, and passport control.",
+        "RECOGIDA DE EQUIPAJES = ‘collection of luggage’, i.e. baggage claim.",
     },
     {
       kind: "speaking",
@@ -376,6 +421,12 @@ const lesson1: PreviewLesson = {
       translation: "exit",
       explanation:
         "SALIDA = EXIT. Sa-LEE-dah. In Madrid airports and metros, SALIDA signs are green.",
+      translationCheck: {
+        options: ["Exit", "Entrance", "Welcome", "Elevator"],
+        correctIndex: 0,
+        explanation:
+          "SALIDA = EXIT. The verb salir means to leave — it's the word that gets you out of every airport, metro, and museum in Spain.",
+      },
     },
   ],
   xpReward: 20,

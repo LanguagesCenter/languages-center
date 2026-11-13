@@ -1,9 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SkippedSpeakingRow } from "@/lib/traveler";
+import {
+  speak,
+  warmUpSpeech,
+  isAudioAvailable,
+  type PlayHandle,
+} from "@/lib/speech";
+import type { TranslationCheck } from "@/lib/traveler-preview";
 import { markSkipCompleted } from "./actions";
 
 // Minimal client-side speech recognition — same engine the lesson
@@ -61,15 +68,6 @@ function matches(heard: string, expected: string): boolean {
   const ew = e.split(" ");
   const hw = new Set(h.split(" "));
   return ew.filter((w) => hw.has(w)).length / ew.length >= 0.7;
-}
-
-function speak(text: string, lang: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang;
-  u.rate = 0.9;
-  window.speechSynthesis.speak(u);
 }
 
 export default function SpeakingPracticeRunner({
@@ -194,9 +192,39 @@ function PracticeItem({
   const [transcript, setTranscript] = useState("");
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "correct" | "wrong">("idle");
+  const [status, setStatus] = useState<"idle" | "correct" | "wrong" | "xcheck">(
+    "idle",
+  );
+  const [audioUnavailable, setAudioUnavailable] = useState(false);
   const SR = getSR();
   const supported = SR !== null;
+  const check: TranslationCheck | null = row.translationCheck ?? null;
+
+  useEffect(() => {
+    warmUpSpeech();
+  }, []);
+
+  function playAudio() {
+    speak(row.expected, speechLang, {
+      rate: 0.9,
+      onerror: (reason) => {
+        if (reason === "speech-synthesis-unavailable") setAudioUnavailable(true);
+      },
+    });
+    setTimeout(() => {
+      if (!isAudioAvailable()) setAudioUnavailable(true);
+    }, 2000);
+  }
+
+  function markPassed() {
+    // If we have a translation check, show it before marking done so
+    // the learner has to demonstrate both production AND meaning.
+    if (check) {
+      setStatus("xcheck");
+      return;
+    }
+    onDone();
+  }
 
   function start() {
     if (!SR) return;
@@ -227,14 +255,28 @@ function PracticeItem({
       setTranscript((cur) => {
         if (cur.trim()) {
           const ok = matches(cur, row.expected);
-          setStatus(ok ? "correct" : "wrong");
-          if (ok) onDone();
+          if (ok) {
+            setStatus("correct");
+            markPassed();
+          } else {
+            setStatus("wrong");
+          }
         }
         return cur;
       });
     };
     setListening(true);
     rec.start();
+  }
+
+  if (status === "xcheck" && check) {
+    return (
+      <PracticeXCheck
+        check={check}
+        phrase={row.expected}
+        onDone={() => onDone()}
+      />
+    );
   }
 
   return (
@@ -254,16 +296,27 @@ function PracticeItem({
             {row.expected}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => speak(row.expected, speechLang)}
-          aria-label="Play"
-          className="shrink-0 w-10 h-10 rounded-full bg-teal text-white flex items-center justify-center hover:bg-teal-dark transition-colors"
-        >
-          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M8 5v14l11-7z" />
-          </svg>
-        </button>
+        {audioUnavailable ? (
+          <span
+            title="Audio isn't available on this device"
+            className="shrink-0 w-10 h-10 rounded-full bg-navy/10 text-navy/40 flex items-center justify-center"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+            </svg>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={playAudio}
+            aria-label="Play"
+            className="shrink-0 w-10 h-10 rounded-full bg-teal text-white flex items-center justify-center hover:bg-teal-dark transition-colors"
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </button>
+        )}
       </div>
       <div className="rounded-lg border border-border bg-white px-3 py-2 min-h-[52px]">
         <p className="text-[10px] font-semibold uppercase tracking-wider text-navy/50 mb-1">
@@ -302,12 +355,84 @@ function PracticeItem({
         ) : (
           <button
             type="button"
-            onClick={onDone}
+            onClick={markPassed}
             className="flex-1 py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors min-h-[44px]"
           >
             I said it — mark done
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PracticeXCheck({
+  check,
+  phrase,
+  onDone,
+}: {
+  check: TranslationCheck;
+  phrase: string;
+  onDone: () => void;
+}) {
+  const [picked, setPicked] = useState<number | null>(null);
+  const correctOption = check.options[check.correctIndex];
+  if (picked !== null) {
+    const ok = picked === check.correctIndex;
+    return (
+      <div
+        className={`rounded-xl border-2 p-4 ${ok ? "border-teal/40 bg-teal-light" : "border-red-300 bg-red-50"}`}
+      >
+        <div className="flex items-center gap-3 mb-2">
+          <span
+            className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${ok ? "bg-teal text-white" : "bg-red-500 text-white"}`}
+          >
+            {ok ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+          </span>
+          <p className={`text-sm font-bold ${ok ? "text-teal-dark" : "text-red-700"}`}>
+            {ok ? "Correct" : "Not quite"}
+          </p>
+        </div>
+        {!ok && (
+          <p className="text-sm text-navy/80 mb-1">
+            Correct answer: <span className="font-bold text-navy">{correctOption}</span>
+          </p>
+        )}
+        <p className="text-sm text-navy/80 leading-relaxed">{check.explanation}</p>
+        <button
+          type="button"
+          onClick={onDone}
+          className="mt-3 w-full py-3 text-sm font-semibold text-white bg-teal rounded-xl hover:bg-teal-dark transition-colors min-h-[44px]"
+        >
+          Continue →
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl border-2 border-border bg-white p-4 space-y-3">
+      <p className="text-sm font-semibold text-navy">
+        You said <span className="font-black text-teal-dark">“{phrase}”</span>. What does it mean?
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {check.options.map((opt, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setPicked(i)}
+            className="py-3 px-4 rounded-xl border-2 border-border bg-white text-navy text-start text-sm font-medium hover:border-teal hover:bg-teal-light transition-all min-h-[44px]"
+          >
+            {opt}
+          </button>
+        ))}
       </div>
     </div>
   );

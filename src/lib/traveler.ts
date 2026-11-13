@@ -842,6 +842,14 @@ export interface SkippedSpeakingRow {
   exerciseRef: string;
   prompt: string;
   expected: string;
+  // Optional translation-check follow-up. Stored as JSONB so adding
+  // new fields later doesn't need another migration. Null when the
+  // underlying exercise didn't ship one (legacy lessons).
+  translationCheck?: {
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+  } | null;
   createdAt: string;
 }
 
@@ -850,6 +858,11 @@ export async function recordSkippedSpeaking(args: {
   exerciseRef: string;
   prompt: string;
   expected: string;
+  translationCheck?: {
+    options: string[];
+    correctIndex: number;
+    explanation: string;
+  } | null;
 }): Promise<void> {
   const supabase = await createClient();
   const {
@@ -869,6 +882,7 @@ export async function recordSkippedSpeaking(args: {
         exercise_ref: args.exerciseRef,
         prompt: args.prompt,
         expected: args.expected,
+        translation_check: args.translationCheck ?? null,
         completed_at: null,
       },
       { onConflict: "user_id,traveler_lesson_id,exercise_ref" },
@@ -911,7 +925,7 @@ export async function getOpenSkippedSpeakingForCity(args: {
 
   const { data } = await supabase
     .from("traveler_skipped_speaking")
-    .select("id, traveler_lesson_id, exercise_ref, prompt, expected, created_at")
+    .select("id, traveler_lesson_id, exercise_ref, prompt, expected, translation_check, created_at")
     .eq("user_id", user.id)
     .is("completed_at", null)
     .in("traveler_lesson_id", lessonIds)
@@ -923,26 +937,32 @@ export async function getOpenSkippedSpeakingForCity(args: {
     exercise_ref: string;
     prompt: string;
     expected: string;
+    translation_check: unknown;
     created_at: string;
   }>;
 
   const lessonMap = new Map(bundle.lessons.map((l) => [l.id, l]));
-  return rows
-    .map((r) => {
-      const lesson = lessonMap.get(r.traveler_lesson_id);
-      if (!lesson) return null;
-      return {
-        id: r.id,
-        lessonId: r.traveler_lesson_id,
-        lessonTitle: lesson.title,
-        lessonLocation: lesson.locationName,
-        lessonOrderIndex: lesson.orderIndex,
-        exerciseRef: r.exercise_ref,
-        prompt: r.prompt,
-        expected: r.expected,
-        createdAt: r.created_at,
-      };
-    })
+  const mapped: Array<SkippedSpeakingRow | null> = rows.map((r) => {
+    const lesson = lessonMap.get(r.traveler_lesson_id);
+    if (!lesson) return null;
+    const xcheck =
+      r.translation_check && typeof r.translation_check === "object"
+        ? (r.translation_check as NonNullable<SkippedSpeakingRow["translationCheck"]>)
+        : null;
+    return {
+      id: r.id,
+      lessonId: r.traveler_lesson_id,
+      lessonTitle: lesson.title,
+      lessonLocation: lesson.locationName,
+      lessonOrderIndex: lesson.orderIndex,
+      exerciseRef: r.exercise_ref,
+      prompt: r.prompt,
+      expected: r.expected,
+      translationCheck: xcheck,
+      createdAt: r.created_at,
+    };
+  });
+  return mapped
     .filter((x): x is SkippedSpeakingRow => x !== null)
     .sort((a, b) => a.lessonOrderIndex - b.lessonOrderIndex);
 }

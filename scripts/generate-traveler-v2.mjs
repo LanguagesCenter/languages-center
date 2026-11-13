@@ -629,22 +629,32 @@ const SYSTEM_PROMPT = `You are an expert Spanish-language lesson author for an i
 
 You always respond with a single JSON object matching the schema the user gives you. Use the EXACT field names given — do not rename them. Never wrap the response in markdown code fences. Never add prose before or after the JSON.`;
 
-const EXERCISE_SCHEMA = `Each gatedExercise MUST be one of these FOUR shapes, using the EXACT field names shown. EVERY shape MUST include an "explanation" string (1-2 sentences, revealed AFTER the learner answers — for correct answers reinforce the hints; for incorrect names the right answer and ties it back to the image/hints):
+const EXERCISE_SCHEMA = `Each gatedExercise MUST be one of these FOUR shapes, using the EXACT field names shown. EVERY shape MUST include an "explanation" string (1-2 sentences, revealed AFTER the learner answers — for correct answers reinforce the hints; for incorrect names the right answer and ties it back to the image/hints).
+
+CRITICAL RULE for comprehension questions (multiple_choice, tap_word, listening, fill_blank):
+  - The QUESTION must show the TARGET-LANGUAGE word or phrase (Spanish, Catalan, French) and ask "what does this mean?" or "what does this sign tell you?" in English.
+  - The ANSWER OPTIONS must be ENGLISH. The correct option is the English meaning; the three wrong options are plausible English meanings — ideally other signs or items from the same scene that the learner needs to distinguish between.
+  - DO NOT use the inverted pattern "Which of these means 'baggage claim'?" with target-language options. English readers should read the target-language phrase and pick the English meaning, not the other way around.
+  - Only "speaking" exercises require the learner to produce the target language.
+
+Shapes:
   Multiple choice:
-    { "kind": "multiple_choice", "question": "<English question — phrased as a guess / recognition prompt. DO NOT state the translation in the question.>", "correct": "<the right option>", "wrong": ["<distractor>", "<distractor>", "<distractor>"], "explanation": "<1-2 sentences revealing the meaning + why>" }
-  Tap the correct word:
-    { "kind": "tap_word", "prompt": "<English prompt pointing at a CLUE, not the translation — e.g. 'Tap the word that fits the cognate hint.'>", "correct": "<the right Spanish/Catalan token>", "distractors": ["<other>", "<other>", "<other>"], "explanation": "<1-2 sentences>" }
-  Speaking aloud:
-    { "kind": "speaking", "prompt": "<English prompt e.g. 'Say it aloud'>", "expected": "<Spanish/Catalan text the learner must say>", "translation": "<English of the expected>", "explanation": "<1-2 sentences>" }
-  Fill in the blank:
-    { "kind": "fill_blank", "prompt": "<Spanish/Catalan sentence with ______ for the blank>", "correct": "<answer that fills the blank>", "hint": "<optional short hint — NOT the translation>", "explanation": "<1-2 sentences>" }
+    { "kind": "multiple_choice", "question": "<TARGET-LANGUAGE word or phrase> — what does this mean?  OR: <TARGET-LANGUAGE word/phrase> — what does this sign tell you?", "correct": "<English meaning>", "wrong": ["<plausible English meaning>", "<plausible English meaning>", "<plausible English meaning>"], "explanation": "<1-2 sentences>" }
+  Tap the correct word (RECOGNITION of English meaning): use when the scene has multiple target-language signs/items close in meaning. The LEARNER is shown an English sentence/scenario and taps the ENGLISH option that matches a given target-language word.
+    { "kind": "tap_word", "prompt": "<English prompt pointing at the target-language word — e.g. 'The sign says SORTIDA. Tap the English meaning.'>", "correct": "<English meaning>", "distractors": ["<English wrong 1>", "<English wrong 2>", "<English wrong 3>"], "explanation": "<1-2 sentences>" }
+  Speaking aloud (production — the ONE kind where the learner outputs target language):
+    { "kind": "speaking", "prompt": "<English prompt e.g. 'Say it aloud'>", "expected": "<target-language text the learner must say>", "translation": "<English of the expected>", "explanation": "<1-2 sentences>", "translationCheck": { "options": ["<4 English options>", "<...>", "<...>", "<...>"], "correctIndex": <0-3>, "explanation": "<1-2 sentences>" } }
+  Fill in the blank (production of a target-language word — use sparingly; prefer MCQ):
+    { "kind": "fill_blank", "prompt": "<Target-language sentence with ______ for the blank>", "correct": "<target-language answer that fills the blank>", "hint": "<optional short English hint — NOT the translation>", "explanation": "<1-2 sentences>" }
 Do not use any other kind values. Do not rename question/correct/wrong to prompt/options/answer.`;
 
-const QUIZ_SCHEMA = `Each endQuiz item MUST be one of these four shapes, using the EXACT field names shown. EVERY shape MUST include an "explanation" string (1-2 sentences revealed after the learner answers):
-  { "kind": "multiple_choice", "question": "<English>", "correct": "<right option>", "wrong": ["<d>", "<d>", "<d>"], "explanation": "<1-2 sentences>" }
-  { "kind": "fill_blank", "prompt": "<English sentence with ______ for the blank>", "correct": "<answer that fills the blank>", "hint": "<optional short hint>", "explanation": "<1-2 sentences>" }
-  { "kind": "listening", "audio": "<Spanish/Catalan text the learner will hear via TTS>", "question": "<English question about the audio>", "correct": "<right option>", "wrong": ["<d>", "<d>", "<d>"], "explanation": "<1-2 sentences>" }
-  { "kind": "speaking", "prompt": "<English prompt>", "expected": "<Spanish/Catalan to say>", "translation": "<English of expected>", "explanation": "<1-2 sentences>" }`;
+const QUIZ_SCHEMA = `Each endQuiz item MUST be one of these four shapes, using the EXACT field names shown. Same comprehension rule as above — comprehension questions SHOW the target-language word/phrase and ANSWER OPTIONS ARE ENGLISH. EVERY item MUST include an "explanation" string.
+  { "kind": "multiple_choice", "question": "<TARGET-LANGUAGE word/phrase> — what does it mean?", "correct": "<English meaning>", "wrong": ["<English wrong>", "<English wrong>", "<English wrong>"], "explanation": "<1-2 sentences>" }
+  { "kind": "fill_blank", "prompt": "<Target-language sentence with ______ for the blank>", "correct": "<target-language answer>", "hint": "<optional short hint>", "explanation": "<1-2 sentences>" }
+  { "kind": "listening", "audio": "<Target-language text the learner will hear via TTS>", "question": "What does the announcer say?  OR  Based on what you heard, what does it mean?", "correct": "<English meaning>", "wrong": ["<English wrong>", "<English wrong>", "<English wrong>"], "explanation": "<1-2 sentences>" }
+  { "kind": "speaking", "prompt": "<English prompt>", "expected": "<Target-language to say>", "translation": "<English of expected>", "explanation": "<1-2 sentences>", "translationCheck": { "options": ["<4 English options>", "<...>", "<...>", "<...>"], "correctIndex": <0-3>, "explanation": "<1-2 sentences>" } }
+
+EVERY speaking question (gatedExercise OR endQuiz) MUST carry a translationCheck block — the runner shows it as a follow-up comprehension question after the learner's mic attempt.`;
 
 function buildContextBlock(prior, characters, bilingualContext) {
   const chars = Object.entries(characters).map(([n, c]) => `  - ${n} (${c.role}) [first appears L${c.firstAppearance}]`).join("\n");
@@ -904,6 +914,21 @@ function assertShape(v2, mediumExpected) {
     if (!s.gatedExercise.explanation || typeof s.gatedExercise.explanation !== "string") {
       throw new Error(`decodeSteps[${i}].gatedExercise.explanation missing`);
     }
+    if (s.gatedExercise.kind === "speaking") {
+      const tc = s.gatedExercise.translationCheck;
+      if (!tc || typeof tc !== "object") {
+        throw new Error(`decodeSteps[${i}].gatedExercise is speaking but has no translationCheck`);
+      }
+      if (!Array.isArray(tc.options) || tc.options.length !== 4) {
+        throw new Error(`decodeSteps[${i}].gatedExercise.translationCheck.options must be an array of 4 English strings`);
+      }
+      if (typeof tc.correctIndex !== "number" || tc.correctIndex < 0 || tc.correctIndex > 3) {
+        throw new Error(`decodeSteps[${i}].gatedExercise.translationCheck.correctIndex must be 0-3`);
+      }
+      if (!tc.explanation || typeof tc.explanation !== "string") {
+        throw new Error(`decodeSteps[${i}].gatedExercise.translationCheck.explanation missing`);
+      }
+    }
     if (mediumExpected === "audio" && !s.audioSnippet) throw new Error(`decodeSteps[${i}].audioSnippet missing (required for audio)`);
   }
   for (let i = 1; i < v2.decodeSteps.length; i++) {
@@ -917,6 +942,21 @@ function assertShape(v2, mediumExpected) {
     if (!QUIZ_KINDS.has(q.kind)) throw new Error(`endQuiz[${i}].kind invalid: ${q.kind}`);
     if (!q.explanation || typeof q.explanation !== "string") {
       throw new Error(`endQuiz[${i}].explanation missing`);
+    }
+    if (q.kind === "speaking") {
+      const tc = q.translationCheck;
+      if (!tc || typeof tc !== "object") {
+        throw new Error(`endQuiz[${i}] is speaking but has no translationCheck`);
+      }
+      if (!Array.isArray(tc.options) || tc.options.length !== 4) {
+        throw new Error(`endQuiz[${i}].translationCheck.options must be an array of 4 English strings`);
+      }
+      if (typeof tc.correctIndex !== "number" || tc.correctIndex < 0 || tc.correctIndex > 3) {
+        throw new Error(`endQuiz[${i}].translationCheck.correctIndex must be 0-3`);
+      }
+      if (!tc.explanation || typeof tc.explanation !== "string") {
+        throw new Error(`endQuiz[${i}].translationCheck.explanation missing`);
+      }
     }
   }
 }
@@ -1062,30 +1102,47 @@ async function main() {
             city: course.city, characters: CHARACTERS, bilingualContext: BILINGUAL,
           });
 
-      let v2, usage;
-      {
-        const r1 = await callClaude({ apiKey: anthropicKey, systemPrompt: SYSTEM_PROMPT, userPrompt, maxTokens: 5000 });
-        usage = r1.usage;
-        v2 = extractJson(r1.text);
+      // Try up to 4 attempts (initial + 3 retries). Each retry gets
+      // the previous validation error as a direct nudge so Claude can
+      // fix the specific field that tripped. Many of the recurring
+      // failures are hint-leaks on edge-case words (proper nouns with
+      // parenthetical metadata, near-cognates) that clear on retry.
+      let v2 = null, usage = null, lastErr = null;
+      let currentPrompt = userPrompt;
+      const MAX_ATTEMPTS = 4;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        const r = await callClaude({
+          apiKey: anthropicKey,
+          systemPrompt: SYSTEM_PROMPT,
+          userPrompt: currentPrompt,
+          maxTokens: 5000,
+        });
+        usage = r.usage;
+        let candidate;
         try {
-          assertShape(v2, medium);
-        } catch (validationErr) {
-          console.log(`         RETRY    validation: ${validationErr.message.slice(0, 120)}`);
-          const nudge = `${userPrompt}\n\nYour previous response failed validation with: "${validationErr.message}". Regenerate the WHOLE JSON object, fixing that specific issue. Keep the same lesson framing.`;
-          const r2 = await callClaude({ apiKey: anthropicKey, systemPrompt: SYSTEM_PROMPT, userPrompt: nudge, maxTokens: 5000 });
-          usage = r2.usage;
-          v2 = extractJson(r2.text);
-          try {
-            assertShape(v2, medium);
-          } catch (secondErr) {
-            if (flags.verbose || flags.dryRun) {
-              console.error("--- second validation failed, raw JSON: ---");
-              console.error(JSON.stringify(v2, null, 2).slice(0, 8000));
-              console.error("--- end raw ---");
-            }
-            throw secondErr;
-          }
+          candidate = extractJson(r.text);
+        } catch (parseErr) {
+          lastErr = parseErr;
+          console.log(`         RETRY    parse attempt ${attempt}: ${parseErr.message.slice(0, 120)}`);
+          currentPrompt = `${userPrompt}\n\nYour previous response could not be parsed as JSON (${parseErr.message}). Return ONLY the JSON object, no prose, no code fences.`;
+          continue;
         }
+        try {
+          assertShape(candidate, medium);
+          v2 = candidate;
+          break;
+        } catch (validationErr) {
+          lastErr = validationErr;
+          console.log(`         RETRY    validation attempt ${attempt}: ${validationErr.message.slice(0, 160)}`);
+          currentPrompt = `${userPrompt}\n\nYour previous response failed validation with: "${validationErr.message}". Regenerate the WHOLE JSON object, fixing that specific issue while keeping the same lesson framing. Pay particular attention to the CRITICAL rules about hint leaks (never contain the English translation as a whole word) and the Spanish→English comprehension-question pattern (show the TARGET-LANGUAGE word/phrase in the question; put ENGLISH options in the answers).`;
+        }
+      }
+      if (!v2) {
+        if (flags.verbose || flags.dryRun) {
+          console.error("--- all validation attempts failed; last error: ---");
+          console.error(lastErr?.message);
+        }
+        throw lastErr ?? new Error("generator failed after 4 attempts");
       }
 
       v2.type = plan.type;
