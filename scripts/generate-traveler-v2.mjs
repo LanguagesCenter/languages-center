@@ -104,7 +104,7 @@ const STORAGE_BUCKET = "traveler-images";
 const MADRID_LESSON_PLAN = {
   1:  { type: "sign", image: { source: "unsplash", query: "airport arrivals hall sign terminal international spain", description: "The arrivals hall at Madrid-Barajas Airport Terminal 4, with overhead directional signs pointing travelers to passport control, baggage claim, and the exit.", visibleText: ["LLEGADAS", "LLEGADAS INTERNACIONALES", "CONTROL DE PASAPORTES", "RECOGIDA DE EQUIPAJES", "SALIDA"] } },
   2:  { type: "document", image: { source: "unsplash", query: "airline boarding pass paper ticket flight", description: "A paper airline boarding pass with passenger name, flight number, origin/destination, boarding gate, seat assignment, and boarding time printed on it.", visibleText: ["EMBARQUE", "PUERTA", "ASIENTO", "NOMBRE", "DESTINO", "ORIGEN", "VUELO", "FECHA"] } },
-  3:  { type: "overheard", image: { source: "streetview", lat: 40.4983, lng: -3.5676, heading: 90, pitch: 5, description: "The street scene immediately outside the Madrid-Barajas Airport Terminal 4 taxi rank, with white-and-red Madrid taxis queueing by the curb.", visibleText: ["TAXI", "PARADA"] } },
+  3:  { type: "overheard", image: { source: "unsplash", query: "madrid taxi stand airport white red cab Spain curb", description: "The curbside taxi rank outside Madrid-Barajas Airport Terminal 4, with the distinctive white-and-red Madrid taxis queueing by the curb and passengers heading to the vehicles with luggage.", visibleText: ["TAXI", "PARADA"] } },
   4:  { type: "document", image: { source: "unsplash", query: "hotel check in form registration paper reception", description: "A paper hotel registration card (ficha de policía) partially filled in with the guest's name, passport number, nationality, dates of stay, and signature line.", visibleText: ["NOMBRE", "APELLIDOS", "PASAPORTE", "NACIONALIDAD", "FECHA DE ENTRADA", "FECHA DE SALIDA", "FIRMA"] } },
   5:  { type: "advertisement", image: { source: "unsplash", query: "hotel brochure spa rooftop luxury room service card", description: "A tabletop in-room hotel brochure card advertising the rooftop spa and mini-bar, with prices in euros and opening hours.", visibleText: ["SPA", "TERRAZA", "MINIBAR", "HORARIO", "ABIERTO", "DESDE", "€", "RESERVAR"] } },
   6:  { type: "sign", image: { source: "unsplash", query: "madrid metro station entrance sign line directions", description: "A Madrid Metro wayfinding sign for Sol station showing Lines 1, 2, and 3 with correspondencia (transfer) arrows and the SALIDA exit arrow.", visibleText: ["METRO", "SOL", "LÍNEA 1", "LÍNEA 2", "LÍNEA 3", "CORRESPONDENCIA", "SALIDA", "ANDÉN", "DIRECCIÓN"] } },
@@ -149,7 +149,7 @@ const MADRID_LESSON_PLAN = {
   45: { type: "document", image: { source: "unsplash", query: "bus stop schedule timetable printed", description: "An EMT Madrid night-bus (búho) printed timetable stuck to a Sol bus stop, listing route N1, intermediate stops, and arrival times.", visibleText: ["EMT", "BÚHO", "LÍNEA N1", "PARADA", "SALIDA", "LLEGADA", "FRECUENCIA", "LABORABLES", "FESTIVOS"] } },
   46: { type: "audio_announcement", image: null },
   47: { type: "overheard", image: null },
-  48: { type: "sign", image: { source: "streetview", lat: 40.4983, lng: -3.5676, heading: 270, pitch: 10, description: "The exterior of Madrid-Barajas Airport Terminal 4 at the drop-off curb — travelers heading to departures with luggage trolleys.", visibleText: ["SALIDAS", "FACTURACIÓN", "EMBARQUE", "SEGURIDAD", "PUERTA", "T4"] } },
+  48: { type: "sign", image: { source: "unsplash", query: "Madrid Barajas airport terminal departures sign check-in Spain", description: "The departures hall at Madrid-Barajas Airport Terminal 4 with overhead signage directing travelers to check-in counters, security, and boarding gates. Catalan-free Castilian Spanish signage throughout.", visibleText: ["SALIDAS", "FACTURACIÓN", "EMBARQUE", "SEGURIDAD", "PUERTA", "T4"] } },
   49: { type: "advertisement", image: { source: "unsplash", query: "duty free airport perfume jamon display sign price promotion", description: "A duty-free promotional display at Barajas Terminal 4 for perfume and jamón ibérico, with 'Duty Free' and 'Promoción' signage and prices in euros.", visibleText: ["DUTY FREE", "PROMOCIÓN", "AHORRE", "DESDE", "PERFUMERÍA", "JAMÓN IBÉRICO", "€"] } },
   50: { type: "audio_announcement", image: null },
 };
@@ -197,7 +197,7 @@ const BARCELONA_LESSON_PLAN = {
   4:  { type: "document", image: { source: "unsplash", query: "barcelona apartment keys house address guestbook welcome note", description: "A hand-written welcome note on the kitchen counter of a Barri Gòtic Airbnb apartment: Wi-Fi password, landlady's phone, and the nearest metro station, written in Catalan with Castilian translation underneath.", visibleText: ["BENVINGUTS", "BIENVENIDOS", "WIFI", "CONTRASENYA", "CONTRASEÑA", "TELÈFON", "TELÉFONO", "METRO JAUME I"] } },
   5:  { type: "advertisement", image: { source: "unsplash", query: "barcelona rooftop terrace hotel bar skyline card", description: "A tabletop card at your Barri Gòtic Airbnb advertising the rooftop terrace bar run by the neighbors — opening hours and tapas prices in euros.", visibleText: ["TERRASSA", "TERRAZA", "OBERT", "ABIERTO", "TANCAT", "CERRADO", "HORARI", "HORARIO", "€"] } },
   6:  { type: "sign", image: { source: "streetview", lat: 41.3870, lng: 2.1700, heading: 200, pitch: 10, description: "The entrance to Catalunya Metro station in Plaça Catalunya — a red diamond-shaped ‘M’ sign with directional arrows into the station and the bilingual ‘Sortida’/‘Salida’ exit marker beside it.", visibleText: ["METRO", "L1", "L3", "SORTIDA", "SALIDA", "ANDANA", "ANDÉN", "CORRESPONDÈNCIA", "CORRESPONDENCIA"] } },
-  7:  { type: "advertisement", image: { source: "streetview", lat: 41.38098, lng: 2.17264, heading: 10, pitch: 5, description: "A view from La Rambla's central pedestrian promenade in Barcelona (near the Liceu metro stop), looking north up the boulevard toward Plaça Catalunya — tree-lined walkway, kiosks, pedestrians, and bilingual Catalan/Castilian storefront signage visible on either side. Any legible shop name, hotel banner, café label, or official sign counts as valid text for this lesson.", visibleText: ["LA RAMBLA", "HOTEL", "BAR", "OBERT", "ABIERTO", "ENTRADA", "VISITES GUIADES"] } },
+  7:  { type: "advertisement", image: { source: "unsplash", query: "La Rambla Barcelona Spain pedestrian boulevard sign storefront", description: "A view down La Rambla in Barcelona showing the tree-lined pedestrian boulevard with storefronts, hotel banners, kiosks, and bilingual Catalan/Castilian signage visible on the buildings on either side.", visibleText: ["LA RAMBLA", "HOTEL", "BAR", "OBERT", "ABIERTO", "ENTRADA", "SOUVENIRS"] } },
   8:  { type: "overheard", image: { source: "streetview", lat: 41.3828, lng: 2.1770, heading: 100, pitch: 5, description: "A narrow medieval street in the Barri Gòtic near the Cathedral — a tourist asks a local pedestrian for directions to Plaça del Pi.", visibleText: ["CARRER", "CALLE", "PLAÇA", "PLAZA", "A LA DRETA", "A LA DERECHA", "A L'ESQUERRA", "A LA IZQUIERDA", "TOT RECTE", "TODO RECTO"] } },
   9:  { type: "document", image: { source: "unsplash", query: "barcelona tmb metro card hola bcn transport ticket", description: "A Hola BCN! transport card and its paper sleeve showing days of validity, zones covered, and price in euros.", visibleText: ["HOLA BCN!", "TARGETA DE TRANSPORT", "TARJETA DE TRANSPORTE", "DIES", "DÍAS", "ZONA 1", "ADULT", "ADULTO"] } },
   10: { type: "audio_announcement", image: null },
@@ -210,7 +210,7 @@ const BARCELONA_LESSON_PLAN = {
   17: { type: "document", image: { source: "unsplash", query: "pharmacy prescription receipt medication paper spanish green cross", description: "A Barcelona pharmacy receipt (recepta mèdica / receta médica) showing a bilingual label with medication, dosage, patient name, and the characteristic green neon cross of the Farmàcia.", visibleText: ["FARMÀCIA", "FARMACIA", "RECEPTA", "RECETA", "MEDICAMENT", "MEDICAMENTO", "DOSI", "DOSIS", "CADUCITAT", "CADUCIDAD"] } },
   18: { type: "advertisement", image: { source: "streetview", lat: 41.4036, lng: 2.1744, heading: 180, pitch: 20, description: "The exterior of Antoni Gaudí's Sagrada Família basilica from the Nativity Façade side — ticket kiosks in the foreground with multi-language signage (Catalan, Castilian, English).", visibleText: ["SAGRADA FAMÍLIA", "ENTRADES", "ENTRADAS", "AUDIOGUIA", "AUDIOGUÍA", "VISITA", "GRÀCIES", "GRACIAS", "€"] } },
   19: { type: "overheard", image: { source: "unsplash", query: "flea market vintage antiques encants barcelona stall negotiation", description: "A stall at Els Encants de Bellcaire flea market in Barcelona — the shopper and the vendor haggling over a vintage leather jacket.", visibleText: ["ELS ENCANTS", "QUANT COSTA?", "¿CUÁNTO CUESTA?", "REBAIXA", "REBAJA", "BARAT", "BARATO", "CAR", "CARO"] } },
-  20: { type: "document", image: { source: "unsplash", query: "store return receipt barcode paper refund", description: "A paper return slip from El Corte Inglés Plaça Catalunya with barcode, article numbers, date, and refund amount — field labels printed in both Catalan and Castilian.", visibleText: ["DEVOLUCIÓ", "DEVOLUCIÓN", "ARTICLE", "ARTÍCULO", "IMPORT", "IMPORTE", "DATA", "FECHA", "TIQUET", "TICKET"] } },
+  20: { type: "document", image: { source: "unsplash", query: "El Corte Inglés store Barcelona shopping bag department store exterior", description: "The exterior of an El Corte Inglés department store in Barcelona — the iconic green-logo building at Plaça Catalunya or Portal de l'Àngel with shoppers carrying the store's signature bags. Lesson teaches the Catalan/Castilian vocabulary for returning items at customer service inside: 'Devolució'/'Devolución', 'Article'/'Artículo', etc. Any visible store signage or shopping-context text counts.", visibleText: ["EL CORTE INGLÉS", "ATENCIÓ AL CLIENT", "ATENCIÓN AL CLIENTE", "DEVOLUCIÓ", "DEVOLUCIÓN", "ARTÍCULO", "TIQUET", "TICKET"] } },
   21: { type: "sign", image: { source: "unsplash", query: "barcelona museum ticket sign picasso mnac entrance price", description: "The ticket-office sign at the Museu Picasso in Barri Gòtic listing entry prices in euros, opening hours, and the free-admission time slot — label pairs in Catalan and Castilian.", visibleText: ["MUSEU PICASSO", "MUSEO PICASSO", "ENTRADA", "GENERAL", "REDUÏDA", "REDUCIDA", "GRATUÏTA", "GRATUITA", "HORARI", "HORARIO"] } },
   22: { type: "audio_announcement", image: null },
   23: { type: "sign", image: { source: "unsplash", query: "barcelona park guell gaudi mosaic bench sign interpretive", description: "An interpretive sign near the dragon mosaic at Park Güell explaining Gaudí's trencadís ceramic technique — a short paragraph in Catalan with a Castilian translation beneath.", visibleText: ["PARK GÜELL", "ANTONI GAUDÍ", "TRENCADÍS", "CERÀMICA", "CERÁMICA", "NO TOCAR", "SORTIDA", "SALIDA"] } },
@@ -472,10 +472,10 @@ ${hintBlock}
 Respond with ONE JSON object:
 {
   "sceneDescription": "A 1-2 sentence description of what the photo actually shows. Be literal — if the planning hint said 'metro sign' but the photo shows a street scene, describe the street scene.",
-  "visibleText": ["<every piece of visible text / signage / branding you can read in the image, verbatim, in whatever language it appears>"],
+  "visibleText": ["<every piece of visible text / signage / branding you can read in the image, verbatim, in whatever language it appears. EXCLUDE numeric-only elements like temperatures (24.6°C), times (09:43), percentages (39%), dates, phone numbers, prices — those are not teachable vocabulary. INCLUDE only word-level signage, brand names, store labels.>"],
   "visibleObjects": ["<up to 6 notable objects or elements a traveler would notice>"],
   "suitable": true | false,
-  "unsuitableReason": "<if false: 1 sentence why — e.g., 'off-topic / unreadable / clearly wrong city'. Note: the photo being set in ${cityLabel} or the correct country is GOOD, not a reason to reject. Only reject if the scene is unusable for the lesson type (e.g., stock art rather than a real location, blurry, wrong country entirely). omit if true.>"
+  "unsuitableReason": "<REJECT if ANY of these are true: the image is from a different country (Indonesia/India/UK/Japan/Australia/Germany/etc.), shows text in a wrong language (English-only, Chinese, Japanese), is clearly stock art rather than a real location, or is unrelated to the lesson scenario. ACCEPT if the image is in ${cityLabel} or the correct Spanish/French-speaking country/region and matches the general scene type, even if the specific details differ from the planning hint. omit this field if suitable=true.>"
 }
 
 Return only JSON. No prose. No code fences.`;
@@ -562,63 +562,198 @@ async function uploadToStorage({ supabaseUrl, serviceKey, path, bytes }) {
 // scene description + visible-text list extracted from the real photo.
 // The content prompt uses `vision` (not the plan hint) so the generated
 // lesson is grounded in what the learner will actually see.
+// Build an ordered list of image-search strategies for a lesson:
+//   (a) the planned source
+//   (b) the "other" source (Street View ↔ Unsplash) when possible
+//   (c) 2-3 alternative Unsplash queries derived from visibleText + city
+// Each strategy returns a list of URL candidates; vision picks the
+// best match from each, and the first strategy that produces a
+// suitable photo wins. If NONE produce a suitable photo, the lesson
+// is marked "needs review" and skipped (no loop).
+function buildImageStrategies({ plan, city, country, unsplashKey, mapsKey }) {
+  const img = plan.image;
+  if (!img) return [];
+  const strategies = [];
+
+  // (a) The planned source.
+  if (img.source === "streetview" && mapsKey && img.lat != null && img.lng != null) {
+    strategies.push({
+      label: "planned-streetview",
+      source: "streetview",
+      fetch: async () => [buildStreetViewUrl({
+        lat: img.lat, lng: img.lng,
+        heading: img.heading ?? 0, pitch: img.pitch ?? 0,
+        apiKey: mapsKey,
+      })],
+    });
+  } else if (img.source === "unsplash" && unsplashKey) {
+    strategies.push({
+      label: `planned-unsplash:"${img.query}"`,
+      source: "unsplash",
+      fetch: async () => fetchUnsplashCandidates({ query: img.query, accessKey: unsplashKey }),
+    });
+  }
+
+  // (b) The other source — only meaningful if the planned one has a
+  // Street View lat/lng (so we can also search Unsplash from the
+  // description) or vice versa.
+  if (img.source === "streetview" && unsplashKey) {
+    // Derive an Unsplash query from the plan description.
+    const derived = `${city} ${country} ${img.description?.split(/[—.,]/)[0] ?? ""}`.slice(0, 120);
+    strategies.push({
+      label: `fallback-unsplash:"${derived.trim()}"`,
+      source: "unsplash",
+      fetch: async () => fetchUnsplashCandidates({ query: derived.trim(), accessKey: unsplashKey }),
+    });
+  } else if (img.source === "unsplash" && mapsKey && img.lat != null && img.lng != null) {
+    strategies.push({
+      label: "fallback-streetview",
+      source: "streetview",
+      fetch: async () => [buildStreetViewUrl({
+        lat: img.lat, lng: img.lng,
+        heading: img.heading ?? 0, pitch: img.pitch ?? 0,
+        apiKey: mapsKey,
+      })],
+    });
+  }
+
+  // (c) 2-3 generated Unsplash queries from visibleText + city + country.
+  // These are broader queries that should catch the same scene type
+  // even when the specific brand / landmark query misses.
+  if (unsplashKey) {
+    const words = (img.visibleText ?? []).filter((w) => w && !w.startsWith("€"));
+    const queries = [];
+    if (words.length > 0) {
+      // Query 1: scene-first + top 2 vocab words
+      queries.push(`${city} ${country} ${words.slice(0, 2).join(" ")}`);
+      // Query 2: just the lesson type + city + country
+      queries.push(`${plan.type} ${city} ${country}`);
+      // Query 3: a middle vocab word as the subject
+      if (words.length >= 3) queries.push(`${words[Math.min(2, words.length - 1)]} ${city} ${country}`);
+    } else {
+      queries.push(`${plan.type} ${city} ${country}`);
+    }
+    for (const q of queries.slice(0, 3)) {
+      const qt = q.replace(/\s+/g, " ").trim().slice(0, 100);
+      strategies.push({
+        label: `alt-unsplash:"${qt}"`,
+        source: "unsplash",
+        fetch: async () => fetchUnsplashCandidates({ query: qt, accessKey: unsplashKey }),
+      });
+    }
+  }
+
+  return strategies;
+}
+
+// Vision-level rejection: anything showing text/signage from a wrong
+// country or wrong language. Reads vision.unsuitableReason for hints.
+function visionSaysWrongCountry(vision, city) {
+  if (!vision) return false;
+  if (vision.suitable === false || vision.suitableForMadridLesson === false) {
+    return true;
+  }
+  const reason = (vision.unsuitableReason ?? "").toLowerCase();
+  const otherCountries = /indian|indonesia|japanese|australian|british|uk |united kingdom|german|russian|chinese|thai|vietnamese|korean|arabic/;
+  if (otherCountries.test(reason)) return true;
+  // Scene description also sometimes mentions it
+  const scene = (vision.sceneDescription ?? "").toLowerCase();
+  const otherLocales = /makassar|mumbai|tokyo|sydney|london|berlin|moscow|bangkok|hanoi/;
+  if (otherLocales.test(scene)) return true;
+  return false;
+}
+
 async function resolveAndStashImage({
-  plan, city, orderIndex,
+  plan, city, country, orderIndex,
   unsplashKey, mapsKey, anthropicKey,
   supabaseUrl, serviceKey,
   skipUpload,
 }) {
   if (!plan.image) return null;
-  const img = plan.image;
 
-  // Build candidate URL list. Street View always has one candidate
-  // (the pano for that lat/lng). Unsplash gives us up to 8 so we can
-  // walk down the list if vision flags the top hit as unsuitable.
-  let candidates;
-  if (img.source === "streetview") {
-    if (!mapsKey) throw new Error(`L${orderIndex}: Street View lesson requires GOOGLE_MAPS_API_KEY`);
-    candidates = [buildStreetViewUrl({
-      lat: img.lat, lng: img.lng,
-      heading: img.heading ?? 0, pitch: img.pitch ?? 0,
-      apiKey: mapsKey,
-    })];
-  } else if (img.source === "unsplash") {
-    if (!unsplashKey) throw new Error(`L${orderIndex}: Unsplash lesson requires UNSPLASH_ACCESS_KEY`);
-    candidates = await fetchUnsplashCandidates({ query: img.query, accessKey: unsplashKey });
-    if (candidates.length === 0) throw new Error(`unsplash: no results for "${img.query}"`);
-  } else {
-    throw new Error(`L${orderIndex}: unknown image source "${img.source}"`);
+  const strategies = buildImageStrategies({
+    plan, city, country, unsplashKey, mapsKey,
+  });
+  if (strategies.length === 0) {
+    throw new Error(`L${orderIndex}: no image strategies available (check env keys)`);
   }
 
-  // Walk candidates, keeping the first one vision rates as suitable.
-  // If none pass, keep the first candidate anyway (so the lesson still
-  // gets an image) and surface the warning in `vision.unsuitableReason`.
-  let chosen = null;
+  // Walk each strategy; for each, fetch up to 8 candidates and let
+  // vision pick the first SUITABLE one. First strategy to yield a
+  // suitable image wins. Track the best "fallback" (first candidate
+  // across all strategies) only as a last-ditch option.
   let fallback = null;
-  for (let i = 0; i < candidates.length; i++) {
-    const url = candidates[i];
-    const bytes = await fetchImageBytes(url);
-    const vision = await describeImageWithClaude({
-      apiKey: anthropicKey, bytes, mediaType: "image/jpeg", planHint: img, city,
-    });
-    const attempt = { url, bytes, vision, candidateIndex: i };
-    if (!fallback) fallback = attempt;
-    const suitable = vision.suitable !== false && vision.suitableForMadridLesson !== false;
-    if (suitable) {
-      chosen = attempt;
-      break;
-    }
-    console.log(`         VISION-SKIP candidate ${i + 1}/${candidates.length}: ${vision.unsuitableReason ?? "unsuitable"}`);
-  }
-  const picked = chosen ?? fallback;
+  let chosen = null;
+  let chosenSource = null;
 
+  for (const strat of strategies) {
+    let candidates;
+    try {
+      candidates = await strat.fetch();
+    } catch (err) {
+      console.log(`         STRAT-FAIL ${strat.label}: ${err.message.slice(0, 120)}`);
+      continue;
+    }
+    if (!candidates || candidates.length === 0) {
+      console.log(`         STRAT-EMPTY ${strat.label}: no candidates`);
+      continue;
+    }
+    for (let i = 0; i < Math.min(candidates.length, 8); i++) {
+      const url = candidates[i];
+      let bytes;
+      try {
+        bytes = await fetchImageBytes(url);
+      } catch (err) {
+        console.log(`         FETCH-FAIL ${strat.label} candidate ${i + 1}: ${err.message.slice(0, 80)}`);
+        continue;
+      }
+      const vision = await describeImageWithClaude({
+        apiKey: anthropicKey, bytes, mediaType: "image/jpeg", planHint: plan.image, city,
+      });
+      const attempt = { url, bytes, vision, source: strat.source, strategyLabel: strat.label };
+      if (!fallback) fallback = attempt;
+
+      if (visionSaysWrongCountry(vision, city)) {
+        console.log(`         REJECT (wrong-locale) ${strat.label} candidate ${i + 1}: ${vision.unsuitableReason ?? "unsuitable"}`);
+        continue;
+      }
+      // At this point the photo is at least not wrong-country.
+      const suitable = vision.suitable !== false && vision.suitableForMadridLesson !== false;
+      if (suitable) {
+        chosen = attempt;
+        chosenSource = strat.source;
+        break;
+      }
+      console.log(`         VISION-SKIP ${strat.label} candidate ${i + 1}: ${vision.unsuitableReason ?? "unsuitable"}`);
+    }
+    if (chosen) break;
+  }
+
+  if (!chosen) {
+    // No suitable image across every strategy. Return null so the
+    // caller marks the lesson "needs review" and moves on.
+    const reason = fallback?.vision?.unsuitableReason ?? "no candidate passed vision check";
+    return { needsReview: true, reason };
+  }
+
+  const source = chosenSource ?? "unknown";
   if (skipUpload) {
-    return { url: picked.url, source: img.source, vision: picked.vision, candidateIndex: picked.candidateIndex };
+    return {
+      url: chosen.url,
+      source,
+      vision: chosen.vision,
+      strategyLabel: chosen.strategyLabel,
+    };
   }
 
   const path = storagePathFor(city, orderIndex);
-  await uploadToStorage({ supabaseUrl, serviceKey, path, bytes: picked.bytes });
-  return { url: publicStorageUrl(supabaseUrl, path), source: img.source, vision: picked.vision, candidateIndex: picked.candidateIndex };
+  await uploadToStorage({ supabaseUrl, serviceKey, path, bytes: chosen.bytes });
+  return {
+    url: publicStorageUrl(supabaseUrl, path),
+    source,
+    vision: chosen.vision,
+    strategyLabel: chosen.strategyLabel,
+  };
 }
 
 // ============================================================
@@ -1102,11 +1237,21 @@ async function main() {
       let imageInfo = null;
       if (flags.withImages && plan.image) {
         imageInfo = await resolveAndStashImage({
-          plan, city: course.city, orderIndex: lesson.order_index,
+          plan, city: course.city, country: course.country, orderIndex: lesson.order_index,
           unsplashKey, mapsKey, anthropicKey,
           supabaseUrl, serviceKey,
           skipUpload: flags.dryRun,
         });
+        if (imageInfo?.needsReview) {
+          console.log(`         NEEDS-REVIEW L${lesson.order_index}: ${imageInfo.reason?.slice(0, 180) ?? "no suitable image"}`);
+          failed++;
+          failures.push({
+            order: lesson.order_index,
+            title: lesson.title,
+            error: `needs-review: ${imageInfo.reason ?? "no suitable image"}`,
+          });
+          continue;
+        }
       }
 
       const userPrompt = medium === "image"
@@ -1130,15 +1275,22 @@ async function main() {
       // parenthetical metadata, near-cognates) that clear on retry.
       let v2 = null, usage = null, lastErr = null;
       let currentPrompt = userPrompt;
+      // Track consecutive leak failures on the same step index. If a
+      // step trips the leak check 2 attempts in a row, we tell Claude
+      // to DROP that step entirely rather than endlessly spin.
+      const consecutiveLeakByStep = {};
+      const stepsToDrop = new Set();
       const MAX_ATTEMPTS = 5;
+      const LEAK_RE = /decodeSteps\[(\d+)\]\.hints leak the translation/;
+      let lastLeakStep = -1;
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         const r = await callClaude({
           apiKey: anthropicKey,
           systemPrompt: SYSTEM_PROMPT,
           userPrompt: currentPrompt,
-          // Bumped from 5000 — bilingual lessons with hints + explanations
-          // + translationCheck on every speaking exercise were getting
-          // truncated mid-JSON array at around 15k characters.
+          // Bilingual lessons with hints + explanations + translationCheck
+          // on every speaking exercise need ~7-8k tokens; truncation
+          // mid-array below that threshold shows up as a parse error.
           maxTokens: 8000,
         });
         usage = r.usage;
@@ -1147,8 +1299,18 @@ async function main() {
           candidate = extractJson(r.text);
         } catch (parseErr) {
           lastErr = parseErr;
-          console.log(`         RETRY    parse attempt ${attempt}: ${parseErr.message.slice(0, 120)}`);
-          currentPrompt = `${userPrompt}\n\nYour previous response could not be parsed as JSON (${parseErr.message}). Return ONLY the JSON object, no prose, no code fences.`;
+          // Truncation detector: parse error at a position near the end
+          // of the raw text, or an unterminated string/array. Ask
+          // Claude to emit a SHORTER response — trim hints to 2 and
+          // drop optional culturalNote fields.
+          const looksTruncated =
+            /unterminated|unexpected end|Expected '[,\]}]'/i.test(parseErr.message) &&
+            parseErr.message.includes("position");
+          const hint = looksTruncated
+            ? `Your previous response was TRUNCATED (ran out of tokens) — the JSON ended mid-array. Regenerate with LESS text: use exactly 2 hints per decodeStep (not 3), OMIT optional culturalNote fields, and keep all explanations under 25 words. Return ONLY the JSON, no prose, no code fences.`
+            : `Your previous response could not be parsed as JSON (${parseErr.message}). Return ONLY the JSON object, no prose, no code fences.`;
+          console.log(`         RETRY    parse attempt ${attempt}: ${parseErr.message.slice(0, 120)}${looksTruncated ? " [truncation]" : ""}`);
+          currentPrompt = `${userPrompt}\n\n${hint}`;
           continue;
         }
         try {
@@ -1158,7 +1320,27 @@ async function main() {
         } catch (validationErr) {
           lastErr = validationErr;
           console.log(`         RETRY    validation attempt ${attempt}: ${validationErr.message.slice(0, 160)}`);
-          currentPrompt = `${userPrompt}\n\nYour previous response failed validation with: "${validationErr.message}". Regenerate the WHOLE JSON object, fixing that specific issue while keeping the same lesson framing. Pay particular attention to the CRITICAL rules about hint leaks (never contain the English translation as a whole word) and the Spanish→English comprehension-question pattern (show the TARGET-LANGUAGE word/phrase in the question; put ENGLISH options in the answers).`;
+          // Did this fail the leak check on a specific decode step?
+          const match = LEAK_RE.exec(validationErr.message);
+          if (match) {
+            const stepIdx = parseInt(match[1], 10);
+            consecutiveLeakByStep[stepIdx] = (stepIdx === lastLeakStep)
+              ? (consecutiveLeakByStep[stepIdx] ?? 0) + 1
+              : 1;
+            lastLeakStep = stepIdx;
+            if (consecutiveLeakByStep[stepIdx] >= 2) {
+              stepsToDrop.add(stepIdx);
+              console.log(`         DROP     decodeSteps[${stepIdx}] after 2 consecutive leak failures`);
+            }
+          } else {
+            lastLeakStep = -1;
+          }
+          // Build nudge. If we've decided to drop any steps, tell
+          // Claude to not include those words at all.
+          const dropHint = stepsToDrop.size > 0
+            ? `\n\nIMPORTANT: Previous attempts kept leaking the translation for the words at decodeSteps[${[...stepsToDrop].join(", ")}]. Do NOT include any decodeStep for those word positions — SKIP them entirely. Reduce to decodeSteps.length = ${Math.max(3, 7 - stepsToDrop.size)} and choose different vocabulary words from the visible-text list.`
+            : "";
+          currentPrompt = `${userPrompt}\n\nYour previous response failed validation with: "${validationErr.message}". Regenerate the WHOLE JSON object, fixing that specific issue while keeping the same lesson framing. Pay particular attention to the CRITICAL rules about hint leaks (never contain the English translation as a whole word) and the Spanish→English comprehension-question pattern (show the TARGET-LANGUAGE word/phrase in the question; put ENGLISH options in the answers).${dropHint}`;
         }
       }
       if (!v2) {
@@ -1166,7 +1348,17 @@ async function main() {
           console.error("--- all validation attempts failed; last error: ---");
           console.error(lastErr?.message);
         }
-        throw lastErr ?? new Error("generator failed after 4 attempts");
+        // Mark this lesson "needs review" rather than throwing — the
+        // runner continues with the next lesson.
+        console.log(`         NEEDS-REVIEW L${lesson.order_index}: ${lastErr?.message?.slice(0, 180) ?? "generation failed"}`);
+        failed++;
+        failures.push({
+          order: lesson.order_index,
+          title: lesson.title,
+          error: `needs-review: ${lastErr?.message ?? "generation failed"}`,
+        });
+        if (flags.sleepMs > 0) await new Promise((r) => setTimeout(r, flags.sleepMs));
+        continue;
       }
 
       v2.type = plan.type;
