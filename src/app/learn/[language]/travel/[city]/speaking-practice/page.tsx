@@ -67,7 +67,11 @@ export default async function SpeakingPracticePage(
             grouped by lesson. Pass each one to clear it.
           </p>
         </section>
-        <SpeakingPracticeRunner rows={rows} speechLang={speechLang} />
+        <SpeakingPracticeRunner
+          rows={rows}
+          speechLang={speechLang}
+          city={bundle.course.city}
+        />
       </main>
     </>
   );

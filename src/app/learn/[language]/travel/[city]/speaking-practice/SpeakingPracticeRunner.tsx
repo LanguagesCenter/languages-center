@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { SkippedSpeakingRow } from "@/lib/traveler";
 import {
-  speak,
+  speakForCity,
   warmUpSpeech,
-  isAudioAvailable,
+  hasVoiceForCity,
   type PlayHandle,
 } from "@/lib/speech";
 import type { TranslationCheck } from "@/lib/traveler-preview";
@@ -73,9 +73,14 @@ function matches(heard: string, expected: string): boolean {
 export default function SpeakingPracticeRunner({
   rows,
   speechLang,
+  city,
 }: {
   rows: SkippedSpeakingRow[];
+  // Used by SpeechRecognition.lang (BCP-47).
   speechLang: string;
+  // City name — used by the TTS engine to pick a regional accent
+  // (es-ES / es-MX / es-AR / fr-FR / fr-CA).
+  city: string;
 }) {
   const router = useRouter();
   // Local copy so we can hide a row immediately after completing it
@@ -162,6 +167,7 @@ export default function SpeakingPracticeRunner({
                 key={item.id}
                 row={item}
                 speechLang={speechLang}
+                city={city}
                 onDone={() => markDone(item.id)}
               />
             ))}
@@ -183,10 +189,12 @@ export default function SpeakingPracticeRunner({
 function PracticeItem({
   row,
   speechLang,
+  city,
   onDone,
 }: {
   row: SkippedSpeakingRow;
   speechLang: string;
+  city: string;
   onDone: () => void;
 }) {
   const [transcript, setTranscript] = useState("");
@@ -196,24 +204,55 @@ function PracticeItem({
     "idle",
   );
   const [audioUnavailable, setAudioUnavailable] = useState(false);
+  const [playing, setPlaying] = useState<"normal" | "slow" | null>(null);
+  const playHandleRef = useRef<PlayHandle | null>(null);
   const SR = getSR();
   const supported = SR !== null;
   const check: TranslationCheck | null = row.translationCheck ?? null;
 
   useEffect(() => {
     warmUpSpeech();
-  }, []);
+    // Poll briefly: if no city-matching voice exists after a few
+    // seconds, flip to the "audio isn't available" state so the UI
+    // doesn't show a dead play button.
+    let cancelled = false;
+    let tries = 0;
+    const check = () => {
+      if (cancelled) return;
+      if (hasVoiceForCity(city)) {
+        setAudioUnavailable(false);
+        return;
+      }
+      tries += 1;
+      if (tries >= 10) {
+        setAudioUnavailable(true);
+        return;
+      }
+      setTimeout(check, 300);
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [city]);
 
-  function playAudio() {
-    speak(row.expected, speechLang, {
-      rate: 0.9,
+  function playAudio(rate: number, variant: "normal" | "slow") {
+    if (playing) {
+      playHandleRef.current?.stop();
+      setPlaying(null);
+      return;
+    }
+    const handle = speakForCity(row.expected, city, {
+      rate,
+      onstart: () => setPlaying(variant),
+      onend: () => setPlaying(null),
       onerror: (reason) => {
-        if (reason === "speech-synthesis-unavailable") setAudioUnavailable(true);
+        setPlaying(null);
+        if (reason === "no-matching-voice" || reason === "speech-synthesis-unavailable") {
+          setAudioUnavailable(true);
+        }
       },
     });
-    setTimeout(() => {
-      if (!isAudioAvailable()) setAudioUnavailable(true);
-    }, 2000);
+    playHandleRef.current = handle;
+    setPlaying(variant);
   }
 
   function markPassed() {
@@ -306,16 +345,29 @@ function PracticeItem({
             </svg>
           </span>
         ) : (
-          <button
-            type="button"
-            onClick={playAudio}
-            aria-label="Play"
-            className="shrink-0 w-10 h-10 rounded-full bg-teal text-white flex items-center justify-center hover:bg-teal-dark transition-colors"
-          >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </button>
+          <div className="shrink-0 inline-flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => playAudio(0.9, "normal")}
+              aria-label={playing ? "Stop" : "Play"}
+              className={`w-10 h-10 rounded-full bg-teal text-white flex items-center justify-center hover:bg-teal-dark transition-colors ${playing === "normal" ? "animate-pulse" : ""}`}
+            >
+              {playing ? (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
+              ) : (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => playAudio(0.75, "slow")}
+              aria-label={playing === "slow" ? "Stop slow" : "Play slower"}
+              className={`inline-flex items-center gap-1 px-2.5 h-9 rounded-full border-2 border-teal/40 text-teal-dark text-xs font-bold hover:bg-teal-light transition-colors ${playing === "slow" ? "bg-teal-light animate-pulse" : "bg-white"}`}
+            >
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+              Slow
+            </button>
+          </div>
         )}
       </div>
       <div className="rounded-lg border border-border bg-white px-3 py-2 min-h-[52px]">

@@ -61,37 +61,189 @@ export function isAudioAvailable(): boolean {
   return cachedVoices.length > 0;
 }
 
+// ============================================================
+// City → voice-selection spec
+//
+// Each city maps to an ordered list of acceptable locales + an
+// optional wildcard prefix (used as the LAST fallback). The spec is
+// strict: if no voice matches, the caller shows "Audio isn't
+// available on this device" instead of playing with the wrong
+// accent. We NEVER fall through to en-US — the whole point of the
+// Traveler's Course is the regional accent.
+// ============================================================
+
+export type VoiceSpec = {
+  preferred: string[];      // ordered BCP-47 locales to try
+  wildcardPrefix?: string;  // e.g. "es-" accepts any Spanish voice as last resort
+  utteranceLang: string;    // what to set utterance.lang to
+};
+
+export function voiceSpecForCity(city: string | null | undefined): VoiceSpec {
+  const c = (city ?? "").toLowerCase().trim();
+  switch (c) {
+    case "madrid":
+    case "barcelona":
+      return { preferred: ["es-ES"], utteranceLang: "es-ES" };
+    case "mexico city":
+      return { preferred: ["es-MX"], utteranceLang: "es-MX" };
+    case "buenos aires":
+      return {
+        preferred: ["es-AR", "es-419", "es-US"],
+        wildcardPrefix: "es-",
+        utteranceLang: "es-AR",
+      };
+    case "paris":
+    case "lyon":
+      return { preferred: ["fr-FR"], utteranceLang: "fr-FR" };
+    case "montreal":
+      return { preferred: ["fr-CA", "fr-FR"], utteranceLang: "fr-CA" };
+    default:
+      // Unknown city → strictest Spanish fallback.
+      return { preferred: ["es-ES"], utteranceLang: "es-ES" };
+  }
+}
+
+// Higher-quality voice names across platforms. We prefer these when
+// multiple voices match the same locale — they're neural / cloud
+// voices rather than the chunky default system voice.
+const HIGH_QUALITY_NAME = /enhanced|premium|neural|natural|google|cloud|siri/i;
+
 function pickVoice(
   voices: SpeechSynthesisVoice[],
-  lang: string,
+  spec: VoiceSpec,
   gender?: "male" | "female",
 ): SpeechSynthesisVoice | null {
   if (voices.length === 0) return null;
-  const target = lang.toLowerCase();
-  const prefix = target.split("-")[0];
-  const inLang = voices.filter(
-    (v) =>
-      v.lang.toLowerCase() === target ||
-      v.lang.toLowerCase().startsWith(target) ||
-      v.lang.toLowerCase().startsWith(prefix + "-"),
-  );
-  if (inLang.length === 0) return null;
-  if (gender) {
-    const genderHint =
-      gender === "male"
-        ? /jorge|diego|carlos|paul|alex|male/i
-        : /monica|paulina|marisol|female|helena|amelie/i;
-    const match = inLang.find((v) => genderHint.test(v.name));
-    if (match) return match;
+
+  // Walk preferred locales in order. For each, score candidates by
+  // (gender match ⟹ +2, high-quality name ⟹ +1) and return the
+  // highest-scoring voice in the first locale that has any match.
+  const genderRegex =
+    gender === "male"
+      ? /jorge|diego|carlos|paul|alex|male/i
+      : gender === "female"
+        ? /monica|paulina|marisol|female|helena|amelie|lucia/i
+        : null;
+
+  function score(v: SpeechSynthesisVoice): number {
+    let s = 0;
+    if (HIGH_QUALITY_NAME.test(v.name)) s += 1;
+    if (genderRegex && genderRegex.test(v.name)) s += 2;
+    return s;
   }
-  return inLang[0];
+
+  for (const loc of spec.preferred) {
+    const target = loc.toLowerCase();
+    const matches = voices.filter((v) => v.lang.toLowerCase() === target);
+    if (matches.length > 0) {
+      matches.sort((a, b) => score(b) - score(a));
+      return matches[0];
+    }
+  }
+
+  // Wildcard fallback (e.g. any es-* voice for Buenos Aires).
+  if (spec.wildcardPrefix) {
+    const prefix = spec.wildcardPrefix.toLowerCase();
+    const matches = voices.filter((v) =>
+      v.lang.toLowerCase().startsWith(prefix),
+    );
+    if (matches.length > 0) {
+      matches.sort((a, b) => score(b) - score(a));
+      return matches[0];
+    }
+  }
+
+  // No acceptable voice — DO NOT fall through to English.
+  return null;
+}
+
+// True iff we have a voice that matches the city's required accent.
+// Used by PlayWordButton to decide whether to render the normal play
+// button or the "Audio isn't available" placeholder.
+export function hasVoiceForCity(city: string | null | undefined): boolean {
+  if (typeof window === "undefined" || !window.speechSynthesis) return false;
+  const voices = populateVoices();
+  if (voices.length === 0) return false;
+  const spec = voiceSpecForCity(city);
+  return pickVoice(voices, spec) !== null;
 }
 
 // Speak a single utterance. CALL SYNCHRONOUSLY FROM THE CLICK
 // HANDLER — Safari/iOS enforce the user-gesture window strictly.
+//
+// `cityOrLang` can be either a city name (e.g. "Madrid", "Buenos
+// Aires") OR a BCP-47 locale ("es-ES"). City names go through
+// voiceSpecForCity(); raw locales are treated as a single-element
+// preferred list. If no acceptable voice exists for the required
+// accent we surface onerror("no-matching-voice") and DO NOT speak
+// with a wrong-accent fallback.
+export function speak(
+  cityOrLang: string,
+  text: string,
+  opts?: {
+    rate?: number;
+    gender?: "male" | "female";
+    onstart?: () => void;
+    onend?: () => void;
+    onerror?: (reason: string) => void;
+  },
+): PlayHandle;
 export function speak(
   text: string,
   lang: string,
+  opts?: {
+    rate?: number;
+    gender?: "male" | "female";
+    onstart?: () => void;
+    onend?: () => void;
+    onerror?: (reason: string) => void;
+  },
+): PlayHandle;
+export function speak(
+  arg1: string,
+  arg2: string,
+  opts?: {
+    rate?: number;
+    gender?: "male" | "female";
+    onstart?: () => void;
+    onend?: () => void;
+    onerror?: (reason: string) => void;
+  },
+): PlayHandle {
+  // Backwards-compat: the old signature was speak(text, lang). The new
+  // signature is speakForCity(text, city). We dispatch by looking at
+  // the second arg: if it matches a city, interpret as new; else old.
+  // Internally we build a VoiceSpec and delegate to speakWithSpec.
+  const KNOWN_CITIES = new Set([
+    "madrid", "barcelona", "mexico city", "buenos aires",
+    "paris", "lyon", "montreal",
+  ]);
+  const secondIsCity = KNOWN_CITIES.has(arg2.toLowerCase().trim());
+  const text = arg1;
+  const spec = secondIsCity
+    ? voiceSpecForCity(arg2)
+    : { preferred: [arg2], utteranceLang: arg2 };
+  return speakWithSpec(text, spec, opts);
+}
+
+// City-aware speak, used by the runner + Speaking Practice page.
+export function speakForCity(
+  text: string,
+  city: string,
+  opts?: {
+    rate?: number;
+    gender?: "male" | "female";
+    onstart?: () => void;
+    onend?: () => void;
+    onerror?: (reason: string) => void;
+  },
+): PlayHandle {
+  return speakWithSpec(text, voiceSpecForCity(city), opts);
+}
+
+function speakWithSpec(
+  text: string,
+  spec: VoiceSpec,
   opts?: {
     rate?: number;
     gender?: "male" | "female";
@@ -108,20 +260,25 @@ export function speak(
   const synth = window.speechSynthesis;
   ensureVoicesListener();
   const voices = populateVoices();
-  const voice = pickVoice(voices, lang, opts?.gender);
+  const voice = pickVoice(voices, spec, opts?.gender);
 
-  // Only cancel when something is actually in-flight. Unconditional
-  // cancel() races with the subsequent speak() on Safari.
+  // No matching voice — do NOT speak with an English fallback.
+  if (!voice) {
+    opts?.onerror?.("no-matching-voice");
+    opts?.onend?.();
+    return { stop: () => {}, finished: Promise.resolve() };
+  }
+
   if (synth.speaking || synth.pending) {
     synth.cancel();
   }
 
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang;
+  u.lang = voice.lang || spec.utteranceLang;
   u.rate = opts?.rate ?? 0.9;
   u.volume = 1;
   u.pitch = 1;
-  if (voice) u.voice = voice;
+  u.voice = voice;
 
   let settled = false;
   const finished = new Promise<void>((resolve) => {
@@ -159,14 +316,17 @@ export function speak(
 }
 
 // Sequentially play a multi-line script with per-line voice selection
-// and pauses between lines. The onCursor callback drives the waveform
-// highlight in the runner.
+// and pauses between lines. Accepts a city name OR a BCP-47 locale.
+// Same accent-strictness rule as speak(): if no matching voice is
+// available for the required locale, skips the line rather than
+// speaking in English.
 export function playScript(
   script: ScriptLine[],
-  lang: string,
+  cityOrLang: string,
   opts?: {
     onCursor?: (index: number) => void;
     onDone?: () => void;
+    rate?: number;
   },
 ): PlayHandle {
   if (typeof window === "undefined" || !window.speechSynthesis) {
@@ -175,6 +335,14 @@ export function playScript(
   }
   const synth = window.speechSynthesis;
   if (synth.speaking || synth.pending) synth.cancel();
+
+  const KNOWN_CITIES = new Set([
+    "madrid", "barcelona", "mexico city", "buenos aires",
+    "paris", "lyon", "montreal",
+  ]);
+  const spec = KNOWN_CITIES.has(cityOrLang.toLowerCase().trim())
+    ? voiceSpecForCity(cityOrLang)
+    : { preferred: [cityOrLang], utteranceLang: cityOrLang };
 
   let cancelled = false;
   let resolveFinished: (() => void) | null = null;
@@ -192,12 +360,17 @@ export function playScript(
     const line = script[i];
     opts?.onCursor?.(i);
     const voices = populateVoices();
-    const voice = pickVoice(voices, lang, line.gender);
+    const voice = pickVoice(voices, spec, line.gender);
+    if (!voice) {
+      // Skip the line rather than speaking in English.
+      runLine(i + 1);
+      return;
+    }
     const u = new SpeechSynthesisUtterance(line.text);
-    u.lang = lang;
-    u.rate = 0.9;
+    u.lang = voice.lang || spec.utteranceLang;
+    u.rate = opts?.rate ?? 0.9;
     u.volume = 1;
-    if (voice) u.voice = voice;
+    u.voice = voice;
     u.onend = () => {
       if (cancelled) return;
       const pause = line.pauseAfterMs ?? 300;

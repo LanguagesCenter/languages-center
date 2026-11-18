@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, createContext, useContext } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import type {
@@ -14,11 +14,17 @@ import type {
 } from "@/lib/traveler-preview";
 import {
   speak,
+  speakForCity,
   playScript,
   warmUpSpeech,
-  isAudioAvailable,
+  hasVoiceForCity,
   type PlayHandle,
 } from "@/lib/speech";
+
+// City context so every play button in the subtree uses the correct
+// accent (es-ES / es-MX / es-AR / fr-FR / fr-CA) without drilling the
+// prop down 5 layers.
+const CityContext = createContext<string>("Madrid");
 
 // ============================================================
 // Play buttons — thin wrappers over lib/speech.ts.
@@ -29,65 +35,111 @@ import {
 
 function PlayWordButton({
   text,
+  city: cityProp,
   lang,
   size = "md",
-  onDark = false,
+  showSlow = true,
 }: {
   text: string;
-  lang: string;
+  // Preferred: pass the city OR rely on the surrounding CityContext.
+  // The engine uses city to pick an accent-correct voice.
+  city?: string;
+  // Legacy raw-locale fallback. Unused when a city is in scope.
+  lang?: string;
   size?: "sm" | "md" | "lg";
-  onDark?: boolean;
+  // Show a secondary "slow" button (rate 0.75) next to the play
+  // button. Defaults to true for the word-card play surface; set to
+  // false for small inline buttons that would be too cramped.
+  showSlow?: boolean;
 }) {
+  const contextCity = useContext(CityContext);
+  const city = cityProp ?? contextCity;
   const [playing, setPlaying] = useState(false);
-  const [unavailable, setUnavailable] = useState(false);
+  const [playingSlow, setPlayingSlow] = useState(false);
+  const [available, setAvailable] = useState<boolean | null>(null);
   const handleRef = useRef<PlayHandle | null>(null);
 
-  // Warm up voices on first mount so the first click doesn't fire
-  // before getVoices() has returned anything.
+  // Warm voices up on mount; poll briefly until we can tell whether a
+  // suitable accent voice exists. If none, button flips to the
+  // unavailable placeholder. Polling (vs. just the voiceschanged
+  // event) covers Safari, which sometimes populates voices without
+  // firing the event.
   useEffect(() => {
     warmUpSpeech();
-  }, []);
+    let cancelled = false;
+    let tries = 0;
+    const check = () => {
+      if (cancelled) return;
+      if (city) {
+        if (hasVoiceForCity(city)) {
+          setAvailable(true);
+          return;
+        }
+      } else if (lang) {
+        // Raw-locale check: any voice matching the language prefix.
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+          const v = window.speechSynthesis.getVoices();
+          const prefix = lang.toLowerCase().split("-")[0] + "-";
+          if (v.some((x) => x.lang.toLowerCase().startsWith(prefix))) {
+            setAvailable(true);
+            return;
+          }
+        }
+      }
+      tries += 1;
+      if (tries >= 10) {
+        setAvailable(false);
+        return;
+      }
+      setTimeout(check, 300);
+    };
+    check();
+    return () => {
+      cancelled = true;
+      handleRef.current?.stop();
+    };
+  }, [city, lang]);
 
-  const toggle = useCallback(() => {
-    if (playing) {
+  function play(rate: number, isSlow: boolean) {
+    if (playing || playingSlow) {
       handleRef.current?.stop();
       setPlaying(false);
+      setPlayingSlow(false);
       return;
     }
-    // Synchronous speak() — do NOT wrap in setTimeout or await.
-    const handle = speak(text, lang, {
-      rate: 0.9,
-      onstart: () => setPlaying(true),
-      onend: () => setPlaying(false),
-      onerror: (reason) => {
-        setPlaying(false);
-        if (reason === "speech-synthesis-unavailable") setUnavailable(true);
+    const callbacks = {
+      rate,
+      onstart: () => {
+        if (isSlow) setPlayingSlow(true);
+        else setPlaying(true);
       },
-    });
+      onend: () => {
+        setPlaying(false);
+        setPlayingSlow(false);
+      },
+      onerror: () => {
+        setPlaying(false);
+        setPlayingSlow(false);
+      },
+    };
+    const handle = city
+      ? speakForCity(text, city, callbacks)
+      : speak(text, lang ?? "es-ES", callbacks);
     handleRef.current = handle;
-    // Fire the state update too, in case onstart never fires
-    // (some engines go straight to onend without onstart).
-    setPlaying(true);
-    // Safety net: if nothing starts within 2s and no voices exist,
-    // flip to the unavailable state so the UI can message the user.
-    setTimeout(() => {
-      if (!isAudioAvailable()) setUnavailable(true);
-    }, 2000);
-  }, [playing, text, lang]);
-
-  useEffect(() => () => handleRef.current?.stop(), []);
+    // Fire state optimistically; onstart may not fire on all engines.
+    if (isSlow) setPlayingSlow(true);
+    else setPlaying(true);
+  }
 
   const sizeClass =
     size === "sm" ? "w-9 h-9" : size === "lg" ? "w-16 h-16" : "w-12 h-12";
   const iconSize =
     size === "sm" ? "w-4 h-4" : size === "lg" ? "w-7 h-7" : "w-5 h-5";
-  const toneClass = onDark
-    ? "bg-white/20 text-white hover:bg-white/30 backdrop-blur"
-    : "bg-teal text-white hover:bg-teal-dark";
 
-  if (unavailable) {
+  if (available === false) {
     return (
       <span
+        role="img"
         title="Audio isn't available on this device"
         className={`inline-flex items-center justify-center rounded-full ${sizeClass} bg-navy/10 text-navy/40 cursor-not-allowed`}
       >
@@ -98,24 +150,42 @@ function PlayWordButton({
     );
   }
 
+  const anyPlaying = playing || playingSlow;
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-label={playing ? "Stop" : "Play"}
-      className={`inline-flex items-center justify-center rounded-full transition-colors shadow-md ${sizeClass} ${toneClass} ${playing ? "animate-pulse" : ""}`}
-    >
-      {playing ? (
-        <svg className={iconSize} fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
-      ) : (
-        <svg className={iconSize} fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+    <div className="inline-flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => play(0.9, false)}
+        aria-label={anyPlaying ? "Stop" : "Play"}
+        disabled={available === null && !anyPlaying}
+        className={`inline-flex items-center justify-center rounded-full transition-colors shadow-md ${sizeClass} bg-teal text-white hover:bg-teal-dark disabled:opacity-60 ${playing ? "animate-pulse" : ""}`}
+      >
+        {anyPlaying ? (
+          <svg className={iconSize} fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
+        ) : (
+          <svg className={iconSize} fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+        )}
+      </button>
+      {showSlow && (
+        <button
+          type="button"
+          onClick={() => play(0.75, true)}
+          aria-label={playingSlow ? "Stop slow" : "Play slower"}
+          disabled={available === null && !anyPlaying}
+          className={`inline-flex items-center justify-center gap-1 px-2.5 h-9 rounded-full border-2 border-teal/40 text-teal-dark text-xs font-bold hover:bg-teal-light disabled:opacity-60 transition-colors ${playingSlow ? "bg-teal-light animate-pulse" : "bg-white"}`}
+        >
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+          Slow
+        </button>
       )}
-    </button>
+    </div>
   );
 }
 
 // Thin hook over playScript for the opening / buildup audio panel.
+// Uses the city context so the correct regional accent is chosen.
 function useAudioScript(script: AudioLine[], lang: string) {
+  const city = useContext(CityContext);
   const [playing, setPlaying] = useState(false);
   const [cursor, setCursor] = useState(-1);
   const handleRef = useRef<PlayHandle | null>(null);
@@ -132,8 +202,9 @@ function useAudioScript(script: AudioLine[], lang: string) {
 
   const play = useCallback(() => {
     setPlaying(true);
-    // Synchronous call from the click handler.
-    const handle = playScript(script, lang, {
+    // Prefer city for accent; fall back to raw lang if no context.
+    const target = city && city.trim().length > 0 ? city : lang;
+    const handle = playScript(script, target, {
       onCursor: (i) => setCursor(i),
       onDone: () => {
         setPlaying(false);
@@ -141,7 +212,7 @@ function useAudioScript(script: AudioLine[], lang: string) {
       },
     });
     handleRef.current = handle;
-  }, [script, lang]);
+  }, [script, lang, city]);
 
   useEffect(() => () => stop(), [stop]);
 
@@ -832,11 +903,6 @@ const CITY_FALLBACK_IMAGES: Record<string, string> = {
 // caption strip is the primary way we tie the lesson's current word
 // to the picture because Unsplash / Street View text pixel coords
 // aren't reliable.
-//
-// `pinned` switches the image into the compact variant used by the
-// sticky pinned-media region at the top of the runner during decode
-// steps: a wider 16:10 aspect that caps at ~30vh on mobile so the
-// exercise below stays visible.
 function LessonImage({
   src,
   alt,
@@ -844,7 +910,6 @@ function LessonImage({
   priority = false,
   imageSource,
   highlight,
-  pinned = false,
 }: {
   src: string | null | undefined;
   alt: string;
@@ -852,7 +917,6 @@ function LessonImage({
   priority?: boolean;
   imageSource?: "streetview" | "unsplash";
   highlight?: DecodeHighlight | null;
-  pinned?: boolean;
 }) {
   const [loading, setLoading] = useState(true);
   const [errored, setErrored] = useState(false);
@@ -865,18 +929,9 @@ function LessonImage({
   const captionHighlight =
     highlight && highlight.kind === "caption" ? highlight : null;
 
-  // Pinned mode: smaller aspect ratio (16:10), hard-cap the height via
-  // max-h-[30vh] on mobile so a tall photo can't eat more than ~30%
-  // of the screen. object-fit stays "cover" so no letterboxing.
-  // Rounded only at the bottom because the sticky wrapper's top edge
-  // butts against the header.
-  const framing = pinned
-    ? "relative w-full aspect-[16/10] max-h-[30vh] sm:max-h-[36vh] overflow-hidden bg-navy"
-    : "relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl";
-
   return (
-    <div className={pinned ? "" : "space-y-2"}>
-      <div className={framing}>
+    <div className="space-y-2">
+      <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden bg-navy shadow-2xl">
         {loading && !showFallback && (
           <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-navy/70 via-navy/60 to-navy/80" />
         )}
@@ -992,7 +1047,6 @@ function AudioPanel({
   lang,
   snippet,
   hintActiveIndex,
-  compact,
 }: {
   script: AudioLine[];
   lang: string;
@@ -1004,13 +1058,11 @@ function AudioPanel({
   // waveform pulses on the snippet only while the hints are showing,
   // then calms once we're at the exercise.
   hintActiveIndex?: number | null;
-  // Shorter height when rendered in the pinned-media region at the
-  // top of a decode step — same controls, tighter padding.
-  compact?: boolean;
 }) {
   const fullScript = useAudioScript(script, lang);
   const [snippetPlaying, setSnippetPlaying] = useState(false);
   const handleRef = useRef<PlayHandle | null>(null);
+  const city = useContext(CityContext);
 
   function replaySnippet() {
     if (!snippet) return;
@@ -1020,7 +1072,8 @@ function AudioPanel({
       return;
     }
     setSnippetPlaying(true);
-    handleRef.current = speak(snippet, lang, {
+    const target = city && city.trim().length > 0 ? city : lang;
+    handleRef.current = speak(snippet, target, {
       rate: 0.85,
       onend: () => setSnippetPlaying(false),
     });
@@ -1032,20 +1085,12 @@ function AudioPanel({
   const activeSegment = snippet ? Math.max(0, script.findIndex((l) => l.text.includes(snippet))) : -1;
 
   return (
-    <div
-      className={`relative bg-gradient-to-br from-navy to-navy/80 text-white ${
-        compact
-          ? "rounded-2xl p-3 sm:p-4 space-y-3 shadow-md"
-          : "rounded-3xl p-5 sm:p-7 shadow-2xl space-y-4"
-      }`}
-    >
+    <div className="relative rounded-3xl bg-gradient-to-br from-navy to-navy/80 text-white p-5 sm:p-7 shadow-2xl space-y-4">
       <div className="flex items-center gap-4">
         <button
           type="button"
           onClick={fullScript.playing ? fullScript.stop : fullScript.play}
-          className={`shrink-0 rounded-full bg-white text-navy shadow-xl hover:scale-105 transition-transform flex items-center justify-center ${
-            compact ? "w-11 h-11" : "w-14 h-14 sm:w-16 sm:h-16"
-          }`}
+          className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white text-navy shadow-xl hover:scale-105 transition-transform flex items-center justify-center"
           aria-label={fullScript.playing ? "Stop" : "Play full recording"}
         >
           {fullScript.playing ? (
@@ -1078,7 +1123,7 @@ function AudioPanel({
       {/* Stylized waveform — purely decorative bars. The segment that
           contains the current decode snippet pulses in amber so the
           learner can see where in the clip they are. */}
-      <div className={`flex items-end gap-[3px] justify-center ${compact ? "h-8" : "h-14"}`}>
+      <div className="flex items-end gap-[3px] h-14 justify-center">
         {Array.from({ length: 28 }).map((_, i) => {
           const segmentIndex = Math.floor((i / 28) * totalSegments);
           const isActiveSegment = activeSegment >= 0 && segmentIndex === activeSegment;
@@ -1183,20 +1228,31 @@ function OpeningAudioStep({
   );
 }
 
-// Pinned media region — rendered at the runner level, sticky directly
-// below the header during decode steps. The image/audio stays visible
-// while the hints + exercise scroll underneath.
-function PinnedDecodeMedia({
+function DecodeStepView({
   step,
+  index,
+  total,
   lesson,
   lang,
-  hintActiveIndex,
+  onContinue,
+  onMiss,
+  onSkipSpeaking,
 }: {
   step: DecodeStep;
+  index: number;
+  total: number;
   lesson: PreviewLesson;
   lang: string;
-  hintActiveIndex: number | null;
+  onContinue: () => void;
+  onMiss: (ref: string) => void;
+  onSkipSpeaking?: (stepIndex: number) => void;
 }) {
+  const hints = useMemo(() => stepHints(step), [step]);
+  const [hintIdx, setHintIdx] = useState(0);
+  const [showExercise, setShowExercise] = useState(false);
+  const [typingBypassKey, setTypingBypassKey] = useState(0);
+  const typingRef = useRef<{ finish: () => void; done: boolean } | null>(null);
+
   const highlight = useMemo(
     () => stepHighlight(step, lesson.opening),
     [step, lesson.opening],
@@ -1209,69 +1265,6 @@ function PinnedDecodeMedia({
     lesson.opening.kind === "audio"
       ? (lesson.opening as Extract<PreviewLesson["opening"], { kind: "audio" }>)
       : null;
-
-  return (
-    <div className="bg-background border-b border-border">
-      {imageOpening && (
-        <LessonImage
-          src={imageOpening.imageUrl}
-          alt={imageOpening.imageAlt}
-          city={lesson.city}
-          imageSource={imageOpening.imageSource}
-          highlight={highlight ?? undefined}
-          pinned
-        />
-      )}
-      {audioOpening && (
-        <div className="px-4 sm:px-6 py-3 max-w-3xl mx-auto">
-          <AudioPanel
-            script={audioOpening.script}
-            lang={lang}
-            snippet={step.audioSnippet}
-            hintActiveIndex={hintActiveIndex}
-            compact
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DecodeStepView({
-  step,
-  index,
-  total,
-  lesson,
-  lang,
-  onContinue,
-  onMiss,
-  onSkipSpeaking,
-  onHintChange,
-}: {
-  step: DecodeStep;
-  index: number;
-  total: number;
-  lesson: PreviewLesson;
-  lang: string;
-  onContinue: () => void;
-  onMiss: (ref: string) => void;
-  onSkipSpeaking?: (stepIndex: number) => void;
-  // Reports the current hint index (or null when the exercise is
-  // showing) so the parent can pulse the pinned-media waveform.
-  onHintChange: (idx: number | null) => void;
-}) {
-  // Phase: -1..hints.length-1 for hints; hints.length for exercise.
-  // The last Continue advances from hints → exercise. Tapping
-  // Continue while the hint is still typing snaps it to done.
-  const hints = useMemo(() => stepHints(step), [step]);
-  const [hintIdx, setHintIdx] = useState(0);
-  const [showExercise, setShowExercise] = useState(false);
-  const [typingBypassKey, setTypingBypassKey] = useState(0);
-  const typingRef = useRef<{ finish: () => void; done: boolean } | null>(null);
-
-  useEffect(() => {
-    onHintChange(showExercise ? null : hintIdx);
-  }, [showExercise, hintIdx, onHintChange]);
 
   function onContinueHints() {
     if (showExercise) return;
@@ -1293,8 +1286,29 @@ function DecodeStepView({
         Decode · {index + 1} of {total}
       </div>
 
-      {/* Word card — no translation shown. The image/audio stays
-          pinned in the sticky region above this. */}
+      {/* Image or audio renders inline at the top of each decode step
+          (not sticky). The learner can see what they're decoding in
+          the natural reading flow; scrolling moves it off-screen as
+          the hints + exercise take over. */}
+      {imageOpening && (
+        <LessonImage
+          src={imageOpening.imageUrl}
+          alt={imageOpening.imageAlt}
+          city={lesson.city}
+          imageSource={imageOpening.imageSource}
+          highlight={highlight ?? undefined}
+        />
+      )}
+      {audioOpening && (
+        <AudioPanel
+          script={audioOpening.script}
+          lang={lang}
+          snippet={step.audioSnippet}
+          hintActiveIndex={showExercise ? null : hintIdx}
+        />
+      )}
+
+      {/* Word card — no translation shown. */}
       <div className="rounded-2xl bg-white border-2 border-border shadow-md p-5 sm:p-6 text-center space-y-2">
         <div className="text-2xl sm:text-3xl font-black text-navy tracking-tight leading-tight break-words">
           {step.wordOrPhrase}
@@ -1986,34 +2000,16 @@ export default function PreviewLessonRunner({
 
   const progressPct = Math.min(100, Math.round((currentStep / totalSteps) * 100));
 
-  // The pinned media region is only meaningful on decode steps (image
-  // or audio stays visible while hints + exercise scroll underneath).
-  // Opening + buildup + quiz + complete are standalone screens with
-  // no pinned media.
-  const isDecode = phase.kind === "decode";
-  const activeDecodeStep = isDecode ? lesson.decodeSteps[phase.index] : null;
-  // Hint cursor relayed up from DecodeStepView so the pinned audio
-  // waveform knows when to pulse. Reset on step change via the
-  // `decode-{index}` key.
-  const [pinnedHintIdx, setPinnedHintIdx] = useState<number | null>(0);
-  useEffect(() => {
-    setPinnedHintIdx(0);
-  }, [phase]);
-
   return (
-    // 100dvh (NOT 100vh) so iOS Safari's collapsing address bar doesn't
-    // leave a gap below the content. The flex column stacks the sticky
-    // top region above the scrolling content.
+    <CityContext.Provider value={lesson.city}>
     <div
       className="bg-background min-h-[100dvh]"
-      style={{
-        // Honour iOS/Android safe-area insets at the top so the
-        // header never sits under the status bar / notch.
-        paddingTop: "env(safe-area-inset-top, 0px)",
-      }}
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       {/* HEADER — fully opaque, no blur, at the very top. z-50 so
-          nothing from the lesson content can show above or behind it. */}
+          nothing (including the lesson image) can show above or
+          behind it. This is the ONLY sticky surface in the runner;
+          the image renders inline in the decode step below. */}
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-4 h-14">
           <Link
@@ -2034,100 +2030,71 @@ export default function PreviewLessonRunner({
         </div>
       </header>
 
-      {/* PINNED MEDIA — image/audio stays directly below the header on
-          every decode step. The sticky `top-14` matches the header's
-          `h-14` so there's never a gap or overlap. z-40 = below the
-          header, above everything else in the scroll. */}
-      {isDecode && activeDecodeStep && (
-        <div className="sticky top-14 z-40">
-          <PinnedDecodeMedia
-            step={activeDecodeStep}
-            lesson={lesson}
-            lang={lang}
-            hintActiveIndex={pinnedHintIdx}
-          />
-        </div>
-      )}
-
-      {/* LESSON-TITLE strip — only shown on the opening + complete
-          screens. Hidden on decode steps so the pinned image
-          dominates. */}
-      {(phase.kind === "opening" || phase.kind === "complete") && (
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-2 text-center">
-          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-navy/50">
-            {lesson.city} · Lesson {lesson.orderIndex}
-          </p>
-          <h1 className="text-xl sm:text-2xl font-black text-navy mt-1">
-            {lesson.title}
-          </h1>
-        </div>
-      )}
-
-      {/* SCROLLING CONTENT. scroll-pt gives focused form elements room
-          to clear the sticky header + pinned media. */}
-      <div
-        className="pb-16"
-        style={{
-          scrollPaddingTop: isDecode ? "calc(3.5rem + 32vh)" : "3.5rem",
-        }}
-      >
-        {phase.kind === "opening" && lesson.opening.kind === "image" && (
-          <OpeningImageStep lesson={lesson} onContinue={advance} />
-        )}
-        {phase.kind === "opening" && lesson.opening.kind === "audio" && (
-          <OpeningAudioStep lesson={lesson} lang={lang} onContinue={advance} />
-        )}
-        {phase.kind === "decode" && (
-          <DecodeStepView
-            key={phase.index}
-            step={lesson.decodeSteps[phase.index]}
-            index={phase.index}
-            total={lesson.decodeSteps.length}
-            lesson={lesson}
-            lang={lang}
-            onContinue={advance}
-            onMiss={reportMiss}
-            onSkipSpeaking={skipSpeakingAt}
-            onHintChange={setPinnedHintIdx}
-          />
-        )}
-        {phase.kind === "buildup" && (
-          <BuildupStep lesson={lesson} lang={lang} onContinue={advance} />
-        )}
-        {phase.kind === "quiz" && (
-          <EndQuizStep
-            lesson={lesson}
-            lang={lang}
-            missedRefs={missedRefs}
-            onFinish={finish}
-            onSkipSpeaking={(ref) => {
-              if (!lessonId || !onSkipSpeaking) return;
-              const parts = ref.split(":");
-              const idx = parseInt(parts[1] ?? "0", 10);
-              const q = parts[0] === "endquiz" ? lesson.endQuiz[idx] : null;
-              if (q && q.kind === "speaking") {
-                onSkipSpeaking({
-                  lessonId,
-                  exerciseRef: ref,
-                  prompt: q.prompt,
-                  expected: q.expected,
-                  translationCheck: q.translationCheck ?? null,
-                });
-              }
-            }}
-          />
-        )}
-        {phase.kind === "complete" && (
-          <CompleteStep
-            lesson={lesson}
-            score={phase.score}
-            isPreview={isPreview}
-            isPremium={!!isPremium}
-            exitHref={resolvedExitHref}
-            nextLessonHref={nextLessonHref}
-          />
-        )}
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 pb-2 text-center">
+        <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-navy/50">
+          {lesson.city} · Lesson {lesson.orderIndex}
+        </p>
+        <h1 className="text-xl sm:text-2xl font-black text-navy mt-1">
+          {lesson.title}
+        </h1>
       </div>
+
+      {phase.kind === "opening" && lesson.opening.kind === "image" && (
+        <OpeningImageStep lesson={lesson} onContinue={advance} />
+      )}
+      {phase.kind === "opening" && lesson.opening.kind === "audio" && (
+        <OpeningAudioStep lesson={lesson} lang={lang} onContinue={advance} />
+      )}
+      {phase.kind === "decode" && (
+        <DecodeStepView
+          key={phase.index}
+          step={lesson.decodeSteps[phase.index]}
+          index={phase.index}
+          total={lesson.decodeSteps.length}
+          lesson={lesson}
+          lang={lang}
+          onContinue={advance}
+          onMiss={reportMiss}
+          onSkipSpeaking={skipSpeakingAt}
+        />
+      )}
+      {phase.kind === "buildup" && (
+        <BuildupStep lesson={lesson} lang={lang} onContinue={advance} />
+      )}
+      {phase.kind === "quiz" && (
+        <EndQuizStep
+          lesson={lesson}
+          lang={lang}
+          missedRefs={missedRefs}
+          onFinish={finish}
+          onSkipSpeaking={(ref) => {
+            if (!lessonId || !onSkipSpeaking) return;
+            const parts = ref.split(":");
+            const idx = parseInt(parts[1] ?? "0", 10);
+            const q = parts[0] === "endquiz" ? lesson.endQuiz[idx] : null;
+            if (q && q.kind === "speaking") {
+              onSkipSpeaking({
+                lessonId,
+                exerciseRef: ref,
+                prompt: q.prompt,
+                expected: q.expected,
+                translationCheck: q.translationCheck ?? null,
+              });
+            }
+          }}
+        />
+      )}
+      {phase.kind === "complete" && (
+        <CompleteStep
+          lesson={lesson}
+          score={phase.score}
+          isPreview={isPreview}
+          isPremium={!!isPremium}
+          exitHref={resolvedExitHref}
+          nextLessonHref={nextLessonHref}
+        />
+      )}
     </div>
+    </CityContext.Provider>
   );
 }

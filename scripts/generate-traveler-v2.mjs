@@ -197,7 +197,7 @@ const BARCELONA_LESSON_PLAN = {
   4:  { type: "document", image: { source: "unsplash", query: "barcelona apartment keys house address guestbook welcome note", description: "A hand-written welcome note on the kitchen counter of a Barri Gòtic Airbnb apartment: Wi-Fi password, landlady's phone, and the nearest metro station, written in Catalan with Castilian translation underneath.", visibleText: ["BENVINGUTS", "BIENVENIDOS", "WIFI", "CONTRASENYA", "CONTRASEÑA", "TELÈFON", "TELÉFONO", "METRO JAUME I"] } },
   5:  { type: "advertisement", image: { source: "unsplash", query: "barcelona rooftop terrace hotel bar skyline card", description: "A tabletop card at your Barri Gòtic Airbnb advertising the rooftop terrace bar run by the neighbors — opening hours and tapas prices in euros.", visibleText: ["TERRASSA", "TERRAZA", "OBERT", "ABIERTO", "TANCAT", "CERRADO", "HORARI", "HORARIO", "€"] } },
   6:  { type: "sign", image: { source: "streetview", lat: 41.3870, lng: 2.1700, heading: 200, pitch: 10, description: "The entrance to Catalunya Metro station in Plaça Catalunya — a red diamond-shaped ‘M’ sign with directional arrows into the station and the bilingual ‘Sortida’/‘Salida’ exit marker beside it.", visibleText: ["METRO", "L1", "L3", "SORTIDA", "SALIDA", "ANDANA", "ANDÉN", "CORRESPONDÈNCIA", "CORRESPONDENCIA"] } },
-  7:  { type: "advertisement", image: { source: "streetview", lat: 41.3817, lng: 2.1733, heading: 180, pitch: 10, description: "La Rambla in Barcelona — the famous tree-lined pedestrian boulevard with souvenir kiosks, flower stalls, and painted street artists; the Mirador de Colom column is visible in the distance.", visibleText: ["LA RAMBLA", "VISITES GUIADES", "VISITAS GUIADAS", "GRÀTIS", "GRATIS", "FLORS", "FLORES", "SOUVENIRS"] } },
+  7:  { type: "advertisement", image: { source: "streetview", lat: 41.38098, lng: 2.17264, heading: 10, pitch: 5, description: "A view from La Rambla's central pedestrian promenade in Barcelona (near the Liceu metro stop), looking north up the boulevard toward Plaça Catalunya — tree-lined walkway, kiosks, pedestrians, and bilingual Catalan/Castilian storefront signage visible on either side. Any legible shop name, hotel banner, café label, or official sign counts as valid text for this lesson.", visibleText: ["LA RAMBLA", "HOTEL", "BAR", "OBERT", "ABIERTO", "ENTRADA", "VISITES GUIADES"] } },
   8:  { type: "overheard", image: { source: "streetview", lat: 41.3828, lng: 2.1770, heading: 100, pitch: 5, description: "A narrow medieval street in the Barri Gòtic near the Cathedral — a tourist asks a local pedestrian for directions to Plaça del Pi.", visibleText: ["CARRER", "CALLE", "PLAÇA", "PLAZA", "A LA DRETA", "A LA DERECHA", "A L'ESQUERRA", "A LA IZQUIERDA", "TOT RECTE", "TODO RECTO"] } },
   9:  { type: "document", image: { source: "unsplash", query: "barcelona tmb metro card hola bcn transport ticket", description: "A Hola BCN! transport card and its paper sleeve showing days of validity, zones covered, and price in euros.", visibleText: ["HOLA BCN!", "TARGETA DE TRANSPORT", "TARJETA DE TRANSPORTE", "DIES", "DÍAS", "ZONA 1", "ADULT", "ADULTO"] } },
   10: { type: "audio_announcement", image: null },
@@ -836,20 +836,41 @@ const QUIZ_KINDS = new Set(["multiple_choice", "fill_blank", "listening", "speak
 
 // Returns an array of whole-word tokens from `english` that count as
 // "the translation" — used to catch hints that leak the meaning. We:
-//   - strip parentheticals like "(Spanish given name)" so metadata
-//     language labels don't bleed into the ban list;
-//   - split on separators ("Fair / Exhibition centre" → tokens from
-//     both sides, because EITHER side is the translation);
-//   - drop stopwords + language-metadata words that commonly appear
-//     as contextual labels, not as the meaning.
+//   - strip parentheticals like "(Spanish given name)" and anything
+//     after em-dash / slash separators, so metadata labels and
+//     secondary notes don't bleed into the ban list;
+//   - drop stopwords + language-metadata words + common fillers
+//     that commonly appear in hints but aren't the actual meaning
+//     (e.g. "full", "name" in "full name" when the word is just the
+//     proper noun).
 const STOPWORDS = new Set([
-  "a", "an", "the", "of", "to", "in", "on", "at", "or", "and", "is", "are", "be", "for",
-  "spanish", "castilian", "catalan", "english", "name", "surname", "given", "proper", "noun", "verb",
-  "depicted", "fruit", "shown", "pictured", "city", "place", "landmark",
+  // articles / prepositions / aux verbs
+  "a", "an", "the", "of", "to", "in", "on", "at", "or", "and", "is", "are",
+  "be", "for", "with", "from", "as", "by", "it", "its", "this", "that",
+  // language-metadata labels
+  "spanish", "castilian", "catalan", "english", "french", "galician", "basque",
+  "name", "names", "surname", "given", "proper", "noun", "verb", "pronoun",
+  "adjective", "adverb", "feminine", "masculine", "plural", "singular",
+  "form", "variant", "version", "equivalent", "cognate", "translation",
+  // descriptors common in scene hints
+  "depicted", "shown", "pictured", "displayed", "visible", "written",
+  "printed", "reads", "says", "appears",
+  // generic subject labels
+  "city", "town", "place", "landmark", "building", "street", "square",
+  "sign", "artist", "painter", "writer", "author", "work", "piece",
+  // fillers that often show up in hint sentences
+  "full", "part", "whole", "half", "both", "every", "each", "very", "quite",
+  "little", "large", "small", "big", "main", "other", "more", "most",
+  "mark", "symbol", "letter", "character", "common", "typical", "exact",
+  "literal", "literally", "actually", "simply",
 ]);
 function translationTokens(english) {
   if (!english) return [];
-  const stripped = english.replace(/\([^)]*\)/g, " ");
+  // Strip parentheticals, then anything after an em-dash / en-dash /
+  // slash — those are secondary notes / alternate spellings, not
+  // the primary meaning.
+  let stripped = english.replace(/\([^)]*\)/g, " ");
+  stripped = stripped.split(/[—–/]/)[0] ?? stripped;
   return stripped
     .toLowerCase()
     .split(/[^a-z]+/)
@@ -1109,13 +1130,16 @@ async function main() {
       // parenthetical metadata, near-cognates) that clear on retry.
       let v2 = null, usage = null, lastErr = null;
       let currentPrompt = userPrompt;
-      const MAX_ATTEMPTS = 4;
+      const MAX_ATTEMPTS = 5;
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         const r = await callClaude({
           apiKey: anthropicKey,
           systemPrompt: SYSTEM_PROMPT,
           userPrompt: currentPrompt,
-          maxTokens: 5000,
+          // Bumped from 5000 — bilingual lessons with hints + explanations
+          // + translationCheck on every speaking exercise were getting
+          // truncated mid-JSON array at around 15k characters.
+          maxTokens: 8000,
         });
         usage = r.usage;
         let candidate;
